@@ -2,12 +2,12 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import func, select
 
 from backend.config import settings
 from backend.database import get_session
 from backend.email_utils import send_verification_email
-from backend.models import AuthToken, User, UserTier, VerificationCode, _utcnow
+from backend.models import AuthToken, FileUpload, User, UserTier, VerificationCode, _utcnow
 from backend.schemas import (
     CodeVerificationRequest,
     EmailVerificationRequest,
@@ -105,9 +105,14 @@ async def get_quota(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> QuotaResponse:
-    from backend.routers.files import _count_recent_uploads
-
-    files_used = await _count_recent_uploads(session, user.id)
+    one_week_ago = _utcnow() - timedelta(days=7)
+    stmt = (
+        select(func.count())
+        .select_from(FileUpload)
+        .where(FileUpload.user_id == user.id, FileUpload.created_at >= one_week_ago)
+    )
+    result = await session.execute(stmt)
+    files_used = result.scalar_one()
     files_limit, max_file_size_mb = _get_quota_for_tier(user.tier)
 
     return QuotaResponse(

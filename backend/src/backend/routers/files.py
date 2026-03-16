@@ -1,9 +1,11 @@
 import secrets
+import uuid
 from datetime import timedelta
 from pathlib import Path
 
 import aiofiles
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import func, select
 
@@ -97,8 +99,6 @@ async def upload_file(
     upload_dir = Path(settings.UPLOAD_DIR)
     upload_dir.mkdir(parents=True, exist_ok=True)
 
-    import uuid
-
     stored_filename = str(uuid.uuid4())
     file_path = upload_dir / stored_filename
 
@@ -170,10 +170,9 @@ async def download_file(
     if not file_upload.is_active:
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="File has been deactivated")
 
-    if now > grace_end:
-        raise HTTPException(status_code=status.HTTP_410_GONE, detail="File has expired and been removed")
-
     if now > file_upload.expires_at:
+        if now > grace_end:
+            raise HTTPException(status_code=status.HTTP_410_GONE, detail="File has expired and been removed")
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="File has expired")
 
     if file_upload.max_downloads and file_upload.download_count >= file_upload.max_downloads:
@@ -187,8 +186,6 @@ async def download_file(
     file_path = Path(settings.UPLOAD_DIR) / file_upload.stored_filename
     if not file_path.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk")
-
-    from fastapi.responses import FileResponse
 
     return FileResponse(
         path=str(file_path),
