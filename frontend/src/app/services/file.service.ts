@@ -24,9 +24,10 @@ interface FileListResponse {
 export class FileService {
   private readonly http = inject(HttpClient);
 
-  upload(file: File): Observable<FileUploadResponse> {
+  upload(file: File, altchaPayload: string): Observable<FileUploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('altcha', altchaPayload);
     return this.http.post<FileUploadResponse>('/api/files/upload', formData, {
       reportProgress: false,
     });

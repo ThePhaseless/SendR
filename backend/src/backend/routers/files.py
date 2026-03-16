@@ -13,6 +13,7 @@ from sqlmodel import func, select
 from backend.config import settings
 from backend.database import get_session
 from backend.models import FileUpload, User, UserTier, _utcnow
+from backend.routers.altcha import verify_altcha_payload
 from backend.schemas import FileListResponse, FileUploadResponse
 from backend.security import get_current_user, get_optional_user
 
@@ -77,6 +78,7 @@ async def upload_file(
     file: UploadFile,
     user: User | None = Depends(get_optional_user),
     session: AsyncSession = Depends(get_session),
+    _altcha: None = Depends(verify_altcha_payload),
 ) -> FileUploadResponse:
     # Create anon user if not authenticated
     if user is None:

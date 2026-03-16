@@ -1,4 +1,11 @@
+import secrets
+
+from pydantic import Field
 from pydantic_settings import BaseSettings
+
+
+def _generate_hmac_key() -> str:
+    return secrets.token_hex(32)
 
 
 class Settings(BaseSettings):
@@ -28,6 +35,10 @@ class Settings(BaseSettings):
     VERIFICATION_CODE_EXPIRE_MINUTES: int = 10
     # Rate limiting
     AUTH_RATE_LIMIT_PER_MINUTE: int = 5
+    # Altcha proof-of-work CAPTCHA
+    ALTCHA_HMAC_KEY: str = Field(default_factory=_generate_hmac_key)
+    ALTCHA_MAX_NUMBER: int = 100000
+    ALTCHA_EXPIRE_MINUTES: int = 5
 
     model_config = {"env_prefix": "SENDR_"}
 

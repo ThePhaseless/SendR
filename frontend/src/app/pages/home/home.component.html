@@ -54,5 +54,19 @@
         </div>
       }
     </div>
+
+    @if (hasPendingFile()) {
+      <div class="staged-file">
+        <p class="staged-name">📄 {{ getPendingFileName() }}</p>
+        <p class="staged-hint">Complete the verification below to upload</p>
+      </div>
+    }
+
+    <div class="altcha-container">
+      <altcha-widget
+        challengeurl="/api/altcha/challenge"
+        (statechange)="onAltchaStateChange($event)"
+      ></altcha-widget>
+    </div>
   }
 </div>

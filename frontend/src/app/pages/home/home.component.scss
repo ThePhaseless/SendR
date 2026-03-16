@@ -163,3 +163,30 @@
 .upload-another {
   margin-top: 0.5rem;
 }
+
+.staged-file {
+  text-align: center;
+  margin-top: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: #eef2ff;
+  border-radius: 0.5rem;
+  max-width: 600px;
+  width: 100%;
+
+  .staged-name {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.25rem;
+  }
+
+  .staged-hint {
+    color: #6b7280;
+    font-size: 0.875rem;
+  }
+}
+
+.altcha-container {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
