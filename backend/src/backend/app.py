@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from backend.config import settings
 from backend.database import init_db
 from backend.routers import auth, files
 
@@ -27,10 +28,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["content-type", "authorization"],
 )
 
 app.include_router(auth.router)
@@ -38,11 +39,15 @@ app.include_router(files.router)
 
 # Serve Angular frontend static files in production
 if STATIC_DIR.is_dir():
-    app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")
+    _resolved_static = STATIC_DIR.resolve()
+    app.mount("/assets", StaticFiles(directory=str(_resolved_static / "assets")), name="assets")
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(_request: Request, full_path: str):  # noqa: ARG001
-        file_path = STATIC_DIR / full_path
+        file_path = (STATIC_DIR / full_path).resolve()
+        # Prevent path traversal by ensuring resolved path stays under STATIC_DIR
+        if not str(file_path).startswith(str(_resolved_static)):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
         if file_path.is_file():
             return FileResponse(str(file_path))
-        return FileResponse(str(STATIC_DIR / "index.html"))
+        return FileResponse(str(_resolved_static / "index.html"))

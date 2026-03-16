@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import func, select
 
@@ -8,6 +8,7 @@ from backend.config import settings
 from backend.database import get_session
 from backend.email_utils import send_verification_email
 from backend.models import AuthToken, FileUpload, User, UserTier, VerificationCode, _utcnow
+from backend.rate_limit import auth_rate_limiter, get_client_ip
 from backend.schemas import (
     CodeVerificationRequest,
     EmailVerificationRequest,
@@ -36,8 +37,11 @@ def _get_quota_for_tier(tier: UserTier) -> tuple[int, int]:
 @router.post("/request-code", status_code=status.HTTP_200_OK)
 async def request_code(
     body: EmailVerificationRequest,
+    request: Request,
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, str]:
+    auth_rate_limiter.check(get_client_ip(request))
+
     code = generate_verification_code()
     expires_at = _utcnow() + timedelta(minutes=settings.VERIFICATION_CODE_EXPIRE_MINUTES)
 
@@ -57,8 +61,11 @@ async def request_code(
 @router.post("/verify-code")
 async def verify_code(
     body: CodeVerificationRequest,
+    request: Request,
     session: AsyncSession = Depends(get_session),
 ) -> TokenResponse:
+    auth_rate_limiter.check(get_client_ip(request))
+
     stmt = select(VerificationCode).where(
         VerificationCode.email == body.email,
         VerificationCode.code == body.code,

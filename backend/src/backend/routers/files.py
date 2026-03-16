@@ -1,4 +1,5 @@
 import secrets
+import unicodedata
 import uuid
 from datetime import timedelta
 from pathlib import Path
@@ -16,6 +17,13 @@ from backend.schemas import FileListResponse, FileUploadResponse
 from backend.security import get_current_user, get_optional_user
 
 router = APIRouter(prefix="/api/files", tags=["files"])
+
+
+def _sanitize_filename(filename: str) -> str:
+    """Remove potentially dangerous characters from filename."""
+    filename = filename.replace("/", "_").replace("\\", "_").replace("\0", "")
+    filename = "".join(c for c in filename if unicodedata.category(c)[0] != "C")
+    return filename[:255] or "unnamed"
 
 
 def _get_limits(tier: UserTier) -> tuple[int, int]:
@@ -111,7 +119,7 @@ async def upload_file(
 
     file_upload = FileUpload(
         user_id=user.id,
-        original_filename=file.filename or "unnamed",
+        original_filename=_sanitize_filename(file.filename or "unnamed"),
         stored_filename=stored_filename,
         file_size_bytes=file_size,
         download_token=download_token,

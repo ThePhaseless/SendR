@@ -5,6 +5,8 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./sendr.db"
     SECRET_KEY: str = "change-me-in-production"
     UPLOAD_DIR: str = "./uploads"
+    # CORS
+    ALLOWED_ORIGINS: list[str] = ["http://localhost:4200"]
     # Email settings
     SMTP_HOST: str = "localhost"
     SMTP_PORT: int = 587
@@ -22,8 +24,10 @@ class Settings(BaseSettings):
     FILE_EXPIRY_DAYS: int = 7
     FILE_GRACE_PERIOD_DAYS: int = 7
     # Token expiry
-    TOKEN_EXPIRE_MINUTES: int = 43200  # 30 days
+    TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
     VERIFICATION_CODE_EXPIRE_MINUTES: int = 10
+    # Rate limiting
+    AUTH_RATE_LIMIT_PER_MINUTE: int = 5
 
     model_config = {"env_prefix": "SENDR_"}
 
