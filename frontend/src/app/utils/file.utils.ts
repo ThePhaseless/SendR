@@ -1,0 +1,14 @@
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+export function extractDownloadToken(downloadUrl: string): string {
+  const parts = downloadUrl.split('/');
+  return parts[parts.length - 1] || parts[parts.length - 2];
+}
+
+export function isExpired(expiresAt: string): boolean {
+  return new Date(expiresAt) < new Date();
+}

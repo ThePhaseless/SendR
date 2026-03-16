@@ -4,6 +4,11 @@ import {
   FileService,
   FileUploadResponse,
 } from '../../services/file.service';
+import {
+  extractDownloadToken,
+  formatFileSize,
+  isExpired,
+} from '../../utils/file.utils';
 
 @Component({
   selector: 'app-dashboard',
@@ -42,7 +47,7 @@ export class DashboardComponent implements OnInit {
   }
 
   copyLink(file: FileUploadResponse): void {
-    const token = this.extractToken(file.download_url);
+    const token = extractDownloadToken(file.download_url);
     const link = `${window.location.origin}/download/${token}`;
     navigator.clipboard.writeText(link);
     this.copiedId.set(file.id);
@@ -75,17 +80,10 @@ export class DashboardComponent implements OnInit {
   }
 
   formatSize(bytes: number): string {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return formatFileSize(bytes);
   }
 
   isExpired(expiresAt: string): boolean {
-    return new Date(expiresAt) < new Date();
-  }
-
-  private extractToken(downloadUrl: string): string {
-    const parts = downloadUrl.split('/');
-    return parts[parts.length - 1] || parts[parts.length - 2];
+    return isExpired(expiresAt);
   }
 }

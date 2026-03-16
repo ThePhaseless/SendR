@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { FileService, FileUploadResponse } from '../../services/file.service';
 import { DatePipe } from '@angular/common';
+import { formatFileSize, isExpired } from '../../utils/file.utils';
 
 @Component({
   selector: 'app-download',
@@ -43,12 +44,10 @@ export class DownloadComponent implements OnInit {
   }
 
   formatSize(bytes: number): string {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return formatFileSize(bytes);
   }
 
   isExpired(expiresAt: string): boolean {
-    return new Date(expiresAt) < new Date();
+    return isExpired(expiresAt);
   }
 }

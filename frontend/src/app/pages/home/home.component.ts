@@ -1,6 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
 import { AuthService } from '../../services/auth.service';
 import { FileService, FileUploadResponse } from '../../services/file.service';
+import {
+  extractDownloadToken,
+  formatFileSize,
+} from '../../utils/file.utils';
 
 @Component({
   selector: 'app-home',
@@ -80,7 +84,7 @@ export class HomeComponent {
   getShareableLink(): string {
     const result = this.uploadResult();
     if (!result) return '';
-    return `${window.location.origin}/download/${this.extractToken(result.download_url)}`;
+    return `${window.location.origin}/download/${extractDownloadToken(result.download_url)}`;
   }
 
   copyLink(): void {
@@ -90,18 +94,11 @@ export class HomeComponent {
   }
 
   formatSize(bytes: number): string {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return formatFileSize(bytes);
   }
 
   resetUpload(): void {
     this.uploadResult.set(null);
     this.error.set(null);
-  }
-
-  private extractToken(downloadUrl: string): string {
-    const parts = downloadUrl.split('/');
-    return parts[parts.length - 1] || parts[parts.length - 2];
   }
 }
