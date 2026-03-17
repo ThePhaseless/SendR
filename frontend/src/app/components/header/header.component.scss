@@ -1,6 +1,6 @@
 .header {
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
   padding: 0 1rem;
 }
 
@@ -14,9 +14,10 @@
 }
 
 .logo {
-  font-size: 1.5rem;
+  font-family: 'Codigra', 'Georgia', serif;
+  font-size: 1.75rem;
   font-weight: 800;
-  color: #4f46e5;
+  color: var(--primary);
   text-decoration: none;
   letter-spacing: -0.025em;
 }
@@ -28,13 +29,13 @@
 }
 
 .nav-link {
-  color: #6b7280;
+  color: var(--text-secondary);
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
 
   &:hover {
-    color: #111827;
+    color: var(--text);
     text-decoration: none;
   }
 }

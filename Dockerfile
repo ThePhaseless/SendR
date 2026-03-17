@@ -14,7 +14,7 @@ COPY frontend/ ./
 RUN npx ng build --configuration production
 
 # Stage 2: Build Python backend + serve everything
-FROM python:3.12-slim AS production
+FROM python:3.14-slim AS production
 
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv

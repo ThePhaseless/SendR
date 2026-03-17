@@ -1,13 +1,78 @@
-$primary: #4f46e5;
-$primary-hover: #4338ca;
-$bg: #f9fafb;
-$card-bg: #ffffff;
-$text: #111827;
-$text-secondary: #6b7280;
-$border: #e5e7eb;
-$success: #10b981;
-$danger: #ef4444;
-$warning: #f59e0b;
+@font-face {
+  font-family: 'Codigra';
+  src: url('/assets/fonts/Codigra-Regular.woff2') format('woff2'),
+       url('/assets/fonts/Codigra-Regular.woff') format('woff'),
+       url('/assets/fonts/Codigra-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+// Light theme (default)
+:root {
+  --primary: #c0392b;
+  --primary-hover: #a93226;
+  --primary-light: #f9ebea;
+  --bg: #fdf6f3;
+  --card-bg: #ffffff;
+  --text: #2c1810;
+  --text-secondary: #7a6055;
+  --border: #e6d5ce;
+  --success: #27ae60;
+  --danger: #e74c3c;
+  --warning: #e67e22;
+  --header-bg: #ffffff;
+  --header-border: #e6d5ce;
+  --input-bg: #fdf6f3;
+  --input-border: #d5c0b5;
+  --input-focus: #c0392b;
+  --input-focus-shadow: rgba(192, 57, 43, 0.1);
+  --secondary-hover-bg: #fdf0ec;
+  --accent: #d35400;
+  --accent-light: #fdebd0;
+  --badge-bg: #f9ebea;
+  --badge-text: #c0392b;
+  --spinner-track: #e6d5ce;
+  --spinner-head: #c0392b;
+  --drop-border: #d5c0b5;
+  --drop-active-border: #c0392b;
+  --drop-active-bg: #f9ebea;
+  --staged-bg: #f9ebea;
+}
+
+// Dark theme
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #e74c3c;
+    --primary-hover: #c0392b;
+    --primary-light: #3d1a15;
+    --bg: #1a1210;
+    --card-bg: #2a1f1b;
+    --text: #f0e6e0;
+    --text-secondary: #b8a69d;
+    --border: #4a3830;
+    --success: #2ecc71;
+    --danger: #e74c3c;
+    --warning: #f39c12;
+    --header-bg: #2a1f1b;
+    --header-border: #4a3830;
+    --input-bg: #332820;
+    --input-border: #5a4840;
+    --input-focus: #e74c3c;
+    --input-focus-shadow: rgba(231, 76, 60, 0.2);
+    --secondary-hover-bg: #332820;
+    --accent: #e67e22;
+    --accent-light: #3d2a10;
+    --badge-bg: #3d1a15;
+    --badge-text: #e74c3c;
+    --spinner-track: #4a3830;
+    --spinner-head: #e74c3c;
+    --drop-border: #5a4840;
+    --drop-active-border: #e74c3c;
+    --drop-active-bg: #3d1a15;
+    --staged-bg: #3d1a15;
+  }
+}
 
 *,
 *::before,
@@ -27,13 +92,18 @@ body {
     'Segoe UI',
     Roboto,
     sans-serif;
-  background-color: $bg;
-  color: $text;
+  background-color: var(--bg);
+  color: var(--text);
   line-height: 1.6;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.font-display {
+  font-family: 'Codigra', 'Georgia', serif;
 }
 
 a {
-  color: $primary;
+  color: var(--primary);
   text-decoration: none;
 
   &:hover {
@@ -59,11 +129,11 @@ button {
   transition: all 0.15s ease;
 
   &-primary {
-    background-color: $primary;
+    background-color: var(--primary);
     color: white;
 
     &:hover {
-      background-color: $primary-hover;
+      background-color: var(--primary-hover);
     }
 
     &:disabled {
@@ -73,21 +143,21 @@ button {
   }
 
   &-secondary {
-    background-color: $card-bg;
-    color: $text;
-    border: 1px solid $border;
+    background-color: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
 
     &:hover {
-      background-color: #f3f4f6;
+      background-color: var(--secondary-hover-bg);
     }
   }
 
   &-danger {
-    background-color: $danger;
+    background-color: var(--danger);
     color: white;
 
     &:hover {
-      background-color: #dc2626;
+      background-color: #c0392b;
     }
   }
 
@@ -98,9 +168,9 @@ button {
 }
 
 .card {
-  background: $card-bg;
+  background: var(--card-bg);
   border-radius: 0.75rem;
-  border: 1px solid $border;
+  border: 1px solid var(--border);
   padding: 1.5rem;
 }
 
@@ -111,20 +181,26 @@ button {
   margin-bottom: 1rem;
 
   &-error {
-    background-color: #fef2f2;
-    color: #991b1b;
-    border: 1px solid #fecaca;
+    background-color: var(--primary-light);
+    color: var(--danger);
+    border: 1px solid var(--primary);
   }
 
   &-success {
     background-color: #f0fdf4;
     color: #166534;
     border: 1px solid #bbf7d0;
+
+    @media (prefers-color-scheme: dark) {
+      background-color: #0d2818;
+      color: #2ecc71;
+      border-color: #1a4d2e;
+    }
   }
 
   &-info {
-    background-color: #eff6ff;
-    color: #1e40af;
-    border: 1px solid #bfdbfe;
+    background-color: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid var(--warning);
   }
 }
