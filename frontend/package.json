@@ -8,7 +8,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "oxlint --config oxlintrc.json src/",
-    "format": "bunx prettier --write src/",
+    "format": "oxfmt src/",
+    "format:check": "oxfmt --check src/",
     "generate-api": "openapi-generator-cli generate -i ../openapi.json -g typescript-angular -o src/app/api --additional-properties=ngVersion=21,providedInRoot=true,fileNaming=kebab-case"
   },
   "private": true,
@@ -37,6 +38,7 @@
     "karma-coverage": "~2.2.1",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.2.0",
+    "oxfmt": "^0.41.0",
     "oxlint": "^1.56.0",
     "typescript": "~5.9.3"
   }
