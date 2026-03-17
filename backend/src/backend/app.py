@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.config import settings
 from backend.database import init_db
-from backend.routers import altcha, auth, files
+from backend.routers import admin, altcha, auth, files
 
 STATIC_DIR = Path(__file__).resolve().parent.parent.parent.parent / "static"
 
@@ -34,6 +34,7 @@ app.add_middleware(
     allow_headers=["content-type", "authorization"],
 )
 
+app.include_router(admin.router)
 app.include_router(altcha.router)
 app.include_router(auth.router)
 app.include_router(files.router)

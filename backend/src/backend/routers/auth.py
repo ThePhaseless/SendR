@@ -104,7 +104,7 @@ async def verify_code(
 
 @router.get("/me")
 async def get_me(user: User = Depends(get_current_user)) -> UserResponse:
-    return UserResponse(id=user.id, email=user.email, tier=user.tier.value)
+    return UserResponse(id=user.id, email=user.email, tier=user.tier.value, is_admin=user.is_admin)
 
 
 @router.get("/quota")

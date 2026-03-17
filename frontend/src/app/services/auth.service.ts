@@ -16,6 +16,7 @@ interface MeResponse {
   id: number;
   email: string;
   tier: string;
+  is_admin: boolean;
 }
 
 interface QuotaResponse {

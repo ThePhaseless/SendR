@@ -6,6 +6,9 @@
       @if (auth.authenticated()) {
         <a routerLink="/dashboard" class="nav-link">Dashboard</a>
       }
+      @if (isAdmin()) {
+        <a routerLink="/admin" class="nav-link">Admin</a>
+      }
     </nav>
     <div class="actions">
       @if (auth.authenticated()) {
