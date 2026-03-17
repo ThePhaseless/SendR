@@ -36,12 +36,11 @@ dev = [
 ]
 
 [tool.ruff]
-target-version = "py314"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP", "S", "B", "A", "C4", "DTZ", "T20", "ICN", "PIE", "PT", "RSE", "RET", "SLF", "SIM", "TID", "TCH", "ARG", "PTH", "ERA"]
+select = ["E", "F", "I", "N", "W", "UP", "S", "B", "A", "C4", "DTZ", "T20", "ICN", "PIE", "PT", "RSE", "RET", "SLF", "SIM", "TID", "TC", "ARG", "PTH", "ERA"]
 ignore = ["S101", "S603", "S607", "B008", "S104", "S105"]
 
 [tool.ruff.lint.per-file-ignores]
-"alembic/*" = ["ERA001", "TCH"]
+"alembic/*" = ["ERA001", "TC"]
