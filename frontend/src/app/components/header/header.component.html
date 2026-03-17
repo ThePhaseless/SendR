@@ -1,0 +1,21 @@
+<header class="header">
+  <div class="header-inner">
+    <a routerLink="/" class="logo">SendR</a>
+    <nav class="nav">
+      <a routerLink="/" class="nav-link">Home</a>
+      @if (auth.authenticated()) {
+        <a routerLink="/dashboard" class="nav-link">Dashboard</a>
+      }
+      @if (isAdmin()) {
+        <a routerLink="/admin" class="nav-link">Admin</a>
+      }
+    </nav>
+    <div class="actions">
+      @if (auth.authenticated()) {
+        <button class="btn btn-secondary btn-sm" (click)="logout()">Logout</button>
+      } @else {
+        <a routerLink="/auth" class="btn btn-primary btn-sm">Login</a>
+      }
+    </div>
+  </div>
+</header>

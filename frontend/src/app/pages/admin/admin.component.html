@@ -1,0 +1,85 @@
+<div class="admin">
+  <div class="admin-header">
+    <h1>User Management</h1>
+    <div class="search-bar">
+      <input
+        type="text"
+        [(ngModel)]="search"
+        placeholder="Search by email..."
+        class="form-input search-input"
+        (keyup.enter)="onSearch()"
+      />
+      <button class="btn btn-primary btn-sm" (click)="onSearch()">Search</button>
+    </div>
+  </div>
+
+  @if (error(); as err) {
+    <div class="alert alert-error">{{ err }}</div>
+  }
+
+  @if (loading()) {
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading users...</p>
+    </div>
+  } @else {
+    <div class="user-table-wrapper">
+      <table class="user-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Email</th>
+            <th>Tier</th>
+            <th>Admin</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (user of users(); track user.id) {
+            <tr>
+              @if (editingUser()?.id === user.id) {
+                <td>{{ user.id }}</td>
+                <td>{{ user.email }}</td>
+                <td>
+                  <select [(ngModel)]="editTier" class="form-select">
+                    <option value="anonymous">Anonymous</option>
+                    <option value="free">Free</option>
+                    <option value="premium">Premium</option>
+                  </select>
+                </td>
+                <td>
+                  <input type="checkbox" [(ngModel)]="editIsAdmin" />
+                </td>
+                <td class="actions-cell">
+                  <button class="btn btn-primary btn-sm" (click)="saveEdit()">Save</button>
+                  <button class="btn btn-secondary btn-sm" (click)="cancelEdit()">Cancel</button>
+                </td>
+              } @else {
+                <td>{{ user.id }}</td>
+                <td>{{ user.email }}</td>
+                <td>
+                  <span class="tier-badge" [class]="'tier-' + user.tier">{{ user.tier }}</span>
+                </td>
+                <td>
+                  @if (user.is_admin) {
+                    <span class="admin-badge">Admin</span>
+                  }
+                </td>
+                <td class="actions-cell">
+                  <button class="btn btn-secondary btn-sm" (click)="startEdit(user)">Edit</button>
+                  <button class="btn btn-danger btn-sm" (click)="deleteUser(user)">Delete</button>
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination">
+      <button class="btn btn-secondary btn-sm" [disabled]="page() <= 1" (click)="prevPage()">← Previous</button>
+      <span class="page-info">Page {{ page() }} of {{ totalPages() }} ({{ total() }} users)</span>
+      <button class="btn btn-secondary btn-sm" [disabled]="page() >= totalPages()" (click)="nextPage()">Next →</button>
+    </div>
+  }
+</div>

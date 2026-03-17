@@ -1,0 +1,72 @@
+<div class="home">
+  <div class="hero">
+    <h1>Share files with anyone</h1>
+    <p class="subtitle">Upload your file and get a shareable link instantly. No account needed.</p>
+  </div>
+
+  @if (quota(); as q) {
+    <div class="alert alert-info quota-info">
+      Files: {{ q.files_used }} / {{ q.files_limit }} &middot; Max file size: {{ q.max_file_size_mb }} MB
+    </div>
+  }
+
+  @if (error(); as err) {
+    <div class="alert alert-error">{{ err }}</div>
+  }
+
+  @if (uploadResult(); as result) {
+    <div class="card upload-success">
+      <div class="success-icon">✓</div>
+      <h2>File uploaded!</h2>
+      <p class="file-name">{{ result.original_filename }}</p>
+      <p class="file-size">{{ formatSize(result.file_size_bytes) }}</p>
+      <div class="share-link">
+        <input type="text" [value]="getShareableLink()" readonly class="link-input" />
+        <button class="btn btn-primary" (click)="copyLink()">
+          {{ copied() ? 'Copied!' : 'Copy Link' }}
+        </button>
+      </div>
+      <button class="btn btn-secondary upload-another" (click)="resetUpload()">Upload another file</button>
+    </div>
+  } @else {
+    <div
+      class="drop-zone"
+      [class.dragging]="isDragging()"
+      [class.uploading]="isUploading()"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)"
+      (drop)="onDrop($event)"
+    >
+      @if (isUploading()) {
+        <div class="upload-progress">
+          <div class="spinner"></div>
+          <p>Uploading...</p>
+        </div>
+      } @else {
+        <div class="drop-content">
+          <div class="drop-icon">📁</div>
+          <p class="drop-text">Drag & drop your file here</p>
+          <p class="drop-or">or</p>
+          <label class="btn btn-primary file-label">
+            Choose File
+            <input type="file" (change)="onFileSelected($event)" hidden />
+          </label>
+        </div>
+      }
+    </div>
+
+    @if (hasPendingFile()) {
+      <div class="staged-file">
+        <p class="staged-name">📄 {{ getPendingFileName() }}</p>
+        <p class="staged-hint">Complete the verification below to upload</p>
+      </div>
+    }
+
+    <div class="altcha-container">
+      <altcha-widget
+        challengeurl="/api/altcha/challenge"
+        (statechange)="onAltchaStateChange($event)"
+      ></altcha-widget>
+    </div>
+  }
+</div>

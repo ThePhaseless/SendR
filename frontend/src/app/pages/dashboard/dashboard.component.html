@@ -1,0 +1,65 @@
+<div class="dashboard">
+  <div class="dashboard-header">
+    <h1>My Files</h1>
+    <div class="quota-badge">
+      {{ quotaUsed() }} / {{ quotaLimit() }} files
+    </div>
+  </div>
+
+  @if (error(); as err) {
+    <div class="alert alert-error">{{ err }}</div>
+  }
+
+  @if (loading()) {
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>Loading files...</p>
+    </div>
+  } @else if (files().length === 0) {
+    <div class="card empty-state">
+      <div class="empty-icon">📂</div>
+      <h2>No files yet</h2>
+      <p>Upload your first file from the home page.</p>
+    </div>
+  } @else {
+    <div class="file-list">
+      @for (file of files(); track file.id) {
+        <div class="card file-item" [class.expired]="isExpired(file.expires_at) || !file.is_active">
+          <div class="file-info">
+            <h3 class="file-name">{{ file.original_filename }}</h3>
+            <div class="file-meta">
+              <span>{{ formatSize(file.file_size_bytes) }}</span>
+              <span>&middot;</span>
+              <span>{{ file.download_count }} downloads</span>
+              <span>&middot;</span>
+              <span [class.expired-text]="isExpired(file.expires_at)">
+                Expires: {{ file.expires_at | date: 'short' }}
+              </span>
+            </div>
+          </div>
+          <div class="file-actions">
+            <button
+              class="btn btn-secondary btn-sm"
+              (click)="copyLink(file)"
+              [disabled]="!file.is_active"
+            >
+              {{ copiedId() === file.id ? 'Copied!' : 'Copy Link' }}
+            </button>
+            <button
+              class="btn btn-secondary btn-sm"
+              (click)="refreshFile(file)"
+            >
+              Refresh
+            </button>
+            <button
+              class="btn btn-danger btn-sm"
+              (click)="deleteFile(file)"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

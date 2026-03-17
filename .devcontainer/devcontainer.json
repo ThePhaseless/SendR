@@ -1,0 +1,22 @@
+{
+  "name": "SendR",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    },
+    "ghcr.io/devcontainers-extra/features/uv:1": {},
+    "ghcr.io/shyim/devcontainers-features/bun:0": {}
+  },
+  "postCreateCommand": "cd backend && uv sync && cd ../frontend && bun install",
+  "forwardPorts": [4200, 8000],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "angular.ng-template",
+        "charliermarsh.ruff",
+        "oxc.oxc-vscode"
+      ]
+    }
+  }
+}
