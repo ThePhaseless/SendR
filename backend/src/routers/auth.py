@@ -4,19 +4,19 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import func, select
 
-from backend.config import settings
-from backend.database import get_session
-from backend.email_utils import send_verification_email
-from backend.models import AuthToken, FileUpload, User, UserTier, VerificationCode, _utcnow
-from backend.rate_limit import auth_rate_limiter, get_client_ip
-from backend.schemas import (
+from config import settings
+from database import get_session
+from email_utils import send_verification_email
+from models import AuthToken, FileUpload, User, UserTier, VerificationCode, _utcnow
+from rate_limit import auth_rate_limiter, get_client_ip
+from schemas import (
     CodeVerificationRequest,
     EmailVerificationRequest,
     QuotaResponse,
     TokenResponse,
     UserResponse,
 )
-from backend.security import (
+from security import (
     create_access_token,
     generate_verification_code,
     get_current_user,

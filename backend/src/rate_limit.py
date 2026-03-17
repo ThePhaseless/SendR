@@ -4,7 +4,7 @@ from threading import Lock
 
 from fastapi import HTTPException, Request, status
 
-from backend.config import settings
+from config import settings
 
 
 class RateLimiter:

@@ -6,11 +6,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.config import settings
-from backend.database import init_db
-from backend.routers import admin, altcha, auth, files
+from config import settings
+from database import init_db
+from routers import admin, altcha, auth, files
 
 STATIC_DIR = Path(__file__).resolve().parent.parent.parent.parent / "static"
+
+
+def cli() -> None:
+    import uvicorn
+
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True, app_dir=str(Path(__file__).resolve().parent))
 
 
 @asynccontextmanager

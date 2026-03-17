@@ -5,8 +5,8 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from backend.config import settings
-from backend.models import FileUpload, _utcnow
+from config import settings
+from models import FileUpload, _utcnow
 
 logger = logging.getLogger(__name__)
 

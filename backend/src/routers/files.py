@@ -10,12 +10,12 @@ from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import func, select
 
-from backend.config import settings
-from backend.database import get_session
-from backend.models import FileUpload, User, UserTier, _utcnow
-from backend.routers.altcha import verify_altcha_payload
-from backend.schemas import FileListResponse, FileUploadResponse
-from backend.security import get_current_user, get_optional_user
+from config import settings
+from database import get_session
+from models import FileUpload, User, UserTier, _utcnow
+from routers.altcha import verify_altcha_payload
+from schemas import FileListResponse, FileUploadResponse
+from security import get_current_user, get_optional_user
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 

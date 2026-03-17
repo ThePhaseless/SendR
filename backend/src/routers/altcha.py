@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 from altcha import ChallengeOptions, create_challenge, verify_solution
 from fastapi import APIRouter, Form, HTTPException, status
 
-from backend.config import settings
+from config import settings
 
 router = APIRouter(prefix="/api/altcha", tags=["altcha"])
 

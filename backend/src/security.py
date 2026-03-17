@@ -7,9 +7,9 @@ from fastapi.security import APIKeyHeader
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from backend.config import settings
-from backend.database import get_session
-from backend.models import AuthToken, User, _utcnow
+from config import settings
+from database import get_session
+from models import AuthToken, User, _utcnow
 
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 
