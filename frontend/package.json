@@ -8,7 +8,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "oxlint --config oxlintrc.json src/",
-    "format": "npx prettier --write src/",
+    "format": "bunx prettier --write src/",
     "generate-api": "openapi-generator-cli generate -i ../openapi.json -g typescript-angular -o src/app/api --additional-properties=ngVersion=19,providedInRoot=true,fileNaming=kebab-case"
   },
   "private": true,

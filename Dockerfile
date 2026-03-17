@@ -3,15 +3,15 @@
 # =============================================================================
 
 # Stage 1: Build Angular frontend
-FROM node:22-alpine AS frontend-build
+FROM oven/bun:latest AS frontend-build
 
 WORKDIR /app/frontend
 
-COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci --ignore-scripts
+COPY frontend/package.json frontend/bun.lock ./
+RUN bun install --frozen-lockfile
 
 COPY frontend/ ./
-RUN npx ng build --configuration production
+RUN bunx ng build --configuration production
 
 # Stage 2: Build Python backend + serve everything
 FROM python:3.14-slim AS production
