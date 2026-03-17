@@ -44,4 +44,4 @@ select = ["E", "F", "I", "N", "W", "UP", "S", "B", "A", "C4", "DTZ", "T20", "ICN
 ignore = ["S101", "S603", "S607", "B008", "S104", "S105"]
 
 [tool.ruff.lint.per-file-ignores]
-"alembic/*" = ["ERA001"]
+"alembic/*" = ["ERA001", "TCH"]
