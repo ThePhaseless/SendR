@@ -9,13 +9,19 @@
     "ghcr.io/shyim/devcontainers-features/bun:0": {}
   },
   "postCreateCommand": "cd backend && uv sync && cd ../frontend && bun install",
-  "forwardPorts": [4200, 8000],
+  "forwardPorts": [
+    4200,
+    8000
+  ],
   "customizations": {
     "vscode": {
       "extensions": [
         "angular.ng-template",
         "charliermarsh.ruff",
-        "oxc.oxc-vscode"
+        "oxc.oxc-vscode",
+        "Angular.ng-template",
+        "ms-python.python",
+        "tamasfe.even-better-toml"
       ]
     }
   }
