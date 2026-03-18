@@ -42,7 +42,14 @@
     >
       @if (isUploading()) {
         <div class="upload-progress">
-          <div class="progress-bar-container">
+          <div
+            class="progress-bar-container"
+            role="progressbar"
+            [attr.aria-valuenow]="uploadProgress()"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-label="Upload progress"
+          >
             <div class="progress-bar" [style.width.%]="uploadProgress()"></div>
           </div>
           <p>Uploading… {{ uploadProgress() }}%</p>
@@ -60,9 +67,9 @@
       }
     </div>
 
-    @if (hasPendingFile()) {
+    @if (pendingFile(); as file) {
       <div class="staged-file">
-        <p class="staged-name">📄 {{ getPendingFileName() }}</p>
+        <p class="staged-name">📄 {{ file.name }}</p>
         <p class="staged-hint">Complete the verification below to upload</p>
       </div>
     }

@@ -1,8 +1,10 @@
-import { Component, inject, OnInit, signal } from "@angular/core";
+import { Component, computed, inject, signal } from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
 import { ActivatedRoute } from "@angular/router";
-import { FileService, FileUploadResponse } from "../../services/file.service";
+import { FileService } from "../../services/file.service";
 import { DatePipe } from "@angular/common";
 import { formatFileSize, isExpired } from "../../utils/file.utils";
+import { catchError, of, map } from "rxjs";
 
 @Component({
   selector: "app-download",
@@ -10,34 +12,24 @@ import { formatFileSize, isExpired } from "../../utils/file.utils";
   templateUrl: "./download.component.html",
   styleUrl: "./download.component.scss",
 })
-export class DownloadComponent implements OnInit {
+export class DownloadComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly fileService = inject(FileService);
 
-  fileInfo = signal<FileUploadResponse | null>(null);
-  error = signal<string | null>(null);
-  loading = signal(true);
-  private token = "";
+  private readonly token = this.route.snapshot.paramMap.get("token") ?? "";
 
-  ngOnInit(): void {
-    this.token = this.route.snapshot.paramMap.get("token") ?? "";
-    if (!this.token) {
-      this.error.set("Invalid download link.");
-      this.loading.set(false);
-      return;
-    }
+  private readonly fileInfoResult = this.token
+    ? toSignal(
+        this.fileService.getFileInfo(this.token).pipe(
+          map((info) => ({ info, error: null })),
+          catchError(() => of({ info: null, error: "File not found or has expired." })),
+        ),
+      )
+    : signal({ info: null, error: "Invalid download link." });
 
-    this.fileService.getFileInfo(this.token).subscribe({
-      next: (info) => {
-        this.fileInfo.set(info);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.error.set("File not found or has expired.");
-        this.loading.set(false);
-      },
-    });
-  }
+  fileInfo = computed(() => this.fileInfoResult()?.info ?? null);
+  error = computed(() => this.fileInfoResult()?.error ?? null);
+  loading = computed(() => (this.token ? this.fileInfoResult() === undefined : false));
 
   download(): void {
     window.location.href = this.fileService.getDownloadUrl(this.token);

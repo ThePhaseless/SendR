@@ -1,4 +1,5 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, inject, signal } from "@angular/core";
+import { Component, computed, CUSTOM_ELEMENTS_SCHEMA, inject, signal } from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
 import { HttpEventType } from "@angular/common/http";
 import { AuthService } from "../../services/auth.service";
 import { FileService, FileUploadResponse } from "../../services/file.service";
@@ -23,31 +24,25 @@ export class HomeComponent {
   copied = signal(false);
   altchaVerified = signal(false);
   private altchaPayload = "";
-  private pendingFile: File | null = null;
-  quota = signal<{
-    files_used: number;
-    files_limit: number;
-    max_file_size_mb: number;
-  } | null>(null);
-  maxFileSizeMb = signal(100);
+  pendingFile = signal<File | null>(null);
 
-  constructor() {
-    if (this.authService.isAuthenticated()) {
-      this.authService.getQuota().subscribe({
-        next: (q) => {
-          this.quota.set(q);
-          this.maxFileSizeMb.set(q.max_file_size_mb);
-        },
-      });
-    } else {
-      this.authService.getLimits().subscribe({
-        next: (l) => this.maxFileSizeMb.set(l.max_file_size_mb),
-        error: () => {
-          // Keep the default 100 MB limit if the request fails
-        },
-      });
-    }
-  }
+  private readonly quotaData = this.authService.isAuthenticated()
+    ? toSignal(this.authService.getQuota())
+    : signal(undefined);
+
+  private readonly limitsData = this.authService.isAuthenticated()
+    ? signal(undefined)
+    : toSignal(this.authService.getLimits(), { initialValue: undefined });
+
+  quota = computed(() => this.quotaData() ?? null);
+
+  maxFileSizeMb = computed(() => {
+    const q = this.quotaData();
+    if (q) return q.max_file_size_mb;
+    const l = this.limitsData();
+    if (l) return l.max_file_size_mb;
+    return 100;
+  });
 
   onDragOver(event: DragEvent): void {
     event.preventDefault();
@@ -83,8 +78,9 @@ export class HomeComponent {
     if (detail && detail.state === "verified" && detail.payload) {
       this.altchaPayload = detail.payload;
       this.altchaVerified.set(true);
-      if (this.pendingFile) {
-        this.uploadFile(this.pendingFile);
+      const file = this.pendingFile();
+      if (file) {
+        this.uploadFile(file);
       }
     } else if (detail && detail.state === "error") {
       this.error.set("CAPTCHA verification failed. Please try again.");
@@ -96,11 +92,14 @@ export class HomeComponent {
   private stageFile(file: File): void {
     const maxBytes = this.maxFileSizeMb() * 1024 * 1024;
     if (file.size > maxBytes) {
+      this.pendingFile.set(null);
+      this.uploadResult.set(null);
       this.error.set(`File is too large. Maximum allowed size is ${this.maxFileSizeMb()} MB.`);
+      this.resetAltcha();
       return;
     }
 
-    this.pendingFile = file;
+    this.pendingFile.set(file);
     this.error.set(null);
     this.uploadResult.set(null);
 
@@ -122,8 +121,10 @@ export class HomeComponent {
 
     this.fileService.upload(file, this.altchaPayload).subscribe({
       next: (event) => {
-        if (event.type === HttpEventType.UploadProgress && event.total) {
-          this.uploadProgress.set(Math.round((100 * event.loaded) / event.total));
+        if (event.type === HttpEventType.UploadProgress && event.total !== undefined) {
+          this.uploadProgress.set(
+            event.total === 0 ? 100 : Math.round((100 * event.loaded) / event.total),
+          );
         } else if (event.type === HttpEventType.Response && event.body) {
           this.uploadResult.set(event.body);
           this.isUploading.set(false);
@@ -159,16 +160,8 @@ export class HomeComponent {
   resetUpload(): void {
     this.uploadResult.set(null);
     this.error.set(null);
-    this.pendingFile = null;
+    this.pendingFile.set(null);
     this.resetAltcha();
-  }
-
-  hasPendingFile(): boolean {
-    return this.pendingFile !== null;
-  }
-
-  getPendingFileName(): string {
-    return this.pendingFile?.name ?? "";
   }
 
   private resetAltcha(): void {
