@@ -1,8 +1,9 @@
 @font-face {
-  font-family: 'Codigra';
-  src: url('/assets/fonts/Codigra-Regular.woff2') format('woff2'),
-       url('/assets/fonts/Codigra-Regular.woff') format('woff'),
-       url('/assets/fonts/Codigra-Regular.ttf') format('truetype');
+  font-family: "Codigra";
+  src:
+    url("/assets/fonts/Codigra.woff2") format("woff2"),
+    url("/assets/fonts/Codigra.woff") format("woff"),
+    url("/assets/fonts/Codigra.ttf") format("truetype");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -86,20 +87,22 @@ html,
 body {
   height: 100%;
   font-family:
-    'Inter',
+    "Inter",
     -apple-system,
     BlinkMacSystemFont,
-    'Segoe UI',
+    "Segoe UI",
     Roboto,
     sans-serif;
   background-color: var(--bg);
   color: var(--text);
   line-height: 1.6;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 .font-display {
-  font-family: 'Codigra', 'Georgia', serif;
+  font-family: "Codigra", "Georgia", serif;
 }
 
 a {

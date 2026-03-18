@@ -6,6 +6,12 @@
       "type": "shell",
       "label": "bun: start",
       "command": "bun run start",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend",
+        "env": {
+          "NG_CLI_ANALYTICS": "false"
+        }
+      },
       "isBackground": true,
       "problemMatcher": {
         "owner": "typescript",
@@ -25,6 +31,12 @@
       "type": "shell",
       "label": "bun: test",
       "command": "bun run test",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend",
+        "env": {
+          "NG_CLI_ANALYTICS": "false"
+        }
+      },
       "isBackground": true,
       "problemMatcher": {
         "owner": "typescript",
