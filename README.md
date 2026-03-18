@@ -6,7 +6,7 @@ A WeTransfer-like file sharing service built with Angular and FastAPI.
 
 - **File Sharing**: Upload files and share via download links
 - **Email Authentication**: Passwordless login with email verification codes
-- **Quota Management**: Per-tier upload limits (anonymous, free, premium)
+- **Quota Management**: Per-tier upload limits (basic, free, premium)
 - **File Expiry**: Automatic file expiration with configurable grace periods
 - **Premium Subscriptions**: Higher limits for premium users
 - **File Refresh**: Generate new download links for existing files
@@ -109,10 +109,12 @@ When the backend is running, visit:
 
 ## Tier Limits
 
-| Feature          | Anonymous | Free | Premium |
+| Feature          | Basic     | Free | Premium |
 | ---------------- | --------- | ---- | ------- |
+| Email required   | Yes       | Yes  | Yes     |
 | Files per week   | 3         | 5    | 50      |
 | Max file size    | 100 MB    | 1 GB | 10 GB   |
+| Browse history   | No        | Yes  | Yes     |
 | Edit files       | No        | No   | Yes     |
 | Retrieve expired | No        | No   | Yes     |
 
