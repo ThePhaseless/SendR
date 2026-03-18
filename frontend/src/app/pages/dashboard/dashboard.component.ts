@@ -1,13 +1,18 @@
-import { Component, inject, OnInit, signal } from "@angular/core";
-import { DatePipe } from "@angular/common";
-import { FileService, FileUploadResponse } from "../../services/file.service";
-import { extractDownloadToken, formatFileSize, isExpired } from "../../utils/file.utils";
+import { DatePipe } from '@angular/common';
+import { Component, inject, OnInit, signal } from '@angular/core';
+import { FileService, FileUploadResponse } from '../../services/file.service';
+import {
+  extractDownloadToken,
+  formatFileSize,
+  isExpired,
+} from '../../utils/file.utils';
+import { resolveAppUrl } from '../../utils/url.utils';
 
 @Component({
-  selector: "app-dashboard",
+  selector: 'app-dashboard',
   imports: [DatePipe],
-  templateUrl: "./dashboard.component.html",
-  styleUrl: "./dashboard.component.scss",
+  templateUrl: './dashboard.component.html',
+  styleUrl: './dashboard.component.scss',
 })
 export class DashboardComponent implements OnInit {
   private readonly fileService = inject(FileService);
@@ -33,7 +38,7 @@ export class DashboardComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set("Failed to load files.");
+        this.error.set('Failed to load files.');
         this.loading.set(false);
       },
     });
@@ -41,7 +46,7 @@ export class DashboardComponent implements OnInit {
 
   copyLink(file: FileUploadResponse): void {
     const token = extractDownloadToken(file.download_url);
-    const link = `${window.location.origin}/download/${token}`;
+    const link = resolveAppUrl(`download/${token}`);
     navigator.clipboard.writeText(link);
     this.copiedId.set(file.id);
     setTimeout(() => this.copiedId.set(null), 2000);
@@ -50,10 +55,12 @@ export class DashboardComponent implements OnInit {
   refreshFile(file: FileUploadResponse): void {
     this.fileService.refreshFile(file.id).subscribe({
       next: (updated) => {
-        this.files.update((files) => files.map((f) => (f.id === updated.id ? updated : f)));
+        this.files.update((files) =>
+          files.map((f) => (f.id === updated.id ? updated : f)),
+        );
       },
       error: () => {
-        this.error.set("Failed to refresh file link.");
+        this.error.set('Failed to refresh file link.');
       },
     });
   }
@@ -65,7 +72,7 @@ export class DashboardComponent implements OnInit {
         this.quotaUsed.update((q) => q - 1);
       },
       error: () => {
-        this.error.set("Failed to delete file.");
+        this.error.set('Failed to delete file.');
       },
     });
   }
