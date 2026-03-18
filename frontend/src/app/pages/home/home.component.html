@@ -4,7 +4,7 @@
       Share files with
       <app-jumping-text class="highlight" text="anyone" />
     </h1>
-    <p class="subtitle">Upload your file and get a shareable link instantly. No account needed.</p>
+    <p class="subtitle">Upload your files and get a shareable link instantly. No account needed.</p>
   </div>
 
   @if (quota(); as q) {
@@ -18,12 +18,19 @@
     <div class="alert alert-error">{{ err }}</div>
   }
 
-  @if (uploadResult(); as result) {
+  @if (hasResult()) {
     <div class="card upload-success">
       <div class="success-icon">✓</div>
-      <h2>File uploaded!</h2>
-      <p class="file-name">{{ result.original_filename }}</p>
-      <p class="file-size">{{ formatSize(result.file_size_bytes) }}</p>
+      <h2>{{ getResultFiles().length === 1 ? 'File uploaded!' : 'Files uploaded!' }}</h2>
+      <div class="result-file-list">
+        @for (file of getResultFiles(); track file.id) {
+          <div class="result-file-item">
+            <span class="result-file-name">📄 {{ file.original_filename }}</span>
+            <span class="result-file-size">{{ formatSize(file.file_size_bytes) }}</span>
+          </div>
+        }
+      </div>
+      <p class="total-size">Total: {{ formatSize(getTotalResultSize()) }}</p>
       <div class="share-link">
         <input type="text" [value]="getShareableLink()" readonly class="link-input" />
         <button class="btn btn-primary" (click)="copyLink()">
@@ -31,7 +38,7 @@
         </button>
       </div>
       <button class="btn btn-secondary upload-another" (click)="resetUpload()">
-        Upload another file
+        Upload more files
       </button>
     </div>
   } @else {
@@ -55,24 +62,44 @@
           >
             <div class="progress-bar" [style.width.%]="uploadProgress()"></div>
           </div>
-          <p>Uploading… {{ uploadProgress() }}%</p>
+          <p class="progress-text">Uploading… {{ uploadProgress() }}%</p>
+          @if (uploadSpeed() > 0) {
+            <div class="upload-stats">
+              <span>{{ formatSpeed(uploadSpeed()) }}</span>
+              <span>&middot;</span>
+              <span>{{ formatTime(estimatedTimeRemaining()) }} remaining</span>
+            </div>
+          }
         </div>
       } @else {
         <div class="drop-content">
           <div class="drop-icon">📁</div>
-          <p class="drop-text">Drag & drop your file here</p>
+          <p class="drop-text">Drag & drop your files here</p>
           <p class="drop-or">or</p>
           <label class="btn btn-primary file-label">
-            Choose File
-            <input type="file" (change)="onFileSelected($event)" hidden />
+            Choose Files
+            <input type="file" (change)="onFileSelected($event)" multiple hidden />
           </label>
+          <p class="drop-hint">Up to {{ maxFilesPerUpload() === 0 ? 'unlimited' : maxFilesPerUpload() }} files, {{ maxFileSizeMb() }} MB total</p>
         </div>
       }
     </div>
 
-    @if (pendingFile(); as file) {
-      <div class="staged-file">
-        <p class="staged-name">📄 {{ file.name }}</p>
+    @if (pendingFiles().length > 0) {
+      <div class="staged-files">
+        <h3>Selected files ({{ pendingFiles().length }})</h3>
+        <div class="staged-file-list">
+          @for (entry of pendingFiles(); track entry.name; let i = $index) {
+            <div class="staged-file-item">
+              <span class="staged-file-name">📄 {{ entry.name }}</span>
+              <span class="staged-file-size">{{ formatSize(entry.size) }}</span>
+              @if (!isUploading()) {
+                <button class="btn-remove" (click)="removeFile(i)" aria-label="Remove file">✕</button>
+              }
+            </div>
+          }
+        </div>
+        <p class="staged-total">Total: {{ formatSize(totalPendingSize()) }}</p>
         <p class="staged-hint">Complete the verification below to upload</p>
       </div>
     }

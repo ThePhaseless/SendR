@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from "@angular/core";
+import { Component, computed, inject, isDevMode, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { Router, RouterLink } from "@angular/router";
 import { AuthService } from "../../services/auth.service";
@@ -13,6 +13,8 @@ export class HeaderComponent {
   private readonly router = inject(Router);
   readonly auth = inject(AuthService);
 
+  readonly isDevMode = isDevMode();
+
   private readonly me = this.auth.isAuthenticated()
     ? toSignal(this.auth.getMe())
     : signal(undefined);
@@ -22,5 +24,13 @@ export class HeaderComponent {
   logout(): void {
     this.auth.logout();
     this.router.navigate(["/"]);
+  }
+
+  devLogin(role: 'admin' | 'user'): void {
+    this.auth.devLogin(role).subscribe({
+      next: () => {
+        window.location.reload();
+      },
+    });
   }
 }

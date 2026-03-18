@@ -12,6 +12,20 @@ export interface FileUploadResponse {
   is_active: boolean;
 }
 
+export interface MultiFileUploadResponse {
+  files: FileUploadResponse[];
+  upload_group: string;
+  total_size_bytes: number;
+}
+
+export interface UploadGroupInfoResponse {
+  files: FileUploadResponse[];
+  upload_group: string;
+  total_size_bytes: number;
+  file_count: number;
+  will_zip: boolean;
+}
+
 interface FileListResponse {
   files: FileUploadResponse[];
   quota_used: number;
@@ -52,5 +66,25 @@ export class FileService {
 
   getDownloadUrl(downloadToken: string): string {
     return `/api/files/${downloadToken}`;
+  }
+
+  uploadMultiple(files: File[], altchaPayload: string): Observable<HttpEvent<MultiFileUploadResponse>> {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append("files", file);
+    }
+    formData.append("altcha", altchaPayload);
+    return this.http.post<MultiFileUploadResponse>("/api/files/upload-multiple", formData, {
+      reportProgress: true,
+      observe: "events",
+    });
+  }
+
+  getGroupInfo(uploadGroup: string): Observable<UploadGroupInfoResponse> {
+    return this.http.get<UploadGroupInfoResponse>(`/api/files/group/${uploadGroup}`);
+  }
+
+  getGroupDownloadUrl(uploadGroup: string): string {
+    return `/api/files/group/${uploadGroup}/download`;
   }
 }

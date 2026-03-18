@@ -28,6 +28,7 @@ interface QuotaResponse {
 interface LimitsResponse {
   max_file_size_mb: number;
   max_files_per_week: number;
+  max_files_per_upload: number;
 }
 
 const TOKEN_KEY = "sendr_token";
@@ -78,6 +79,16 @@ export class AuthService {
 
   getToken(): string | null {
     return localStorage.getItem(TOKEN_KEY);
+  }
+
+  devLogin(role: 'admin' | 'user'): Observable<VerifyCodeResponse> {
+    return this.http.post<VerifyCodeResponse>(`/api/dev/login/${role}`, {}).pipe(
+      tap((res) => {
+        localStorage.setItem(TOKEN_KEY, res.token);
+        localStorage.setItem(EXPIRES_KEY, res.expires_at);
+        this.authenticated.set(true);
+      }),
+    );
   }
 
   logout(): void {
