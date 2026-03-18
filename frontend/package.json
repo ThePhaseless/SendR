@@ -7,7 +7,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "lint": "oxlint --config oxlintrc.json src/",
+    "lint": "oxlint --config oxlintrc.json --ignore-pattern src/app/api src/",
     "format": "oxfmt src/",
     "format:check": "oxfmt --check src/",
     "generate-api": "openapi-generator-cli generate -i ../openapi.json -g typescript-angular -o src/app/api --additional-properties=ngVersion=21,providedInRoot=true,fileNaming=kebab-case"

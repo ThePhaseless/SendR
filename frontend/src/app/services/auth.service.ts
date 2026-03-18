@@ -1,7 +1,7 @@
-import { inject, Injectable, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { tap } from 'rxjs/operators';
-import { Observable } from 'rxjs';
+import { inject, Injectable, signal } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
+import { tap } from "rxjs/operators";
+import { Observable } from "rxjs";
 
 interface RequestCodeResponse {
   message: string;
@@ -30,44 +30,42 @@ interface LimitsResponse {
   max_files_per_week: number;
 }
 
-const TOKEN_KEY = 'sendr_token';
-const EXPIRES_KEY = 'sendr_token_expires';
+const TOKEN_KEY = "sendr_token";
+const EXPIRES_KEY = "sendr_token_expires";
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: "root",
 })
 export class AuthService {
   private readonly http = inject(HttpClient);
   authenticated = signal(this.isAuthenticated());
 
   getLimits(): Observable<LimitsResponse> {
-    return this.http.get<LimitsResponse>('/api/auth/limits');
+    return this.http.get<LimitsResponse>("/api/auth/limits");
   }
 
   requestCode(email: string): Observable<RequestCodeResponse> {
-    return this.http.post<RequestCodeResponse>('/api/auth/request-code', {
+    return this.http.post<RequestCodeResponse>("/api/auth/request-code", {
       email,
     });
   }
 
   verifyCode(email: string, code: string): Observable<VerifyCodeResponse> {
-    return this.http
-      .post<VerifyCodeResponse>('/api/auth/verify-code', { email, code })
-      .pipe(
-        tap((res) => {
-          localStorage.setItem(TOKEN_KEY, res.token);
-          localStorage.setItem(EXPIRES_KEY, res.expires_at);
-          this.authenticated.set(true);
-        }),
-      );
+    return this.http.post<VerifyCodeResponse>("/api/auth/verify-code", { email, code }).pipe(
+      tap((res) => {
+        localStorage.setItem(TOKEN_KEY, res.token);
+        localStorage.setItem(EXPIRES_KEY, res.expires_at);
+        this.authenticated.set(true);
+      }),
+    );
   }
 
   getMe(): Observable<MeResponse> {
-    return this.http.get<MeResponse>('/api/auth/me');
+    return this.http.get<MeResponse>("/api/auth/me");
   }
 
   getQuota(): Observable<QuotaResponse> {
-    return this.http.get<QuotaResponse>('/api/auth/quota');
+    return this.http.get<QuotaResponse>("/api/auth/quota");
   }
 
   isAuthenticated(): boolean {

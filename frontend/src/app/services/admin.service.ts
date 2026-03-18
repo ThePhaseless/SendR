@@ -1,6 +1,6 @@
-import { inject, Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { inject, Injectable } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
+import { Observable } from "rxjs";
 
 export interface AdminUser {
   id: number;
@@ -20,20 +20,20 @@ export interface AdminUserUpdate {
 }
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: "root",
 })
 export class AdminService {
   private readonly http = inject(HttpClient);
 
-  listUsers(page = 1, perPage = 20, search = ''): Observable<AdminUserListResponse> {
+  listUsers(page = 1, perPage = 20, search = ""): Observable<AdminUserListResponse> {
     const params: Record<string, string> = {
       page: page.toString(),
       per_page: perPage.toString(),
     };
     if (search) {
-      params['search'] = search;
+      params["search"] = search;
     }
-    return this.http.get<AdminUserListResponse>('/api/admin/users', { params });
+    return this.http.get<AdminUserListResponse>("/api/admin/users", { params });
   }
 
   updateUser(userId: number, update: AdminUserUpdate): Observable<AdminUser> {

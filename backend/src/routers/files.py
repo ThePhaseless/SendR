@@ -3,11 +3,11 @@ import unicodedata
 import uuid
 from datetime import timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import aiofiles
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import func, select
 
 from config import settings
@@ -16,6 +16,9 @@ from models import FileUpload, User, UserTier, _utcnow
 from routers.altcha import verify_altcha_payload
 from schemas import FileListResponse, FileUploadResponse
 from security import get_current_user, get_optional_user
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 

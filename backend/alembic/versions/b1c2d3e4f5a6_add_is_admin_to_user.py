@@ -13,15 +13,15 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'b1c2d3e4f5a6'
-down_revision: str | Sequence[str] | None = 'acf42cd55a38'
+revision: str = "b1c2d3e4f5a6"
+down_revision: str | Sequence[str] | None = "acf42cd55a38"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column('user', sa.Column('is_admin', sa.Boolean(), nullable=False, server_default=sa.text('0')))
+    op.add_column("user", sa.Column("is_admin", sa.Boolean(), nullable=False, server_default=sa.text("0")))
 
 
 def downgrade() -> None:
-    op.drop_column('user', 'is_admin')
+    op.drop_column("user", "is_admin")

@@ -1,15 +1,18 @@
 import hashlib
 import secrets
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import APIKeyHeader
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from config import settings
 from database import get_session
 from models import AuthToken, User, _utcnow
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 

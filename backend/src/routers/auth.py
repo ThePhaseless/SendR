@@ -1,7 +1,7 @@
 from datetime import timedelta
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import func, select
 
 from config import settings
@@ -23,6 +23,9 @@ from security import (
     get_current_user,
     hash_token,
 )
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 

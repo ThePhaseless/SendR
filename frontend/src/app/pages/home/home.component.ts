@@ -1,18 +1,15 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, inject, signal } from '@angular/core';
-import { HttpEventType } from '@angular/common/http';
-import { AuthService } from '../../services/auth.service';
-import { FileService, FileUploadResponse } from '../../services/file.service';
-import {
-  extractDownloadToken,
-  formatFileSize,
-} from '../../utils/file.utils';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, inject, signal } from "@angular/core";
+import { HttpEventType } from "@angular/common/http";
+import { AuthService } from "../../services/auth.service";
+import { FileService, FileUploadResponse } from "../../services/file.service";
+import { extractDownloadToken, formatFileSize } from "../../utils/file.utils";
 
 @Component({
-  selector: 'app-home',
+  selector: "app-home",
   imports: [],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
-  templateUrl: './home.component.html',
-  styleUrl: './home.component.scss',
+  templateUrl: "./home.component.html",
+  styleUrl: "./home.component.scss",
 })
 export class HomeComponent {
   private readonly fileService = inject(FileService);
@@ -25,7 +22,7 @@ export class HomeComponent {
   error = signal<string | null>(null);
   copied = signal(false);
   altchaVerified = signal(false);
-  private altchaPayload = '';
+  private altchaPayload = "";
   private pendingFile: File | null = null;
   quota = signal<{
     files_used: number;
@@ -83,16 +80,16 @@ export class HomeComponent {
 
   onAltchaStateChange(event: Event): void {
     const detail = (event as CustomEvent).detail;
-    if (detail && detail.state === 'verified' && detail.payload) {
+    if (detail && detail.state === "verified" && detail.payload) {
       this.altchaPayload = detail.payload;
       this.altchaVerified.set(true);
       if (this.pendingFile) {
         this.uploadFile(this.pendingFile);
       }
-    } else if (detail && detail.state === 'error') {
-      this.error.set('CAPTCHA verification failed. Please try again.');
+    } else if (detail && detail.state === "error") {
+      this.error.set("CAPTCHA verification failed. Please try again.");
       this.altchaVerified.set(false);
-      this.altchaPayload = '';
+      this.altchaPayload = "";
     }
   }
 
@@ -114,7 +111,7 @@ export class HomeComponent {
 
   private uploadFile(file: File): void {
     if (!this.altchaPayload) {
-      this.error.set('Please complete the CAPTCHA verification first.');
+      this.error.set("Please complete the CAPTCHA verification first.");
       return;
     }
 
@@ -135,7 +132,7 @@ export class HomeComponent {
         }
       },
       error: (err) => {
-        this.error.set(err.error?.detail ?? 'Upload failed. Please try again.');
+        this.error.set(err.error?.detail ?? "Upload failed. Please try again.");
         this.isUploading.set(false);
         this.uploadProgress.set(0);
         this.resetAltcha();
@@ -145,7 +142,7 @@ export class HomeComponent {
 
   getShareableLink(): string {
     const result = this.uploadResult();
-    if (!result) return '';
+    if (!result) return "";
     return `${window.location.origin}/download/${extractDownloadToken(result.download_url)}`;
   }
 
@@ -171,11 +168,11 @@ export class HomeComponent {
   }
 
   getPendingFileName(): string {
-    return this.pendingFile?.name ?? '';
+    return this.pendingFile?.name ?? "";
   }
 
   private resetAltcha(): void {
     this.altchaVerified.set(false);
-    this.altchaPayload = '';
+    this.altchaPayload = "";
   }
 }

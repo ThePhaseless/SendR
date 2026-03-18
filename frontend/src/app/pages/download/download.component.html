@@ -19,7 +19,7 @@
         <div class="file-meta">
           <span>Size: {{ formatSize(file.file_size_bytes) }}</span>
           <span>Downloads: {{ file.download_count }}</span>
-          <span>Expires: {{ file.expires_at | date: 'medium' }}</span>
+          <span>Expires: {{ file.expires_at | date: "medium" }}</span>
         </div>
         @if (!file.is_active || isExpired(file.expires_at)) {
           <div class="alert alert-error">This file has expired and is no longer available.</div>

@@ -1,12 +1,12 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
+import { Component, inject, OnInit, signal } from "@angular/core";
+import { Router, RouterLink } from "@angular/router";
+import { AuthService } from "../../services/auth.service";
 
 @Component({
-  selector: 'app-header',
+  selector: "app-header",
   imports: [RouterLink],
-  templateUrl: './header.component.html',
-  styleUrl: './header.component.scss',
+  templateUrl: "./header.component.html",
+  styleUrl: "./header.component.scss",
 })
 export class HeaderComponent implements OnInit {
   private readonly router = inject(Router);
@@ -24,6 +24,6 @@ export class HeaderComponent implements OnInit {
   logout(): void {
     this.auth.logout();
     this.isAdmin.set(false);
-    this.router.navigate(['/']);
+    this.router.navigate(["/"]);
   }
 }

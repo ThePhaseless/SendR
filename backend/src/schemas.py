@@ -1,6 +1,9 @@
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlmodel import SQLModel
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 class EmailVerificationRequest(SQLModel):

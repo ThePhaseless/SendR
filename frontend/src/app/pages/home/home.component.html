@@ -6,7 +6,8 @@
 
   @if (quota(); as q) {
     <div class="alert alert-info quota-info">
-      Files: {{ q.files_used }} / {{ q.files_limit }} &middot; Max file size: {{ q.max_file_size_mb }} MB
+      Files: {{ q.files_used }} / {{ q.files_limit }} &middot; Max file size:
+      {{ q.max_file_size_mb }} MB
     </div>
   }
 
@@ -23,10 +24,12 @@
       <div class="share-link">
         <input type="text" [value]="getShareableLink()" readonly class="link-input" />
         <button class="btn btn-primary" (click)="copyLink()">
-          {{ copied() ? 'Copied!' : 'Copy Link' }}
+          {{ copied() ? "Copied!" : "Copy Link" }}
         </button>
       </div>
-      <button class="btn btn-secondary upload-another" (click)="resetUpload()">Upload another file</button>
+      <button class="btn btn-secondary upload-another" (click)="resetUpload()">
+        Upload another file
+      </button>
     </div>
   } @else {
     <div

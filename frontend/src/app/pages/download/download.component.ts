@@ -1,14 +1,14 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
-import { FileService, FileUploadResponse } from '../../services/file.service';
-import { DatePipe } from '@angular/common';
-import { formatFileSize, isExpired } from '../../utils/file.utils';
+import { Component, inject, OnInit, signal } from "@angular/core";
+import { ActivatedRoute } from "@angular/router";
+import { FileService, FileUploadResponse } from "../../services/file.service";
+import { DatePipe } from "@angular/common";
+import { formatFileSize, isExpired } from "../../utils/file.utils";
 
 @Component({
-  selector: 'app-download',
+  selector: "app-download",
   imports: [DatePipe],
-  templateUrl: './download.component.html',
-  styleUrl: './download.component.scss',
+  templateUrl: "./download.component.html",
+  styleUrl: "./download.component.scss",
 })
 export class DownloadComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
@@ -17,12 +17,12 @@ export class DownloadComponent implements OnInit {
   fileInfo = signal<FileUploadResponse | null>(null);
   error = signal<string | null>(null);
   loading = signal(true);
-  private token = '';
+  private token = "";
 
   ngOnInit(): void {
-    this.token = this.route.snapshot.paramMap.get('token') ?? '';
+    this.token = this.route.snapshot.paramMap.get("token") ?? "";
     if (!this.token) {
-      this.error.set('Invalid download link.');
+      this.error.set("Invalid download link.");
       this.loading.set(false);
       return;
     }
@@ -33,7 +33,7 @@ export class DownloadComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('File not found or has expired.');
+        this.error.set("File not found or has expired.");
         this.loading.set(false);
       },
     });

@@ -77,9 +77,17 @@
     </div>
 
     <div class="pagination">
-      <button class="btn btn-secondary btn-sm" [disabled]="page() <= 1" (click)="prevPage()">← Previous</button>
+      <button class="btn btn-secondary btn-sm" [disabled]="page() <= 1" (click)="prevPage()">
+        ← Previous
+      </button>
       <span class="page-info">Page {{ page() }} of {{ totalPages() }} ({{ total() }} users)</span>
-      <button class="btn btn-secondary btn-sm" [disabled]="page() >= totalPages()" (click)="nextPage()">Next →</button>
+      <button
+        class="btn btn-secondary btn-sm"
+        [disabled]="page() >= totalPages()"
+        (click)="nextPage()"
+      >
+        Next →
+      </button>
     </div>
   }
 </div>
