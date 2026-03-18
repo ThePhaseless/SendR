@@ -1,13 +1,21 @@
 import { HttpErrorResponse, HttpEventType } from "@angular/common/http";
-import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject, signal } from "@angular/core";
+import {
+  CUSTOM_ELEMENTS_SCHEMA,
+  Component,
+  computed,
+  inject,
+  isDevMode,
+  signal,
+} from "@angular/core";
 import { AuthService } from "../../services/auth.service";
-import type { LimitsResponse, QuotaResponse } from "../../services/auth.service";
+import type { LimitsResponse } from "../../services/auth.service";
 import { FileService } from "../../services/file.service";
 import type { FileUploadResponse, MultiFileUploadResponse } from "../../services/file.service";
 import { JumpingTextComponent } from "../../components/jumping-text/jumping-text.component";
 import { extractDownloadToken, formatFileSize } from "../../utils/file.utils";
 import { resolveAppUrl } from "../../utils/url.utils";
 import { toSignal } from "@angular/core/rxjs-interop";
+import { RouterLink } from "@angular/router";
 
 interface UploadFileEntry {
   file: File;
@@ -21,7 +29,7 @@ interface AltchaStateChangeDetail {
 }
 
 @Component({
-  imports: [JumpingTextComponent],
+  imports: [JumpingTextComponent, RouterLink],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   selector: "app-home",
   styleUrl: "./home.component.scss",
@@ -42,33 +50,29 @@ export class HomeComponent {
   copied = signal(false);
   altchaVerified = signal(false);
   pendingFiles = signal<UploadFileEntry[]>([]);
+  readonly devMode = isDevMode();
   private altchaPayload = "";
 
   private uploadStartTime = 0;
   private lastProgressTime = 0;
   private lastProgressBytes = 0;
 
-  private readonly quotaData = this.authService.isAuthenticated()
-    ? toSignal(this.authService.getQuota(), { initialValue: null })
-    : signal<QuotaResponse | null>(null);
-
-  private readonly limitsData = this.authService.isAuthenticated()
-    ? signal<LimitsResponse | null>(null)
-    : toSignal(this.authService.getLimits(), { initialValue: null });
-
-  quota = computed<QuotaResponse | null>(() => this.quotaData());
+  private readonly limitsData = toSignal(
+    this.authService.isAuthenticated() ? this.authService.getQuota() : this.authService.getLimits(),
+    { initialValue: null },
+  );
 
   maxFileSizeMb = computed<number>(() => {
-    const q = this.quotaData();
-    if (q) {
-      return q.max_file_size_mb;
-    }
     const l = this.limitsData();
     if (l) {
       return l.max_file_size_mb;
     }
     return 100;
   });
+
+  isAuthenticated(): boolean {
+    return this.authService.isAuthenticated();
+  }
 
   maxFilesPerUpload = computed<number>(() => {
     const l = this.limitsData();
@@ -156,13 +160,13 @@ export class HomeComponent {
     this.uploadResult.set(null);
     this.singleUploadResult.set(null);
 
-    if (this.altchaVerified()) {
+    if (this.altchaVerified() || this.devMode) {
       this.uploadFiles(combined.map((file) => file.file));
     }
   }
 
   private uploadFiles(files: File[]): void {
-    if (!this.altchaPayload) {
+    if (!this.altchaPayload && !this.devMode) {
       this.error.set("Please complete the CAPTCHA verification first.");
       return;
     }

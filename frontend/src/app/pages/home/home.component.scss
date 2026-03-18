@@ -27,9 +27,46 @@
   }
 }
 
-.quota-info {
-  max-width: 500px;
+.auth-prompt {
+  width: 100%;
+  max-width: 600px;
+  padding: 3rem 2rem;
   text-align: center;
+  background: var(--card-bg);
+  border: 2px dashed var(--drop-border);
+  border-radius: 1rem;
+
+  .auth-prompt-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+  }
+
+  p {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+  }
+
+  .auth-prompt-hint {
+    margin-top: 1.5rem;
+    font-size: 0.875rem;
+
+    a {
+      color: var(--primary);
+      font-weight: 600;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
 }
 
 .drop-zone {

@@ -4,15 +4,10 @@
       Share files with
       <app-jumping-text class="highlight" text="anyone" />
     </h1>
-    <p class="subtitle">Upload your files and get a shareable link instantly. No account needed.</p>
+    <p class="subtitle">
+      Upload your files and get a shareable link instantly. Email verification required.
+    </p>
   </div>
-
-  @if (quota(); as q) {
-    <div class="alert alert-info quota-info">
-      Files: {{ q.files_used }} / {{ q.files_limit }} &middot; Max file size:
-      {{ q.max_file_size_mb }} MB
-    </div>
-  }
 
   @if (error(); as err) {
     <div class="alert alert-error">{{ err }}</div>
@@ -42,6 +37,16 @@
       <button class="btn btn-secondary upload-another" (click)="resetUpload()">
         Upload more files
       </button>
+    </div>
+  } @else if (!isAuthenticated()) {
+    <div class="auth-prompt">
+      <div class="auth-prompt-icon">🔒</div>
+      <h2>Verify your email to upload</h2>
+      <p>A quick email verification is all you need to start sharing files.</p>
+      <a routerLink="/auth" class="btn btn-primary">Verify Email</a>
+      <p class="auth-prompt-hint">
+        Already verified? <a routerLink="/auth">Sign in</a> to continue.
+      </p>
     </div>
   } @else {
     <div
@@ -108,16 +113,20 @@
           }
         </div>
         <p class="staged-total">Total: {{ formatSize(totalPendingSize()) }}</p>
-        <p class="staged-hint">Complete the verification below to upload</p>
+        @if (!devMode) {
+          <p class="staged-hint">Complete the verification below to upload</p>
+        }
       </div>
     }
 
     <div class="altcha-container">
-      <altcha-widget
-        challengeurl="/api/altcha/challenge"
-        auto="onload"
-        (statechange)="onAltchaStateChange($event)"
-      ></altcha-widget>
+      @if (!devMode) {
+        <altcha-widget
+          challengeurl="/api/altcha/challenge"
+          auto="onload"
+          (statechange)="onAltchaStateChange($event)"
+        ></altcha-widget>
+      }
     </div>
   }
 </div>
