@@ -188,6 +188,11 @@ async def upload_multiple_files(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=f"File '{f.filename}' too large. Max {max_size_mb}MB for {user.tier.value} tier.",
             )
+        if total_size > max_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"Total file size exceeds limit. Max {max_size_mb}MB cumulative for {user.tier.value} tier.",
+            )
         file_contents.append((_sanitize_filename(f.filename or "unnamed"), content))
 
     # Save all files

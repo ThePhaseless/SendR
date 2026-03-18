@@ -241,9 +241,15 @@ export class HomeComponent {
   }
 
   copyLink(): void {
-    void navigator.clipboard.writeText(this.getShareableLink());
-    this.copied.set(true);
-    setTimeout(() => this.copied.set(false), 2000);
+    navigator.clipboard.writeText(this.getShareableLink()).then(
+      () => {
+        this.copied.set(true);
+        setTimeout(() => this.copied.set(false), 2000);
+      },
+      () => {
+        this.error.set("Failed to copy link to clipboard.");
+      },
+    );
   }
 
   formatSize(bytes: number): string {
