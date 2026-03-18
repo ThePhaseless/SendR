@@ -33,18 +33,7 @@ def _patch_db():
 @pytest.fixture(autouse=True)
 async def _init_tables(tmp_path):
     """Create all tables before each test and drop them after."""
-    # Import models so metadata is populated, rebuild schemas for Pydantic
-    from datetime import datetime
-
     import models  # noqa: F401
-    import schemas  # noqa: F401
-
-    # datetime is imported under TYPE_CHECKING in schemas.py, so inject it
-    schemas.datetime = datetime  # type: ignore[attr-defined]
-    schemas.FileUploadResponse.model_rebuild()
-    schemas.MultiFileUploadResponse.model_rebuild()
-    schemas.UploadGroupInfoResponse.model_rebuild()
-    schemas.TokenResponse.model_rebuild()
 
     async with _test_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
