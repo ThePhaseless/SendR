@@ -1,24 +1,19 @@
 import { Routes } from "@angular/router";
-import { HomeComponent } from "./pages/home/home.component";
-import { DownloadComponent } from "./pages/download/download.component";
-import { AuthComponent } from "./pages/auth/auth.component";
-import { DashboardComponent } from "./pages/dashboard/dashboard.component";
-import { AdminComponent } from "./pages/admin/admin.component";
 import { authGuard } from "./guards/auth.guard";
 import { adminGuard } from "./guards/admin.guard";
 
 export const routes: Routes = [
-  { path: "", component: HomeComponent },
-  { path: "download/:token", component: DownloadComponent },
-  { path: "auth", component: AuthComponent },
+  { path: "", loadComponent: () => import("./pages/home/home.component").then((m) => m.HomeComponent) },
+  { path: "download/:token", loadComponent: () => import("./pages/download/download.component").then((m) => m.DownloadComponent) },
+  { path: "auth", loadComponent: () => import("./pages/auth/auth.component").then((m) => m.AuthComponent) },
   {
     path: "dashboard",
-    component: DashboardComponent,
+    loadComponent: () => import("./pages/dashboard/dashboard.component").then((m) => m.DashboardComponent),
     canActivate: [authGuard],
   },
   {
     path: "admin",
-    component: AdminComponent,
+    loadComponent: () => import("./pages/admin/admin.component").then((m) => m.AdminComponent),
     canActivate: [adminGuard],
   },
 ];
