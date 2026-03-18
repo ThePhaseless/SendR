@@ -40,10 +40,7 @@ async def list_users(
     users = result.scalars().all()
 
     return AdminUserListResponse(
-        users=[
-            UserResponse(id=u.id, email=u.email, tier=u.tier.value, is_admin=u.is_admin)
-            for u in users
-        ],
+        users=[UserResponse(id=u.id, email=u.email, tier=u.tier.value, is_admin=u.is_admin) for u in users],
         total=total,
     )
 

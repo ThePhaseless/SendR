@@ -1,12 +1,12 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { AdminService, AdminUser } from '../../services/admin.service';
+import { Component, inject, OnInit, signal } from "@angular/core";
+import { FormsModule } from "@angular/forms";
+import { AdminService, AdminUser } from "../../services/admin.service";
 
 @Component({
-  selector: 'app-admin',
+  selector: "app-admin",
   imports: [FormsModule],
-  templateUrl: './admin.component.html',
-  styleUrl: './admin.component.scss',
+  templateUrl: "./admin.component.html",
+  styleUrl: "./admin.component.scss",
 })
 export class AdminComponent implements OnInit {
   private readonly adminService = inject(AdminService);
@@ -15,11 +15,11 @@ export class AdminComponent implements OnInit {
   total = signal(0);
   page = signal(1);
   perPage = 20;
-  search = '';
+  search = "";
   loading = signal(true);
   error = signal<string | null>(null);
   editingUser = signal<AdminUser | null>(null);
-  editTier = '';
+  editTier = "";
   editIsAdmin = false;
 
   ngOnInit(): void {
@@ -36,7 +36,7 @@ export class AdminComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('Failed to load users.');
+        this.error.set("Failed to load users.");
         this.loading.set(false);
       },
     });
@@ -75,20 +75,20 @@ export class AdminComponent implements OnInit {
     const user = this.editingUser();
     if (!user) return;
 
-    this.adminService.updateUser(user.id, {
-      tier: this.editTier,
-      is_admin: this.editIsAdmin,
-    }).subscribe({
-      next: (updated) => {
-        this.users.update((users) =>
-          users.map((u) => (u.id === updated.id ? updated : u)),
-        );
-        this.editingUser.set(null);
-      },
-      error: (err) => {
-        this.error.set(err.error?.detail ?? 'Failed to update user.');
-      },
-    });
+    this.adminService
+      .updateUser(user.id, {
+        tier: this.editTier,
+        is_admin: this.editIsAdmin,
+      })
+      .subscribe({
+        next: (updated) => {
+          this.users.update((users) => users.map((u) => (u.id === updated.id ? updated : u)));
+          this.editingUser.set(null);
+        },
+        error: (err) => {
+          this.error.set(err.error?.detail ?? "Failed to update user.");
+        },
+      });
   }
 
   deleteUser(user: AdminUser): void {
@@ -100,7 +100,7 @@ export class AdminComponent implements OnInit {
         this.total.update((t) => t - 1);
       },
       error: (err) => {
-        this.error.set(err.error?.detail ?? 'Failed to delete user.');
+        this.error.set(err.error?.detail ?? "Failed to delete user.");
       },
     });
   }

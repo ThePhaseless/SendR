@@ -1,0 +1,69 @@
+services:
+  sendr:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads:/app/uploads
+      - data:/app/data
+    # Environment variables — uncomment and customise as needed:
+    # environment:
+    #   # Database connection URL (SQLite by default; use postgres+asyncpg:// for PostgreSQL)
+    #   SENDR_DATABASE_URL: sqlite+aiosqlite:///app/data/sendr.db
+    #
+    #   # Secret key used to sign JWT tokens — change this in production!
+    #   SENDR_SECRET_KEY: change-me-in-production
+    #
+    #   # Directory where uploaded files are stored inside the container
+    #   SENDR_UPLOAD_DIR: /app/uploads
+    #
+    #   # CORS — comma-separated list of allowed origins for the API
+    #   SENDR_ALLOWED_ORIGINS: '["http://localhost:4200"]'
+    #
+    #   # ── SMTP (email verification) ───────────────────────────────────────────
+    #   SENDR_SMTP_HOST: localhost
+    #   SENDR_SMTP_PORT: 587
+    #   SENDR_SMTP_USER: ""
+    #   SENDR_SMTP_PASSWORD: ""
+    #   SENDR_SMTP_FROM: noreply@sendr.app
+    #
+    #   # ── Per-tier upload limits ──────────────────────────────────────────────
+    #   # Anonymous users
+    #   SENDR_ANON_MAX_FILES_PER_WEEK: 3
+    #   SENDR_ANON_MAX_FILE_SIZE_MB: 100
+    #
+    #   # Free (registered) users
+    #   SENDR_FREE_MAX_FILES_PER_WEEK: 5
+    #   SENDR_FREE_MAX_FILE_SIZE_MB: 1024
+    #
+    #   # Premium users
+    #   SENDR_PREMIUM_MAX_FILES_PER_WEEK: 50
+    #   SENDR_PREMIUM_MAX_FILE_SIZE_MB: 10240
+    #
+    #   # ── File expiration ─────────────────────────────────────────────────────
+    #   # Days until a file link expires
+    #   SENDR_FILE_EXPIRY_DAYS: 7
+    #   # Additional grace period before the file is physically deleted
+    #   SENDR_FILE_GRACE_PERIOD_DAYS: 7
+    #
+    #   # ── Token / code expiry ─────────────────────────────────────────────────
+    #   # JWT token lifetime in minutes (default: 1440 = 24 hours)
+    #   SENDR_TOKEN_EXPIRE_MINUTES: 1440
+    #   # Email verification code lifetime in minutes
+    #   SENDR_VERIFICATION_CODE_EXPIRE_MINUTES: 10
+    #
+    #   # ── Rate limiting ────────────────────────────────────────────────────────
+    #   # Max authentication requests per minute per IP
+    #   SENDR_AUTH_RATE_LIMIT_PER_MINUTE: 5
+    #
+    #   # ── Altcha CAPTCHA ───────────────────────────────────────────────────────
+    #   # HMAC key used to sign CAPTCHA challenges (auto-generated if not set)
+    #   SENDR_ALTCHA_HMAC_KEY: ""
+    #   # Upper bound for the proof-of-work counter
+    #   SENDR_ALTCHA_MAX_NUMBER: 100000
+    #   # Minutes before a CAPTCHA challenge expires
+    #   SENDR_ALTCHA_EXPIRE_MINUTES: 5
+
+volumes:
+  uploads:
+  data:

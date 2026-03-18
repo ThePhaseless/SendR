@@ -1,9 +1,7 @@
 <div class="dashboard">
   <div class="dashboard-header">
     <h1>My Files</h1>
-    <div class="quota-badge">
-      {{ quotaUsed() }} / {{ quotaLimit() }} files
-    </div>
+    <div class="quota-badge">{{ quotaUsed() }} / {{ quotaLimit() }} files</div>
   </div>
 
   @if (error(); as err) {
@@ -33,7 +31,7 @@
               <span>{{ file.download_count }} downloads</span>
               <span>&middot;</span>
               <span [class.expired-text]="isExpired(file.expires_at)">
-                Expires: {{ file.expires_at | date: 'short' }}
+                Expires: {{ file.expires_at | date: "short" }}
               </span>
             </div>
           </div>
@@ -43,20 +41,10 @@
               (click)="copyLink(file)"
               [disabled]="!file.is_active"
             >
-              {{ copiedId() === file.id ? 'Copied!' : 'Copy Link' }}
+              {{ copiedId() === file.id ? "Copied!" : "Copy Link" }}
             </button>
-            <button
-              class="btn btn-secondary btn-sm"
-              (click)="refreshFile(file)"
-            >
-              Refresh
-            </button>
-            <button
-              class="btn btn-danger btn-sm"
-              (click)="deleteFile(file)"
-            >
-              Delete
-            </button>
+            <button class="btn btn-secondary btn-sm" (click)="refreshFile(file)">Refresh</button>
+            <button class="btn btn-danger btn-sm" (click)="deleteFile(file)">Delete</button>
           </div>
         </div>
       }

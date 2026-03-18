@@ -1,12 +1,15 @@
 import logging
 from datetime import timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from config import settings
 from models import FileUpload, _utcnow
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,9 @@
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlmodel import SQLModel
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 class EmailVerificationRequest(SQLModel):
@@ -44,6 +47,11 @@ class QuotaResponse(SQLModel):
     files_used: int
     files_limit: int
     max_file_size_mb: int
+
+
+class LimitsResponse(SQLModel):
+    max_file_size_mb: int
+    max_files_per_week: int
 
 
 class AdminUserUpdateRequest(SQLModel):

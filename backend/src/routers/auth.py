@@ -1,7 +1,7 @@
 from datetime import timedelta
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import func, select
 
 from config import settings
@@ -12,6 +12,7 @@ from rate_limit import auth_rate_limiter, get_client_ip
 from schemas import (
     CodeVerificationRequest,
     EmailVerificationRequest,
+    LimitsResponse,
     QuotaResponse,
     TokenResponse,
     UserResponse,
@@ -22,6 +23,9 @@ from security import (
     get_current_user,
     hash_token,
 )
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -105,6 +109,15 @@ async def verify_code(
 @router.get("/me")
 async def get_me(user: User = Depends(get_current_user)) -> UserResponse:
     return UserResponse(id=user.id, email=user.email, tier=user.tier.value, is_admin=user.is_admin)
+
+
+@router.get("/limits")
+async def get_limits() -> LimitsResponse:
+    """Return upload limits for anonymous users (public, no auth required)."""
+    return LimitsResponse(
+        max_file_size_mb=settings.ANON_MAX_FILE_SIZE_MB,
+        max_files_per_week=settings.ANON_MAX_FILES_PER_WEEK,
+    )
 
 
 @router.get("/quota")

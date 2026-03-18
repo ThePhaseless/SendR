@@ -1,4 +1,9 @@
 {
+  "options": {
+    "typeAware": true
+  },
+  "plugins": ["typescript"],
+  "ignorePatterns": ["src/app/api/**"],
   "rules": {
     "no-unused-vars": "warn",
     "no-console": "warn",

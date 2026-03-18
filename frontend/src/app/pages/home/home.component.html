@@ -6,7 +6,8 @@
 
   @if (quota(); as q) {
     <div class="alert alert-info quota-info">
-      Files: {{ q.files_used }} / {{ q.files_limit }} &middot; Max file size: {{ q.max_file_size_mb }} MB
+      Files: {{ q.files_used }} / {{ q.files_limit }} &middot; Max file size:
+      {{ q.max_file_size_mb }} MB
     </div>
   }
 
@@ -23,10 +24,12 @@
       <div class="share-link">
         <input type="text" [value]="getShareableLink()" readonly class="link-input" />
         <button class="btn btn-primary" (click)="copyLink()">
-          {{ copied() ? 'Copied!' : 'Copy Link' }}
+          {{ copied() ? "Copied!" : "Copy Link" }}
         </button>
       </div>
-      <button class="btn btn-secondary upload-another" (click)="resetUpload()">Upload another file</button>
+      <button class="btn btn-secondary upload-another" (click)="resetUpload()">
+        Upload another file
+      </button>
     </div>
   } @else {
     <div
@@ -39,8 +42,17 @@
     >
       @if (isUploading()) {
         <div class="upload-progress">
-          <div class="spinner"></div>
-          <p>Uploading...</p>
+          <div
+            class="progress-bar-container"
+            role="progressbar"
+            [attr.aria-valuenow]="uploadProgress()"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-label="Upload progress"
+          >
+            <div class="progress-bar" [style.width.%]="uploadProgress()"></div>
+          </div>
+          <p>Uploading… {{ uploadProgress() }}%</p>
         </div>
       } @else {
         <div class="drop-content">
@@ -55,9 +67,9 @@
       }
     </div>
 
-    @if (hasPendingFile()) {
+    @if (pendingFile(); as file) {
       <div class="staged-file">
-        <p class="staged-name">📄 {{ getPendingFileName() }}</p>
+        <p class="staged-name">📄 {{ file.name }}</p>
         <p class="staged-hint">Complete the verification below to upload</p>
       </div>
     }
@@ -65,6 +77,7 @@
     <div class="altcha-container">
       <altcha-widget
         challengeurl="/api/altcha/challenge"
+        auto="onload"
         (statechange)="onAltchaStateChange($event)"
       ></altcha-widget>
     </div>

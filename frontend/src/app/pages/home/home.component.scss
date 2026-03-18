@@ -10,7 +10,7 @@
   margin-bottom: 2rem;
 
   h1 {
-    font-family: 'Codigra', 'Georgia', serif;
+    font-family: "Codigra", "Georgia", serif;
     font-size: 2.5rem;
     font-weight: 800;
     color: var(--text);
@@ -80,6 +80,8 @@
 
 .upload-progress {
   text-align: center;
+  width: 100%;
+  padding: 2rem;
 
   p {
     color: var(--text-secondary);
@@ -88,20 +90,21 @@
   }
 }
 
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--spinner-track);
-  border-top-color: var(--spinner-head);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+.progress-bar-container {
+  width: 100%;
+  max-width: 400px;
+  height: 8px;
+  background: var(--spinner-track);
+  border-radius: 4px;
   margin: 0 auto;
+  overflow: hidden;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.progress-bar {
+  height: 100%;
+  background: var(--spinner-head);
+  border-radius: 4px;
+  transition: width 0.2s ease;
 }
 
 .upload-success {
