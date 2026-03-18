@@ -69,8 +69,8 @@ If the frontend and API are on different origins, update `SENDR_ALLOWED_ORIGINS`
 
 When the backend is running, visit:
 
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+- Swagger UI: <http://localhost:8000/docs>
+- ReDoc: <http://localhost:8000/redoc>
 
 ## Tier Limits
 
