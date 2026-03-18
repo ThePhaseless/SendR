@@ -1,6 +1,7 @@
-import { HttpClient, HttpEvent } from '@angular/common/http';
-import { inject, Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Injectable, inject } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
+import type { HttpEvent } from "@angular/common/http";
+import type { Observable } from "rxjs";
 
 export interface FileUploadResponse {
   id: number;
@@ -12,6 +13,20 @@ export interface FileUploadResponse {
   is_active: boolean;
 }
 
+export interface MultiFileUploadResponse {
+  files: FileUploadResponse[];
+  upload_group: string;
+  total_size_bytes: number;
+}
+
+export interface UploadGroupInfoResponse {
+  files: FileUploadResponse[];
+  upload_group: string;
+  total_size_bytes: number;
+  file_count: number;
+  will_zip: boolean;
+}
+
 interface FileListResponse {
   files: FileUploadResponse[];
   quota_used: number;
@@ -19,39 +34,31 @@ interface FileListResponse {
 }
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: "root",
 })
 export class FileService {
   private readonly http = inject(HttpClient);
 
-  upload(
-    file: File,
-    altchaPayload: string,
-  ): Observable<HttpEvent<FileUploadResponse>> {
+  upload(file: File, altchaPayload: string): Observable<HttpEvent<FileUploadResponse>> {
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('altcha', altchaPayload);
-    return this.http.post<FileUploadResponse>('/api/files/upload', formData, {
+    formData.append("file", file);
+    formData.append("altcha", altchaPayload);
+    return this.http.post<FileUploadResponse>("/api/files/upload", formData, {
+      observe: "events",
       reportProgress: true,
-      observe: 'events',
     });
   }
 
   getFileInfo(downloadToken: string): Observable<FileUploadResponse> {
-    return this.http.get<FileUploadResponse>(
-      `/api/files/${downloadToken}/info`,
-    );
+    return this.http.get<FileUploadResponse>(`/api/files/${downloadToken}/info`);
   }
 
   listFiles(): Observable<FileListResponse> {
-    return this.http.get<FileListResponse>('/api/files/');
+    return this.http.get<FileListResponse>("/api/files/");
   }
 
   refreshFile(fileId: number): Observable<FileUploadResponse> {
-    return this.http.post<FileUploadResponse>(
-      `/api/files/${fileId}/refresh`,
-      {},
-    );
+    return this.http.post<FileUploadResponse>(`/api/files/${fileId}/refresh`, {});
   }
 
   deleteFile(fileId: number): Observable<{ message: string }> {
@@ -60,5 +67,28 @@ export class FileService {
 
   getDownloadUrl(downloadToken: string): string {
     return `/api/files/${downloadToken}`;
+  }
+
+  uploadMultiple(
+    files: File[],
+    altchaPayload: string,
+  ): Observable<HttpEvent<MultiFileUploadResponse>> {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append("files", file);
+    }
+    formData.append("altcha", altchaPayload);
+    return this.http.post<MultiFileUploadResponse>("/api/files/upload-multiple", formData, {
+      observe: "events",
+      reportProgress: true,
+    });
+  }
+
+  getGroupInfo(uploadGroup: string): Observable<UploadGroupInfoResponse> {
+    return this.http.get<UploadGroupInfoResponse>(`/api/files/group/${uploadGroup}`);
+  }
+
+  getGroupDownloadUrl(uploadGroup: string): string {
+    return `/api/files/group/${uploadGroup}/download`;
   }
 }

@@ -1,33 +1,34 @@
-import { inject, Injectable, signal } from "@angular/core";
+import { Injectable, inject, signal } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
+import type { Observable } from "rxjs";
 import { tap } from "rxjs/operators";
-import { Observable } from "rxjs";
 
-interface RequestCodeResponse {
+export interface RequestCodeResponse {
   message: string;
 }
 
-interface VerifyCodeResponse {
+export interface VerifyCodeResponse {
   token: string;
   expires_at: string;
 }
 
-interface MeResponse {
+export interface MeResponse {
   id: number;
   email: string;
   tier: string;
   is_admin: boolean;
 }
 
-interface QuotaResponse {
+export interface QuotaResponse {
   files_used: number;
   files_limit: number;
   max_file_size_mb: number;
 }
 
-interface LimitsResponse {
+export interface LimitsResponse {
   max_file_size_mb: number;
   max_files_per_week: number;
+  max_files_per_upload: number;
 }
 
 const TOKEN_KEY = "sendr_token";
@@ -51,7 +52,7 @@ export class AuthService {
   }
 
   verifyCode(email: string, code: string): Observable<VerifyCodeResponse> {
-    return this.http.post<VerifyCodeResponse>("/api/auth/verify-code", { email, code }).pipe(
+    return this.http.post<VerifyCodeResponse>("/api/auth/verify-code", { code, email }).pipe(
       tap((res) => {
         localStorage.setItem(TOKEN_KEY, res.token);
         localStorage.setItem(EXPIRES_KEY, res.expires_at);
@@ -70,14 +71,28 @@ export class AuthService {
 
   isAuthenticated(): boolean {
     const token = this.getToken();
-    if (!token) return false;
+    if (!token) {
+      return false;
+    }
     const expires = localStorage.getItem(EXPIRES_KEY);
-    if (!expires) return false;
+    if (!expires) {
+      return false;
+    }
     return new Date(expires) > new Date();
   }
 
   getToken(): string | null {
     return localStorage.getItem(TOKEN_KEY);
+  }
+
+  devLogin(role: "admin" | "user"): Observable<VerifyCodeResponse> {
+    return this.http.post<VerifyCodeResponse>(`/api/dev/login/${role}`, {}).pipe(
+      tap((res) => {
+        localStorage.setItem(TOKEN_KEY, res.token);
+        localStorage.setItem(EXPIRES_KEY, res.expires_at);
+        this.authenticated.set(true);
+      }),
+    );
   }
 
   logout(): void {

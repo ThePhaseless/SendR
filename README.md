@@ -39,6 +39,36 @@ bun install
 bun start
 ```
 
+### Pre-commit Hooks
+
+This repository versions its Git hook entrypoint in [.githooks/pre-commit](/workspaces/SendR/.githooks/pre-commit).
+
+Enable the tracked hooks once per clone:
+
+```bash
+./setup-git-hooks.sh
+```
+
+That script installs `pre-commit` with `uv` if needed, sets `core.hooksPath` to `.githooks`, and pre-installs the hook environments.
+
+If you use the devcontainer, this setup runs automatically during container creation.
+
+If you prefer to do it manually:
+
+```bash
+uv tool install pre-commit
+git config core.hooksPath .githooks
+pre-commit install-hooks --config .pre-commit-config.yaml
+```
+
+Run the same hooks manually across the full repository:
+
+```bash
+pre-commit run --all-files
+```
+
+The hook environments are pinned in [.pre-commit-config.yaml](/workspaces/SendR/.pre-commit-config.yaml), so contributors do not need matching global versions of Ruff, Oxlint, or Oxfmt. `core.hooksPath` itself is still a local Git setting, so each clone needs the one-time `git config` command above.
+
 ### Docker
 
 ```bash
@@ -83,7 +113,7 @@ When the backend is running, visit:
 
 ## Project Structure
 
-```
+```text
 SendR/
 ├── backend/           # FastAPI backend
 │   ├── src/backend/   # Application source

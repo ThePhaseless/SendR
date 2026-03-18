@@ -27,6 +27,10 @@ class Settings(BaseSettings):
     FREE_MAX_FILE_SIZE_MB: int = 1024
     PREMIUM_MAX_FILES_PER_WEEK: int = 50
     PREMIUM_MAX_FILE_SIZE_MB: int = 10240
+    # Max files per single upload
+    ANON_MAX_FILES_PER_UPLOAD: int = 10
+    FREE_MAX_FILES_PER_UPLOAD: int = 50
+    PREMIUM_MAX_FILES_PER_UPLOAD: int = 0  # 0 means unlimited
     # File expiration (days)
     FILE_EXPIRY_DAYS: int = 7
     FILE_GRACE_PERIOD_DAYS: int = 7
@@ -39,6 +43,10 @@ class Settings(BaseSettings):
     ALTCHA_HMAC_KEY: str = Field(default_factory=_generate_hmac_key)
     ALTCHA_MAX_NUMBER: int = 100000
     ALTCHA_EXPIRE_MINUTES: int = 5
+    # Dev mode
+    DEV_MODE: bool = False
+    # Group download zip threshold (file count above which will_zip is true)
+    GROUP_ZIP_THRESHOLD: int = 3
 
     model_config = {"env_prefix": "SENDR_"}
 

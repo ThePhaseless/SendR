@@ -1,12 +1,66 @@
 {
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
   "options": {
     "typeAware": true
   },
-  "plugins": ["typescript"],
+  "jsPlugins": ["@angular-eslint/eslint-plugin"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn",
+    "style": "warn",
+    "pedantic": "warn"
+  },
   "ignorePatterns": ["src/app/api/**"],
+  "overrides": [
+    {
+      "files": ["**/*.spec.ts"],
+      "rules": {
+        "no-unsafe-call": "off",
+        "no-unsafe-member-access": "off"
+      }
+    }
+  ],
   "rules": {
+    "@angular-eslint/component-class-suffix": "error",
+    "@angular-eslint/directive-class-suffix": "error",
+    "@angular-eslint/no-empty-lifecycle-method": "warn",
+    "@angular-eslint/no-inputs-metadata-property": "error",
+    "@angular-eslint/no-outputs-metadata-property": "error",
+    "@angular-eslint/no-queries-metadata-property": "error",
+    "@angular-eslint/prefer-inject": "warn",
+    "@angular-eslint/prefer-standalone": "error",
+    "@angular-eslint/use-lifecycle-interface": "warn",
+    "import/consistent-type-specifier-style": "off",
     "no-unused-vars": "warn",
     "no-console": "warn",
-    "eqeqeq": "error"
+    "eqeqeq": "error",
+    "sort-imports": [
+      "error",
+      {
+        "ignoreDeclarationSort": true
+      }
+    ],
+    "exports-last": "off",
+    "func-style": "off",
+    "group-exports": "off",
+    "id-length": "off",
+    "max-lines": "off",
+    "max-lines-per-function": "off",
+    "max-statements": "off",
+    "new-cap": "off",
+    "no-duplicate-imports": "off",
+    "no-extraneous-class": "off",
+    "no-magic-numbers": "off",
+    "no-named-export": "off",
+    "no-negated-condition": "off",
+    "no-null": "off",
+    "no-ternary": "off",
+    "no-unassigned-import": "off",
+    "prefer-await-to-then": "off",
+    "prefer-default-export": "off",
+    "prefer-global-this": "off",
+    "prefer-template": "off",
+    "strict-boolean-expressions": "off"
   }
 }

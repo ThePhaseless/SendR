@@ -45,3 +45,17 @@
   align-items: center;
   gap: 0.75rem;
 }
+
+.btn-dev {
+  background: #f39c12;
+  color: white;
+  border: none;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+
+  &:hover {
+    background: #e67e22;
+  }
+}

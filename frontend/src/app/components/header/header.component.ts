@@ -1,26 +1,37 @@
-import { Component, computed, inject, signal } from "@angular/core";
-import { toSignal } from "@angular/core/rxjs-interop";
+import { Component, computed, inject, isDevMode, signal } from "@angular/core";
 import { Router, RouterLink } from "@angular/router";
 import { AuthService } from "../../services/auth.service";
+import type { MeResponse } from "../../services/auth.service";
+import { toSignal } from "@angular/core/rxjs-interop";
 
 @Component({
-  selector: "app-header",
   imports: [RouterLink],
-  templateUrl: "./header.component.html",
+  selector: "app-header",
   styleUrl: "./header.component.scss",
+  templateUrl: "./header.component.html",
 })
 export class HeaderComponent {
   private readonly router = inject(Router);
   readonly auth = inject(AuthService);
 
+  readonly isDevMode = isDevMode();
+
   private readonly me = this.auth.isAuthenticated()
-    ? toSignal(this.auth.getMe())
-    : signal(undefined);
+    ? toSignal(this.auth.getMe(), { initialValue: null })
+    : signal<MeResponse | null>(null);
 
   isAdmin = computed(() => this.me()?.is_admin ?? false);
 
   logout(): void {
     this.auth.logout();
-    this.router.navigate(["/"]);
+    void this.router.navigate(["/"]);
+  }
+
+  devLogin(role: "admin" | "user"): void {
+    this.auth.devLogin(role).subscribe({
+      next: () => {
+        window.location.reload();
+      },
+    });
   }
 }

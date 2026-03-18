@@ -117,6 +117,7 @@ async def get_limits() -> LimitsResponse:
     return LimitsResponse(
         max_file_size_mb=settings.ANON_MAX_FILE_SIZE_MB,
         max_files_per_week=settings.ANON_MAX_FILES_PER_WEEK,
+        max_files_per_upload=settings.ANON_MAX_FILES_PER_UPLOAD,
     )
 
 

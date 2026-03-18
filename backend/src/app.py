@@ -1,11 +1,16 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from config import settings
 from database import init_db
-from routers import admin, altcha, auth, files
+from routers import admin, altcha, auth, dev, files
+
+STATIC_DIR = Path(__file__).resolve().parent.parent.parent.parent / "static"
 
 
 def cli() -> None:
@@ -31,7 +36,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=False,
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["content-type", "authorization"],
 )
 
@@ -39,3 +44,19 @@ app.include_router(admin.router)
 app.include_router(altcha.router)
 app.include_router(auth.router)
 app.include_router(files.router)
+
+if settings.DEV_MODE:
+    app.include_router(dev.router)
+
+if STATIC_DIR.is_dir():
+    _resolved_static = STATIC_DIR.resolve()
+    app.mount("/assets", StaticFiles(directory=str(_resolved_static / "assets")), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(_request: Request, full_path: str):  # noqa: ARG001
+        file_path = (STATIC_DIR / full_path).resolve()
+        if not str(file_path).startswith(str(_resolved_static)):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+        if file_path.is_file():
+            return FileResponse(str(file_path))
+        return FileResponse(str(_resolved_static / "index.html"))

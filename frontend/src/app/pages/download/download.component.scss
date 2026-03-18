@@ -82,3 +82,42 @@
   padding: 0.75rem 2rem;
   font-size: 1rem;
 }
+
+.zip-info {
+  margin: 1rem 0;
+}
+
+.group-file-list {
+  margin: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.group-file-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--input-bg);
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+
+  .group-file-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text);
+  }
+
+  .group-file-size {
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+}
+
+.download-all-btn {
+  margin-top: 1rem;
+}

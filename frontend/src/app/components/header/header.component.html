@@ -11,6 +11,10 @@
       }
     </nav>
     <div class="actions">
+      @if (isDevMode) {
+        <button class="btn btn-dev btn-sm" (click)="devLogin('user')">Dev: User</button>
+        <button class="btn btn-dev btn-sm" (click)="devLogin('admin')">Dev: Admin</button>
+      }
       @if (auth.authenticated()) {
         <button class="btn btn-secondary btn-sm" (click)="logout()">Logout</button>
       } @else {
