@@ -1,12 +1,15 @@
-import { Component, inject, OnInit, signal } from "@angular/core";
+import { HttpErrorResponse } from "@angular/common/http";
+import { Component, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { AdminService, AdminUser } from "../../services/admin.service";
+import type { OnInit } from "@angular/core";
+import { AdminService } from "../../services/admin.service";
+import type { AdminUser } from "../../services/admin.service";
 
 @Component({
-  selector: "app-admin",
   imports: [FormsModule],
-  templateUrl: "./admin.component.html",
+  selector: "app-admin",
   styleUrl: "./admin.component.scss",
+  templateUrl: "./admin.component.html",
 })
 export class AdminComponent implements OnInit {
   private readonly adminService = inject(AdminService);
@@ -30,13 +33,13 @@ export class AdminComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
     this.adminService.listUsers(this.page(), this.perPage, this.search).subscribe({
+      error: () => {
+        this.error.set("Failed to load users.");
+        this.loading.set(false);
+      },
       next: (res) => {
         this.users.set(res.users);
         this.total.set(res.total);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.error.set("Failed to load users.");
         this.loading.set(false);
       },
     });
@@ -71,36 +74,57 @@ export class AdminComponent implements OnInit {
     this.editingUser.set(null);
   }
 
+  private getErrorDetail(error: unknown, fallback: string): string {
+    if (
+      !(error instanceof HttpErrorResponse) ||
+      typeof error.error !== "object" ||
+      error.error === null
+    ) {
+      return fallback;
+    }
+
+    const detail: unknown = Reflect.get(error.error, "detail");
+    if (typeof detail === "string") {
+      return detail;
+    }
+
+    return fallback;
+  }
+
   saveEdit(): void {
     const user = this.editingUser();
-    if (!user) return;
+    if (!user) {
+      return;
+    }
 
     this.adminService
       .updateUser(user.id, {
-        tier: this.editTier,
         is_admin: this.editIsAdmin,
+        tier: this.editTier,
       })
       .subscribe({
+        error: (err) => {
+          this.error.set(this.getErrorDetail(err, "Failed to update user."));
+        },
         next: (updated) => {
           this.users.update((users) => users.map((u) => (u.id === updated.id ? updated : u)));
           this.editingUser.set(null);
-        },
-        error: (err) => {
-          this.error.set(err.error?.detail ?? "Failed to update user.");
         },
       });
   }
 
   deleteUser(user: AdminUser): void {
-    if (!confirm(`Delete user ${user.email}? This cannot be undone.`)) return;
+    if (!confirm(`Delete user ${user.email}? This cannot be undone.`)) {
+      return;
+    }
 
     this.adminService.deleteUser(user.id).subscribe({
+      error: (err) => {
+        this.error.set(this.getErrorDetail(err, "Failed to delete user."));
+      },
       next: () => {
         this.users.update((users) => users.filter((u) => u.id !== user.id));
         this.total.update((t) => t - 1);
-      },
-      error: (err) => {
-        this.error.set(err.error?.detail ?? "Failed to delete user.");
       },
     });
   }

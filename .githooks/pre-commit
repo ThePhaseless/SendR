@@ -5,6 +5,8 @@ repo_root="$(git rev-parse --show-toplevel)"
 config_path="$repo_root/.pre-commit-config.yaml"
 hook_dir="$repo_root/.githooks"
 
+cd "$repo_root"
+
 if command -v pre-commit >/dev/null 2>&1; then
   exec pre-commit hook-impl --config="$config_path" --hook-type=pre-commit --hook-dir "$hook_dir" -- "$@"
 fi

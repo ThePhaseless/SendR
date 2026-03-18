@@ -1,6 +1,7 @@
-import { HttpClient, HttpEvent } from "@angular/common/http";
-import { inject, Injectable } from "@angular/core";
-import { Observable } from "rxjs";
+import { Injectable, inject } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
+import type { HttpEvent } from "@angular/common/http";
+import type { Observable } from "rxjs";
 
 export interface FileUploadResponse {
   id: number;
@@ -43,8 +44,8 @@ export class FileService {
     formData.append("file", file);
     formData.append("altcha", altchaPayload);
     return this.http.post<FileUploadResponse>("/api/files/upload", formData, {
-      reportProgress: true,
       observe: "events",
+      reportProgress: true,
     });
   }
 
@@ -78,8 +79,8 @@ export class FileService {
     }
     formData.append("altcha", altchaPayload);
     return this.http.post<MultiFileUploadResponse>("/api/files/upload-multiple", formData, {
-      reportProgress: true,
       observe: "events",
+      reportProgress: true,
     });
   }
 

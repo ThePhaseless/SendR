@@ -1,17 +1,35 @@
+import { HttpErrorResponse } from "@angular/common/http";
 import { Component, inject, signal } from "@angular/core";
+import { AuthService } from "../../services/auth.service";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
-import { AuthService } from "../../services/auth.service";
 
 @Component({
-  selector: "app-auth",
   imports: [FormsModule],
-  templateUrl: "./auth.component.html",
+  selector: "app-auth",
   styleUrl: "./auth.component.scss",
+  templateUrl: "./auth.component.html",
 })
 export class AuthComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+
+  private getErrorDetail(error: unknown, fallback: string): string {
+    if (
+      !(error instanceof HttpErrorResponse) ||
+      typeof error.error !== "object" ||
+      error.error === null
+    ) {
+      return fallback;
+    }
+
+    const detail: unknown = Reflect.get(error.error, "detail");
+    if (typeof detail === "string") {
+      return detail;
+    }
+
+    return fallback;
+  }
 
   step = signal<"email" | "code">("email");
   email = "";
@@ -21,35 +39,39 @@ export class AuthComponent {
   message = signal<string | null>(null);
 
   requestCode(): void {
-    if (!this.email) return;
+    if (!this.email) {
+      return;
+    }
     this.loading.set(true);
     this.error.set(null);
 
     this.authService.requestCode(this.email).subscribe({
+      error: (err) => {
+        this.error.set(this.getErrorDetail(err, "Failed to send code."));
+        this.loading.set(false);
+      },
       next: (res) => {
         this.message.set(res.message);
         this.step.set("code");
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set(err.error?.detail ?? "Failed to send code.");
         this.loading.set(false);
       },
     });
   }
 
   verifyCode(): void {
-    if (!this.code) return;
+    if (!this.code) {
+      return;
+    }
     this.loading.set(true);
     this.error.set(null);
 
     this.authService.verifyCode(this.email, this.code).subscribe({
-      next: () => {
-        this.router.navigate(["/"]);
-      },
       error: (err) => {
-        this.error.set(err.error?.detail ?? "Invalid code.");
+        this.error.set(this.getErrorDetail(err, "Invalid code."));
         this.loading.set(false);
+      },
+      next: () => {
+        void this.router.navigate(["/"]);
       },
     });
   }

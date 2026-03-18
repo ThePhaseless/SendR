@@ -1,15 +1,13 @@
-import { HttpEventType } from "@angular/common/http";
-import { Component, computed, CUSTOM_ELEMENTS_SCHEMA, inject, signal } from "@angular/core";
-import { toSignal } from "@angular/core/rxjs-interop";
-import { JumpingTextComponent } from "../../components/jumping-text/jumping-text.component";
+import { HttpErrorResponse, HttpEventType } from "@angular/common/http";
+import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject, signal } from "@angular/core";
 import { AuthService } from "../../services/auth.service";
-import {
-  FileService,
-  FileUploadResponse,
-  MultiFileUploadResponse,
-} from "../../services/file.service";
+import type { LimitsResponse, QuotaResponse } from "../../services/auth.service";
+import { FileService } from "../../services/file.service";
+import type { FileUploadResponse, MultiFileUploadResponse } from "../../services/file.service";
+import { JumpingTextComponent } from "../../components/jumping-text/jumping-text.component";
 import { extractDownloadToken, formatFileSize } from "../../utils/file.utils";
 import { resolveAppUrl } from "../../utils/url.utils";
+import { toSignal } from "@angular/core/rxjs-interop";
 
 interface UploadFileEntry {
   file: File;
@@ -17,12 +15,17 @@ interface UploadFileEntry {
   size: number;
 }
 
+interface AltchaStateChangeDetail {
+  payload?: string;
+  state?: string;
+}
+
 @Component({
-  selector: "app-home",
   imports: [JumpingTextComponent],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
-  templateUrl: "./home.component.html",
+  selector: "app-home",
   styleUrl: "./home.component.scss",
+  templateUrl: "./home.component.html",
 })
 export class HomeComponent {
   private readonly fileService = inject(FileService);
@@ -46,32 +49,36 @@ export class HomeComponent {
   private lastProgressBytes = 0;
 
   private readonly quotaData = this.authService.isAuthenticated()
-    ? toSignal(this.authService.getQuota())
-    : signal(undefined);
+    ? toSignal(this.authService.getQuota(), { initialValue: null })
+    : signal<QuotaResponse | null>(null);
 
   private readonly limitsData = this.authService.isAuthenticated()
-    ? signal(undefined)
-    : toSignal(this.authService.getLimits(), { initialValue: undefined });
+    ? signal<LimitsResponse | null>(null)
+    : toSignal(this.authService.getLimits(), { initialValue: null });
 
-  quota = computed(() => this.quotaData() ?? null);
+  quota = computed<QuotaResponse | null>(() => this.quotaData());
 
-  maxFileSizeMb = computed(() => {
+  maxFileSizeMb = computed<number>(() => {
     const q = this.quotaData();
-    if (q) return q.max_file_size_mb;
+    if (q) {
+      return q.max_file_size_mb;
+    }
     const l = this.limitsData();
-    if (l) return l.max_file_size_mb;
+    if (l) {
+      return l.max_file_size_mb;
+    }
     return 100;
   });
 
-  maxFilesPerUpload = computed(() => {
+  maxFilesPerUpload = computed<number>(() => {
     const l = this.limitsData();
-    if (l) return l.max_files_per_upload;
+    if (l) {
+      return l.max_files_per_upload;
+    }
     return 10;
   });
 
-  totalPendingSize = computed(() => {
-    return this.pendingFiles().reduce((sum, file) => sum + file.size, 0);
-  });
+  totalPendingSize = computed(() => this.pendingFiles().reduce((sum, file) => sum + file.size, 0));
 
   onDragOver(event: DragEvent): void {
     event.preventDefault();
@@ -91,27 +98,29 @@ export class HomeComponent {
     this.isDragging.set(false);
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
-      this.stageFiles(Array.from(files));
+      this.stageFiles([...files]);
     }
   }
 
   onFileSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      this.stageFiles(Array.from(input.files));
+    const { target } = event;
+    if (!(target instanceof HTMLInputElement) || !target.files || target.files.length === 0) {
+      return;
     }
+
+    this.stageFiles([...target.files]);
   }
 
   onAltchaStateChange(event: Event): void {
-    const detail = (event as CustomEvent).detail;
-    if (detail && detail.state === "verified" && detail.payload) {
+    const detail = this.getAltchaStateDetail(event);
+    if (detail?.state === "verified" && detail.payload) {
       this.altchaPayload = detail.payload;
       this.altchaVerified.set(true);
       const files = this.pendingFiles();
       if (files.length > 0) {
         this.uploadFiles(files.map((file) => file.file));
       }
-    } else if (detail && detail.state === "error") {
+    } else if (detail?.state === "error") {
       this.error.set("CAPTCHA verification failed. Please try again.");
       this.altchaVerified.set(false);
       this.altchaPayload = "";
@@ -174,6 +183,12 @@ export class HomeComponent {
 
     if (files.length === 1) {
       this.fileService.upload(files[0], this.altchaPayload).subscribe({
+        error: (err) => {
+          this.error.set(this.getErrorDetail(err, "Upload failed. Please try again."));
+          this.isUploading.set(false);
+          this.uploadProgress.set(0);
+          this.resetAltcha();
+        },
         next: (event) => {
           if (event.type === HttpEventType.UploadProgress && event.total !== undefined) {
             const progress =
@@ -187,17 +202,17 @@ export class HomeComponent {
             this.resetAltcha();
           }
         },
-        error: (err) => {
-          this.error.set(err.error?.detail ?? "Upload failed. Please try again.");
-          this.isUploading.set(false);
-          this.uploadProgress.set(0);
-          this.resetAltcha();
-        },
       });
       return;
     }
 
     this.fileService.uploadMultiple(files, this.altchaPayload).subscribe({
+      error: (err) => {
+        this.error.set(this.getErrorDetail(err, "Upload failed. Please try again."));
+        this.isUploading.set(false);
+        this.uploadProgress.set(0);
+        this.resetAltcha();
+      },
       next: (event) => {
         if (event.type === HttpEventType.UploadProgress && event.total !== undefined) {
           const progress = event.total === 0 ? 100 : Math.round((100 * event.loaded) / event.total);
@@ -209,12 +224,6 @@ export class HomeComponent {
           this.uploadProgress.set(0);
           this.resetAltcha();
         }
-      },
-      error: (err) => {
-        this.error.set(err.error?.detail ?? "Upload failed. Please try again.");
-        this.isUploading.set(false);
-        this.uploadProgress.set(0);
-        this.resetAltcha();
       },
     });
   }
@@ -248,15 +257,17 @@ export class HomeComponent {
   }
 
   copyLink(): void {
-    navigator.clipboard.writeText(this.getShareableLink()).then(
-      () => {
+    void (async () => {
+      try {
+        await navigator.clipboard.writeText(this.getShareableLink());
         this.copied.set(true);
-        setTimeout(() => this.copied.set(false), 2000);
-      },
-      () => {
+        setTimeout(() => {
+          this.copied.set(false);
+        }, 2000);
+      } catch {
         this.error.set("Failed to copy link to clipboard.");
-      },
-    );
+      }
+    })();
   }
 
   formatSize(bytes: number): string {
@@ -268,7 +279,9 @@ export class HomeComponent {
   }
 
   formatTime(seconds: number): string {
-    if (seconds < 60) return `${seconds}s`;
+    if (seconds < 60) {
+      return `${seconds}s`;
+    }
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}m ${remainingSeconds}s`;
@@ -280,17 +293,25 @@ export class HomeComponent {
 
   getResultFiles(): FileUploadResponse[] {
     const multi = this.uploadResult();
-    if (multi) return multi.files;
+    if (multi) {
+      return multi.files;
+    }
     const single = this.singleUploadResult();
-    if (single) return [single];
+    if (single) {
+      return [single];
+    }
     return [];
   }
 
   getTotalResultSize(): number {
     const multi = this.uploadResult();
-    if (multi) return multi.total_size_bytes;
+    if (multi) {
+      return multi.total_size_bytes;
+    }
     const single = this.singleUploadResult();
-    if (single) return single.file_size_bytes;
+    if (single) {
+      return single.file_size_bytes;
+    }
     return 0;
   }
 
@@ -305,5 +326,40 @@ export class HomeComponent {
   private resetAltcha(): void {
     this.altchaVerified.set(false);
     this.altchaPayload = "";
+  }
+
+  private getAltchaStateDetail(event: Event): AltchaStateChangeDetail | null {
+    if (
+      !(event instanceof CustomEvent) ||
+      typeof event.detail !== "object" ||
+      event.detail === null
+    ) {
+      return null;
+    }
+
+    const state: unknown = Reflect.get(event.detail, "state");
+    const payload: unknown = Reflect.get(event.detail, "payload");
+
+    return {
+      payload: typeof payload === "string" ? payload : undefined,
+      state: typeof state === "string" ? state : undefined,
+    };
+  }
+
+  private getErrorDetail(error: unknown, fallback: string): string {
+    if (
+      !(error instanceof HttpErrorResponse) ||
+      typeof error.error !== "object" ||
+      error.error === null
+    ) {
+      return fallback;
+    }
+
+    const detail: unknown = Reflect.get(error.error, "detail");
+    if (typeof detail === "string") {
+      return detail;
+    }
+
+    return fallback;
   }
 }

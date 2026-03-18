@@ -1,47 +1,55 @@
-import { Component, DestroyRef, ElementRef, inject, input, OnInit, viewChild } from "@angular/core";
+import { Component, DestroyRef, inject, input, viewChild } from "@angular/core";
+import type { ElementRef, OnInit } from "@angular/core";
 
 @Component({
   selector: "app-jumping-text",
-  templateUrl: "./jumping-text.component.html",
   styleUrl: "./jumping-text.component.scss",
+  templateUrl: "./jumping-text.component.html",
 })
 export class JumpingTextComponent implements OnInit {
   text = input.required<string>();
   interval = input(4000);
 
   private readonly destroyRef = inject(DestroyRef);
-  private readonly containerRef = viewChild<ElementRef>("container");
+  private readonly containerRef = viewChild<ElementRef<HTMLElement>>("container");
   private autoWaveTimer?: ReturnType<typeof setInterval>;
 
   ngOnInit(): void {
-    this.autoWaveTimer = setInterval(() => this.triggerWave(), this.interval());
-    this.destroyRef.onDestroy(() => clearInterval(this.autoWaveTimer));
+    this.autoWaveTimer = setInterval(() => {
+      this.triggerWave();
+    }, this.interval());
+    this.destroyRef.onDestroy(() => {
+      clearInterval(this.autoWaveTimer);
+    });
   }
 
   triggerWave(): void {
-    const container = this.containerRef()?.nativeElement as HTMLElement | undefined;
-    if (!container) return;
-    const letters = container.querySelectorAll(".letter");
+    const container = this.containerRef()?.nativeElement;
+    if (!container) {
+      return;
+    }
+    const letters = container.querySelectorAll<HTMLElement>(".letter");
     letters.forEach((letter, i) => {
-      const el = letter as HTMLElement;
       setTimeout(() => {
-        const current = getComputedStyle(el).transform;
+        const current = getComputedStyle(letter).transform;
         const currentY = current !== "none" ? new DOMMatrix(current).m42 : 0;
-        el.getAnimations().forEach((a) => a.cancel());
-        el.animate(
+        letter.getAnimations().forEach((a) => {
+          a.cancel();
+        });
+        letter.animate(
           [
-            { transform: `translateY(${currentY}px)`, easing: "cubic-bezier(0.33, 1, 0.68, 1)" },
+            { easing: "cubic-bezier(0.33, 1, 0.68, 1)", transform: `translateY(${currentY}px)` },
             {
-              transform: "translateY(-8px)",
-              offset: 0.3,
               easing: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+              offset: 0.3,
+              transform: "translateY(-8px)",
             },
             {
-              transform: "translateY(2px)",
-              offset: 0.65,
               easing: "cubic-bezier(0.33, 1, 0.68, 1)",
+              offset: 0.65,
+              transform: "translateY(2px)",
             },
-            { transform: "translateY(-2px)", offset: 0.82, easing: "ease-in-out" },
+            { easing: "ease-in-out", offset: 0.82, transform: "translateY(-2px)" },
             { transform: "translateY(0)" },
           ],
           { duration: 800 },
