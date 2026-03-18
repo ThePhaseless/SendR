@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from config import settings
 from database import init_db
-from routers import admin, altcha, auth, files
+from routers import admin, altcha, auth, dev, files
 
 STATIC_DIR = Path(__file__).resolve().parent.parent.parent.parent / "static"
 
@@ -36,7 +36,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=False,
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["content-type", "authorization"],
 )
 
@@ -44,6 +44,9 @@ app.include_router(admin.router)
 app.include_router(altcha.router)
 app.include_router(auth.router)
 app.include_router(files.router)
+
+if settings.DEV_MODE:
+    app.include_router(dev.router)
 
 # Serve Angular frontend static files in production
 if STATIC_DIR.is_dir():

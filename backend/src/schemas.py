@@ -35,6 +35,7 @@ class FileUploadResponse(SQLModel):
     expires_at: datetime
     download_count: int
     is_active: bool
+    upload_group: str | None = None
 
 
 class FileListResponse(SQLModel):
@@ -49,9 +50,24 @@ class QuotaResponse(SQLModel):
     max_file_size_mb: int
 
 
+class MultiFileUploadResponse(SQLModel):
+    files: list[FileUploadResponse]
+    upload_group: str
+    total_size_bytes: int
+
+
+class UploadGroupInfoResponse(SQLModel):
+    files: list[FileUploadResponse]
+    upload_group: str
+    total_size_bytes: int
+    file_count: int
+    will_zip: bool
+
+
 class LimitsResponse(SQLModel):
     max_file_size_mb: int
     max_files_per_week: int
+    max_files_per_upload: int
 
 
 class AdminUserUpdateRequest(SQLModel):
