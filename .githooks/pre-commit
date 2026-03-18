@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+config_path="$repo_root/.pre-commit-config.yaml"
+hook_dir="$repo_root/.githooks"
+
+if command -v pre-commit >/dev/null 2>&1; then
+  exec pre-commit hook-impl --config="$config_path" --hook-type=pre-commit --hook-dir "$hook_dir" -- "$@"
+fi
+
+if command -v uvx >/dev/null 2>&1; then
+  exec uvx pre-commit hook-impl --config="$config_path" --hook-type=pre-commit --hook-dir "$hook_dir" -- "$@"
+fi
+
+echo "pre-commit is required to run repository hooks." 1>&2
+echo "Install it with 'uv tool install pre-commit' or ensure 'uvx' is available." 1>&2
+exit 1

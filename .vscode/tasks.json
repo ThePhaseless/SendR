@@ -51,6 +51,15 @@
           }
         }
       }
+    },
+    {
+      "type": "shell",
+      "label": "git hooks: setup",
+      "command": "./setup-git-hooks.sh",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
     }
   ]
 }
