@@ -1,12 +1,13 @@
 @font-face {
-  font-family: "Codigra";
+  font-family: "Comba";
   src:
-    url("/assets/fonts/Codigra.woff2") format("woff2"),
-    url("/assets/fonts/Codigra.woff") format("woff"),
-    url("/assets/fonts/Codigra.ttf") format("truetype");
-  font-weight: 400;
+    url("/assets/fonts/combatest-boldultrawide.woff2") format("woff2"),
+    url("/assets/fonts/combatest-boldultrawide.otf") format("opentype");
+  font-weight: 700;
   font-style: normal;
   font-display: swap;
+  ascent-override: 90%;
+  descent-override: 10%;
 }
 
 // Light theme (default)
@@ -102,7 +103,7 @@ body {
 }
 
 .font-display {
-  font-family: "Codigra", "Georgia", serif;
+  font-family: "Comba", "Georgia", serif;
 }
 
 a {

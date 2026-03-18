@@ -10,11 +10,14 @@
   margin-bottom: 2rem;
 
   h1 {
-    font-family: "Codigra", "Georgia", serif;
     font-size: 2.5rem;
     font-weight: 800;
     color: var(--text);
     letter-spacing: -0.025em;
+
+    .highlight {
+      font-family: "Comba", "Georgia", serif;
+    }
   }
 
   .subtitle {
@@ -193,4 +196,8 @@
   margin-top: 1.5rem;
   display: flex;
   justify-content: center;
+
+  ::ng-deep .altcha-logo {
+    margin-left: 1rem;
+  }
 }

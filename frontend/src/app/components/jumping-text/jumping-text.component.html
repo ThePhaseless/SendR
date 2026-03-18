@@ -1,0 +1,5 @@
+<span class="jumping-text" #container (mouseenter)="triggerWave()">
+  @for (char of text().split(""); track $index) {
+    <span class="letter">{{ char }}</span>
+  }
+</span>

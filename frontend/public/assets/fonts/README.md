@@ -1,10 +1,9 @@
-# Codigra Font
+# Comba Font
 
-Place the **Codigra Regular** font files here:
+Place the **Comba Bold Ultra Wide** font files here:
 
-- `Codigra.woff2`
-- `Codigra.woff`
-- `Codigra.ttf`
+- `combatest-boldultrawide.woff2`
+- `combatest-boldultrawide.otf`
 
-Download from [DaFont](https://www.dafont.com/codigra.font) (free for personal use).
-For commercial use, purchase a license from [Prioritype Co](https://prioritypeco.com/).
+Download from [Befonts](https://befonts.com/comba-font.html) (free for personal use).
+For commercial use, purchase a license from [Creative Market](https://creativemarket.com/ThatThatCreative/6046683-Comba-Display-Font-Logos).

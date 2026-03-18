@@ -1,0 +1,12 @@
+:host {
+  display: inline;
+}
+
+.jumping-text {
+  cursor: default;
+
+  .letter {
+    display: inline-block;
+    color: var(--primary);
+  }
+}

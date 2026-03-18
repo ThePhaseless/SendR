@@ -1,13 +1,14 @@
 import { Component, computed, CUSTOM_ELEMENTS_SCHEMA, inject, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { HttpEventType } from "@angular/common/http";
+import { JumpingTextComponent } from "../../components/jumping-text/jumping-text.component";
 import { AuthService } from "../../services/auth.service";
 import { FileService, FileUploadResponse } from "../../services/file.service";
 import { extractDownloadToken, formatFileSize } from "../../utils/file.utils";
 
 @Component({
   selector: "app-home",
-  imports: [],
+  imports: [JumpingTextComponent],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   templateUrl: "./home.component.html",
   styleUrl: "./home.component.scss",
