@@ -1,0 +1,38 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.6
+    hooks:
+      - id: ruff-check
+        name: backend ruff check
+        files: ^backend/.*\.py$
+        args:
+          - --fix
+      - id: ruff-format
+        name: backend ruff format
+        files: ^backend/.*\.py$
+
+  - repo: local
+    hooks:
+      - id: frontend-oxfmt
+        name: frontend oxfmt
+        language: node
+        entry: oxfmt
+        additional_dependencies:
+          - oxfmt@0.41.0
+        files: ^frontend/src/.*\.(ts|tsx|js|jsx|mjs|cjs|json|css|scss|html)$
+        exclude: ^frontend/src/app/api/
+
+      - id: frontend-oxlint
+        name: frontend oxlint
+        language: node
+        entry: oxlint
+        additional_dependencies:
+          - oxlint@1.56.0
+          - oxlint-tsgolint@0.17.0
+        files: ^frontend/src/.*\.(ts|tsx|js|jsx)$
+        exclude: ^frontend/src/app/api/
+        args:
+          - --config
+          - frontend/oxlintrc.json
+          - --ignore-pattern
+          - frontend/src/app/api

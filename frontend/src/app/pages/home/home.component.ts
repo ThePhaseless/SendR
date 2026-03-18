@@ -1,21 +1,15 @@
-import { HttpEventType } from '@angular/common/http';
-import {
-  Component,
-  computed,
-  CUSTOM_ELEMENTS_SCHEMA,
-  inject,
-  signal,
-} from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { JumpingTextComponent } from '../../components/jumping-text/jumping-text.component';
-import { AuthService } from '../../services/auth.service';
+import { HttpEventType } from "@angular/common/http";
+import { Component, computed, CUSTOM_ELEMENTS_SCHEMA, inject, signal } from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
+import { JumpingTextComponent } from "../../components/jumping-text/jumping-text.component";
+import { AuthService } from "../../services/auth.service";
 import {
   FileService,
   FileUploadResponse,
   MultiFileUploadResponse,
-} from '../../services/file.service';
-import { extractDownloadToken, formatFileSize } from '../../utils/file.utils';
-import { resolveAppUrl } from '../../utils/url.utils';
+} from "../../services/file.service";
+import { extractDownloadToken, formatFileSize } from "../../utils/file.utils";
+import { resolveAppUrl } from "../../utils/url.utils";
 
 interface UploadFileEntry {
   file: File;
@@ -24,11 +18,11 @@ interface UploadFileEntry {
 }
 
 @Component({
-  selector: 'app-home',
+  selector: "app-home",
   imports: [JumpingTextComponent],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
-  templateUrl: './home.component.html',
-  styleUrl: './home.component.scss',
+  templateUrl: "./home.component.html",
+  styleUrl: "./home.component.scss",
 })
 export class HomeComponent {
   private readonly fileService = inject(FileService);
@@ -45,7 +39,7 @@ export class HomeComponent {
   copied = signal(false);
   altchaVerified = signal(false);
   pendingFiles = signal<UploadFileEntry[]>([]);
-  private altchaPayload = '';
+  private altchaPayload = "";
 
   private uploadStartTime = 0;
   private lastProgressTime = 0;
@@ -110,17 +104,17 @@ export class HomeComponent {
 
   onAltchaStateChange(event: Event): void {
     const detail = (event as CustomEvent).detail;
-    if (detail && detail.state === 'verified' && detail.payload) {
+    if (detail && detail.state === "verified" && detail.payload) {
       this.altchaPayload = detail.payload;
       this.altchaVerified.set(true);
       const files = this.pendingFiles();
       if (files.length > 0) {
         this.uploadFiles(files.map((file) => file.file));
       }
-    } else if (detail && detail.state === 'error') {
-      this.error.set('CAPTCHA verification failed. Please try again.');
+    } else if (detail && detail.state === "error") {
+      this.error.set("CAPTCHA verification failed. Please try again.");
       this.altchaVerified.set(false);
-      this.altchaPayload = '';
+      this.altchaPayload = "";
     }
   }
 
@@ -160,7 +154,7 @@ export class HomeComponent {
 
   private uploadFiles(files: File[]): void {
     if (!this.altchaPayload) {
-      this.error.set('Please complete the CAPTCHA verification first.');
+      this.error.set("Please complete the CAPTCHA verification first.");
       return;
     }
 
@@ -182,7 +176,8 @@ export class HomeComponent {
       this.fileService.upload(files[0], this.altchaPayload).subscribe({
         next: (event) => {
           if (event.type === HttpEventType.UploadProgress && event.total !== undefined) {
-            const progress = event.total === 0 ? 100 : Math.round((100 * event.loaded) / event.total);
+            const progress =
+              event.total === 0 ? 100 : Math.round((100 * event.loaded) / event.total);
             this.uploadProgress.set(progress);
             this.updateSpeedAndEta(event.loaded, totalSize);
           } else if (event.type === HttpEventType.Response && event.body) {
@@ -193,7 +188,7 @@ export class HomeComponent {
           }
         },
         error: (err) => {
-          this.error.set(err.error?.detail ?? 'Upload failed. Please try again.');
+          this.error.set(err.error?.detail ?? "Upload failed. Please try again.");
           this.isUploading.set(false);
           this.uploadProgress.set(0);
           this.resetAltcha();
@@ -216,7 +211,7 @@ export class HomeComponent {
         }
       },
       error: (err) => {
-        this.error.set(err.error?.detail ?? 'Upload failed. Please try again.');
+        this.error.set(err.error?.detail ?? "Upload failed. Please try again.");
         this.isUploading.set(false);
         this.uploadProgress.set(0);
         this.resetAltcha();
@@ -241,9 +236,7 @@ export class HomeComponent {
   getShareableLink(): string {
     const singleResult = this.singleUploadResult();
     if (singleResult) {
-      return resolveAppUrl(
-        `download/${extractDownloadToken(singleResult.download_url)}`,
-      );
+      return resolveAppUrl(`download/${extractDownloadToken(singleResult.download_url)}`);
     }
 
     const multiResult = this.uploadResult();
@@ -251,7 +244,7 @@ export class HomeComponent {
       return resolveAppUrl(`download/group/${multiResult.upload_group}`);
     }
 
-    return '';
+    return "";
   }
 
   copyLink(): void {
@@ -261,7 +254,7 @@ export class HomeComponent {
         setTimeout(() => this.copied.set(false), 2000);
       },
       () => {
-        this.error.set('Failed to copy link to clipboard.');
+        this.error.set("Failed to copy link to clipboard.");
       },
     );
   }
@@ -271,7 +264,7 @@ export class HomeComponent {
   }
 
   formatSpeed(bytesPerSec: number): string {
-    return formatFileSize(bytesPerSec) + '/s';
+    return formatFileSize(bytesPerSec) + "/s";
   }
 
   formatTime(seconds: number): string {
@@ -311,6 +304,6 @@ export class HomeComponent {
 
   private resetAltcha(): void {
     this.altchaVerified.set(false);
-    this.altchaPayload = '';
+    this.altchaPayload = "";
   }
 }

@@ -4,9 +4,7 @@
       Share files with
       <app-jumping-text class="highlight" text="anyone" />
     </h1>
-    <p class="subtitle">
-      Upload your files and get a shareable link instantly. No account needed.
-    </p>
+    <p class="subtitle">Upload your files and get a shareable link instantly. No account needed.</p>
   </div>
 
   @if (quota(); as q) {
@@ -23,7 +21,9 @@
   @if (hasResult()) {
     <div class="card upload-success">
       <div class="success-icon">✓</div>
-      <h2>{{ getResultFiles().length === 1 ? 'File uploaded!' : 'Files uploaded!' }}</h2>
+      <h2>
+        {{ getResultFiles().length === 1 ? "File uploaded!" : "Files uploaded!" }}
+      </h2>
       <div class="result-file-list">
         @for (file of getResultFiles(); track file.id) {
           <div class="result-file-item">
@@ -34,12 +34,7 @@
       </div>
       <p class="total-size">Total: {{ formatSize(getTotalResultSize()) }}</p>
       <div class="share-link">
-        <input
-          type="text"
-          [value]="getShareableLink()"
-          readonly
-          class="link-input"
-        />
+        <input type="text" [value]="getShareableLink()" readonly class="link-input" />
         <button class="btn btn-primary" (click)="copyLink()">
           {{ copied() ? "Copied!" : "Copy Link" }}
         </button>
@@ -87,7 +82,11 @@
             Choose Files
             <input type="file" (change)="onFileSelected($event)" multiple hidden />
           </label>
-          <p class="drop-hint">Up to {{ maxFilesPerUpload() === 0 ? 'unlimited' : maxFilesPerUpload() }} files, {{ maxFileSizeMb() }} MB total</p>
+          <p class="drop-hint">
+            Up to
+            {{ maxFilesPerUpload() === 0 ? "unlimited" : maxFilesPerUpload() }}
+            files, {{ maxFileSizeMb() }} MB total
+          </p>
         </div>
       }
     </div>
@@ -101,7 +100,9 @@
               <span class="staged-file-name">📄 {{ entry.name }}</span>
               <span class="staged-file-size">{{ formatSize(entry.size) }}</span>
               @if (!isUploading()) {
-                <button class="btn-remove" (click)="removeFile(i)" aria-label="Remove file">✕</button>
+                <button class="btn-remove" (click)="removeFile(i)" aria-label="Remove file">
+                  ✕
+                </button>
               }
             </div>
           }

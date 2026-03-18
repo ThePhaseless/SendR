@@ -39,6 +39,23 @@ bun install
 bun start
 ```
 
+### Pre-commit Hooks
+
+Install the shared Git hooks once per clone:
+
+```bash
+uv tool install pre-commit
+pre-commit install
+```
+
+Run the same hooks manually across the full repository:
+
+```bash
+pre-commit run --all-files
+```
+
+The hook environments are pinned in [.pre-commit-config.yaml](/workspaces/SendR/.pre-commit-config.yaml), so contributors do not need matching global versions of Ruff, Oxlint, or Oxfmt.
+
 ### Docker
 
 ```bash
@@ -83,7 +100,7 @@ When the backend is running, visit:
 
 ## Project Structure
 
-```
+```text
 SendR/
 ├── backend/           # FastAPI backend
 │   ├── src/backend/   # Application source
