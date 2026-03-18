@@ -1,9 +1,11 @@
 :host {
-  display: inline;
+  display: inline-block;
 }
 
 .jumping-text {
   cursor: default;
+  display: inline-block;
+  white-space: nowrap;
 
   .letter {
     display: inline-block;
