@@ -31,6 +31,11 @@ uv run alembic upgrade head
 uv run backend
 ```
 
+Backend email verification behavior is environment-aware:
+
+- `SENDR_ENVIRONMENT=local` logs verification codes instead of sending email
+- any other value sends the code using the configured SMTP settings
+
 **Frontend:**
 
 ```bash

@@ -9,6 +9,7 @@ def _generate_hmac_key() -> str:
 
 
 class Settings(BaseSettings):
+    ENVIRONMENT: str = "local"
     DATABASE_URL: str = "sqlite+aiosqlite:///./sendr.db"
     SECRET_KEY: str = "change-me-in-production"
     UPLOAD_DIR: str = "./uploads"
@@ -49,6 +50,10 @@ class Settings(BaseSettings):
     GROUP_ZIP_THRESHOLD: int = 3
 
     model_config = {"env_prefix": "SENDR_"}
+
+    @property
+    def is_local_env(self) -> bool:
+        return self.ENVIRONMENT.lower() == "local"
 
 
 settings = Settings()
