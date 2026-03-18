@@ -35,6 +35,10 @@ dev = [
     "ruff>=0.15.6",
 ]
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
 [tool.ruff]
 line-length = 120
 
