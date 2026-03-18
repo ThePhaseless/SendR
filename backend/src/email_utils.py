@@ -33,8 +33,8 @@ def _send_verification_email_sync(email: str, code: str) -> None:
 
 
 async def send_verification_email(email: str, code: str) -> None:
-    """Send verification email, or log the code in local environments."""
-    if settings.is_local_env:
+    """Send verification email, or log the code in dev mode."""
+    if settings.DEV_MODE:
         logger.info("=" * 50)
         logger.info("VERIFICATION CODE for %s: %s", email, code)
         logger.info("=" * 50)

@@ -22,14 +22,11 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_FROM: str = "noreply@sendr.app"
     # File limits
-    ANON_MAX_FILES_PER_WEEK: int = 3
-    ANON_MAX_FILE_SIZE_MB: int = 100
-    FREE_MAX_FILES_PER_WEEK: int = 5
+    BASIC_MAX_FILE_SIZE_MB: int = 100
     FREE_MAX_FILE_SIZE_MB: int = 1024
-    PREMIUM_MAX_FILES_PER_WEEK: int = 50
     PREMIUM_MAX_FILE_SIZE_MB: int = 10240
     # Max files per single upload
-    ANON_MAX_FILES_PER_UPLOAD: int = 10
+    BASIC_MAX_FILES_PER_UPLOAD: int = 10
     FREE_MAX_FILES_PER_UPLOAD: int = 50
     PREMIUM_MAX_FILES_PER_UPLOAD: int = 0  # 0 means unlimited
     # File expiration (days)

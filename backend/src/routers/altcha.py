@@ -21,8 +21,11 @@ async def get_challenge() -> dict:
     return challenge.to_dict()
 
 
-def verify_altcha_payload(payload: str = Form(..., alias="altcha")) -> None:
+def verify_altcha_payload(payload: str = Form("", alias="altcha")) -> None:
     """FastAPI dependency that verifies an Altcha solution from form data."""
+    if settings.DEV_MODE:
+        return
+
     try:
         data = json.loads(payload)
     except (json.JSONDecodeError, TypeError) as exc:

@@ -37,14 +37,11 @@ class FileUploadResponse(SQLModel):
 
 class FileListResponse(SQLModel):
     files: list[FileUploadResponse]
-    quota_used: int
-    quota_limit: int
 
 
 class QuotaResponse(SQLModel):
-    files_used: int
-    files_limit: int
     max_file_size_mb: int
+    max_files_per_upload: int
 
 
 class MultiFileUploadResponse(SQLModel):
@@ -63,7 +60,6 @@ class UploadGroupInfoResponse(SQLModel):
 
 class LimitsResponse(SQLModel):
     max_file_size_mb: int
-    max_files_per_week: int
     max_files_per_upload: int
 
 

@@ -10,14 +10,14 @@ from typing import TYPE_CHECKING
 import aiofiles
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
-from sqlmodel import func, select
+from sqlmodel import select
 
 from config import settings
 from database import get_session
 from models import FileUpload, User, UserTier, _utcnow
 from routers.altcha import verify_altcha_payload
 from schemas import FileListResponse, FileUploadResponse, MultiFileUploadResponse, UploadGroupInfoResponse
-from security import get_current_user, get_optional_user
+from security import get_current_user
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,30 +32,15 @@ def _sanitize_filename(filename: str) -> str:
     return filename[:255] or "unnamed"
 
 
-def _get_limits(tier: UserTier) -> tuple[int, int, int]:
+def _get_limits(tier: UserTier) -> tuple[int, int]:
     if tier == UserTier.premium:
         return (
-            settings.PREMIUM_MAX_FILES_PER_WEEK,
             settings.PREMIUM_MAX_FILE_SIZE_MB,
             settings.PREMIUM_MAX_FILES_PER_UPLOAD,
         )
     if tier == UserTier.free:
-        return settings.FREE_MAX_FILES_PER_WEEK, settings.FREE_MAX_FILE_SIZE_MB, settings.FREE_MAX_FILES_PER_UPLOAD
-    return settings.ANON_MAX_FILES_PER_WEEK, settings.ANON_MAX_FILE_SIZE_MB, settings.ANON_MAX_FILES_PER_UPLOAD
-
-
-async def _count_recent_uploads(session: AsyncSession, user_id: int) -> int:
-    one_week_ago = _utcnow() - timedelta(days=7)
-    stmt = (
-        select(func.count())
-        .select_from(FileUpload)
-        .where(
-            FileUpload.user_id == user_id,
-            FileUpload.created_at >= one_week_ago,
-        )
-    )
-    result = await session.execute(stmt)
-    return result.scalar_one()
+        return settings.FREE_MAX_FILE_SIZE_MB, settings.FREE_MAX_FILES_PER_UPLOAD
+    return settings.BASIC_MAX_FILE_SIZE_MB, settings.BASIC_MAX_FILES_PER_UPLOAD
 
 
 def _build_download_url(download_token: str) -> str:
@@ -75,35 +60,15 @@ def _to_response(f: FileUpload) -> FileUploadResponse:
     )
 
 
-async def _get_or_create_anon_user(session: AsyncSession) -> User:
-    anon_email = f"anon-{secrets.token_hex(8)}@sendr.local"
-    user = User(email=anon_email, tier=UserTier.anonymous)
-    session.add(user)
-    await session.flush()
-    return user
-
-
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_file(
     file: UploadFile,
-    user: User | None = Depends(get_optional_user),
+    user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
     _altcha: None = Depends(verify_altcha_payload),
 ) -> FileUploadResponse:
-    # Create anon user if not authenticated
-    if user is None:
-        user = await _get_or_create_anon_user(session)
-
     # Get tier limits
-    max_files, max_size_mb, _ = _get_limits(user.tier)
-
-    # Check quota
-    files_used = await _count_recent_uploads(session, user.id)
-    if files_used >= max_files:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Upload quota exceeded. Max {max_files} files per week for {user.tier.value} tier.",
-        )
+    max_size_mb, _ = _get_limits(user.tier)
 
     # Read file content and check size
     content = await file.read()
@@ -147,33 +112,21 @@ async def upload_file(
 @router.post("/upload-multiple", status_code=status.HTTP_201_CREATED)
 async def upload_multiple_files(
     files: list[UploadFile],
-    user: User | None = Depends(get_optional_user),
+    user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
     _altcha: None = Depends(verify_altcha_payload),
 ) -> MultiFileUploadResponse:
     if not files:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No files provided")
 
-    # Create anon user if not authenticated
-    if user is None:
-        user = await _get_or_create_anon_user(session)
-
     # Get tier limits
-    max_files, max_size_mb, max_per_upload = _get_limits(user.tier)
+    max_size_mb, max_per_upload = _get_limits(user.tier)
 
     # Validate number of files against per-upload limit
     if max_per_upload > 0 and len(files) > max_per_upload:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Too many files. Max {max_per_upload} files per upload for {user.tier.value} tier.",
-        )
-
-    # Check weekly quota
-    files_used = await _count_recent_uploads(session, user.id)
-    if files_used + len(files) > max_files:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Upload quota exceeded. Max {max_files} files per week for {user.tier.value} tier.",
         )
 
     # Read all files and validate cumulative size
@@ -330,13 +283,8 @@ async def list_files(
     result = await session.execute(stmt)
     files = result.scalars().all()
 
-    files_used = await _count_recent_uploads(session, user.id)
-    max_files, _, _ = _get_limits(user.tier)
-
     return FileListResponse(
         files=[_to_response(f) for f in files],
-        quota_used=files_used,
-        quota_limit=max_files,
     )
 
 
@@ -414,15 +362,6 @@ async def refresh_download_link(
 
     if not file_upload:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
-
-    # Check quota (refresh counts toward quota)
-    max_files, _, _ = _get_limits(user.tier)
-    files_used = await _count_recent_uploads(session, user.id)
-    if files_used >= max_files:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Upload quota exceeded. Max {max_files} files per week for {user.tier.value} tier.",
-        )
 
     # Generate new download token
     file_upload.download_token = secrets.token_urlsafe(32)
