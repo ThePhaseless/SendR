@@ -1,6 +1,6 @@
-import { inject, Injectable } from "@angular/core";
-import { HttpClient, HttpEvent } from "@angular/common/http";
-import { Observable } from "rxjs";
+import { HttpClient, HttpEvent } from '@angular/common/http';
+import { inject, Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
 
 export interface FileUploadResponse {
   id: number;
@@ -19,31 +19,39 @@ interface FileListResponse {
 }
 
 @Injectable({
-  providedIn: "root",
+  providedIn: 'root',
 })
 export class FileService {
   private readonly http = inject(HttpClient);
 
-  upload(file: File, altchaPayload: string): Observable<HttpEvent<FileUploadResponse>> {
+  upload(
+    file: File,
+    altchaPayload: string,
+  ): Observable<HttpEvent<FileUploadResponse>> {
     const formData = new FormData();
-    formData.append("file", file);
-    formData.append("altcha", altchaPayload);
-    return this.http.post<FileUploadResponse>("/api/files/upload", formData, {
+    formData.append('file', file);
+    formData.append('altcha', altchaPayload);
+    return this.http.post<FileUploadResponse>('/api/files/upload', formData, {
       reportProgress: true,
-      observe: "events",
+      observe: 'events',
     });
   }
 
   getFileInfo(downloadToken: string): Observable<FileUploadResponse> {
-    return this.http.get<FileUploadResponse>(`/api/files/${downloadToken}/info`);
+    return this.http.get<FileUploadResponse>(
+      `/api/files/${downloadToken}/info`,
+    );
   }
 
   listFiles(): Observable<FileListResponse> {
-    return this.http.get<FileListResponse>("/api/files/");
+    return this.http.get<FileListResponse>('/api/files/');
   }
 
   refreshFile(fileId: number): Observable<FileUploadResponse> {
-    return this.http.post<FileUploadResponse>(`/api/files/${fileId}/refresh`, {});
+    return this.http.post<FileUploadResponse>(
+      `/api/files/${fileId}/refresh`,
+      {},
+    );
   }
 
   deleteFile(fileId: number): Observable<{ message: string }> {

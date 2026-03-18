@@ -4,7 +4,9 @@
       Share files with
       <app-jumping-text class="highlight" text="anyone" />
     </h1>
-    <p class="subtitle">Upload your file and get a shareable link instantly. No account needed.</p>
+    <p class="subtitle">
+      Upload your file and get a shareable link instantly. No account needed.
+    </p>
   </div>
 
   @if (quota(); as q) {
@@ -25,7 +27,12 @@
       <p class="file-name">{{ result.original_filename }}</p>
       <p class="file-size">{{ formatSize(result.file_size_bytes) }}</p>
       <div class="share-link">
-        <input type="text" [value]="getShareableLink()" readonly class="link-input" />
+        <input
+          type="text"
+          [value]="getShareableLink()"
+          readonly
+          class="link-input"
+        />
         <button class="btn btn-primary" (click)="copyLink()">
           {{ copied() ? "Copied!" : "Copy Link" }}
         </button>

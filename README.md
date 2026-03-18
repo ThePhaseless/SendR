@@ -23,6 +23,7 @@ A WeTransfer-like file sharing service built with Angular and FastAPI.
 ### Development
 
 **Backend:**
+
 ```bash
 cd backend
 uv sync
@@ -31,6 +32,7 @@ uv run backend
 ```
 
 **Frontend:**
+
 ```bash
 cd frontend
 bun install
@@ -40,24 +42,44 @@ bun start
 ### Docker
 
 ```bash
-docker build -t sendr .
-docker run -p 8000:8000 sendr
+docker compose up --build
 ```
+
+Open the frontend at `http://localhost:8080`.
+
+Open the API at `http://localhost:8000`.
+
+This Compose setup builds two images:
+
+- `frontend`: Angular app served by nginx
+- `api`: FastAPI backend
+
+In Docker, the frontend nginx container proxies `/api/*` to the backend container so the browser can keep using relative API paths.
+
+For production, put your own reverse proxy or load balancer in front of those two services and route subdomains there:
+
+```bash
+app.example.com -> frontend
+api.example.com -> api
+```
+
+If the frontend and API are on different origins, update `SENDR_ALLOWED_ORIGINS` for the frontend origin and configure the frontend proxy/base URL at your edge.
 
 ## API Documentation
 
 When the backend is running, visit:
+
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
 
 ## Tier Limits
 
-| Feature | Anonymous | Free | Premium |
-|---------|-----------|------|---------|
-| Files per week | 3 | 5 | 50 |
-| Max file size | 100 MB | 1 GB | 10 GB |
-| Edit files | No | No | Yes |
-| Retrieve expired | No | No | Yes |
+| Feature          | Anonymous | Free | Premium |
+| ---------------- | --------- | ---- | ------- |
+| Files per week   | 3         | 5    | 50      |
+| Max file size    | 100 MB    | 1 GB | 10 GB   |
+| Edit files       | No        | No   | Yes     |
+| Retrieve expired | No        | No   | Yes     |
 
 ## Project Structure
 
@@ -78,6 +100,7 @@ SendR/
 │   │   ├── services/  # Angular services
 │   │   └── ...
 │   └── package.json
-├── Dockerfile         # Single image build
+├── backend/Dockerfile # Backend image build
+├── frontend/Dockerfile# Frontend image build
 └── openapi.json       # Generated API spec
 ```
