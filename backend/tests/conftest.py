@@ -1,5 +1,4 @@
 import sys
-import tempfile
 from pathlib import Path
 
 # Add the src directory to the path so tests can import backend modules
@@ -35,9 +34,9 @@ def _patch_db():
 async def _init_tables(tmp_path):
     """Create all tables before each test and drop them after."""
     # Import models so metadata is populated, rebuild schemas for Pydantic
-    import models  # noqa: F401
     from datetime import datetime
 
+    import models  # noqa: F401
     import schemas  # noqa: F401
 
     # datetime is imported under TYPE_CHECKING in schemas.py, so inject it
@@ -61,4 +60,3 @@ async def _init_tables(tmp_path):
         await conn.run_sync(SQLModel.metadata.drop_all)
 
     settings.UPLOAD_DIR = original_upload_dir
-

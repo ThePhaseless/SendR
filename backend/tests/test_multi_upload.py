@@ -1,13 +1,15 @@
 import json
+
 import pytest
 from httpx import ASGITransport, AsyncClient
+
 from app import app
 from routers.altcha import verify_altcha_payload
 
 
 def _noop_altcha():
     """No-op override for the altcha verification dependency."""
-    return None
+    return
 
 
 @pytest.fixture(autouse=True)
