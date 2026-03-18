@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { ActivatedRoute } from "@angular/router";
-import { FileService, UploadGroupInfoResponse } from "../../services/file.service";
+import { FileService } from "../../services/file.service";
 import { DatePipe } from "@angular/common";
 import { formatFileSize, isExpired } from "../../utils/file.utils";
 import { catchError, of, map } from "rxjs";

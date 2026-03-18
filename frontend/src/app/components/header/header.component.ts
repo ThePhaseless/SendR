@@ -23,7 +23,7 @@ export class HeaderComponent {
 
   logout(): void {
     this.auth.logout();
-    this.router.navigate(["/"]);
+    void this.router.navigate(["/"]);
   }
 
   devLogin(role: 'admin' | 'user'): void {

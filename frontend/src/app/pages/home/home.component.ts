@@ -241,7 +241,7 @@ export class HomeComponent {
   }
 
   copyLink(): void {
-    navigator.clipboard.writeText(this.getShareableLink());
+    void navigator.clipboard.writeText(this.getShareableLink());
     this.copied.set(true);
     setTimeout(() => this.copied.set(false), 2000);
   }
