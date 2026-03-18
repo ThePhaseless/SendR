@@ -16,8 +16,6 @@ export class DashboardComponent implements OnInit {
   private readonly fileService = inject(FileService);
 
   files = signal<FileUploadResponse[]>([]);
-  quotaUsed = signal(0);
-  quotaLimit = signal(0);
   loading = signal(true);
   error = signal<string | null>(null);
   copiedId = signal<number | null>(null);
@@ -35,8 +33,6 @@ export class DashboardComponent implements OnInit {
       },
       next: (res) => {
         this.files.set(res.files);
-        this.quotaUsed.set(res.quota_used);
-        this.quotaLimit.set(res.quota_limit);
         this.loading.set(false);
       },
     });
@@ -70,7 +66,6 @@ export class DashboardComponent implements OnInit {
       },
       next: () => {
         this.files.update((files) => files.filter((f) => f.id !== file.id));
-        this.quotaUsed.update((q) => q - 1);
       },
     });
   }
