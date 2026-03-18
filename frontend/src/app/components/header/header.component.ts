@@ -17,8 +17,8 @@ export class HeaderComponent {
   readonly isDevMode = isDevMode();
 
   private readonly me = this.auth.isAuthenticated()
-    ? toSignal(this.auth.getMe())
-    : signal<MeResponse | undefined>();
+    ? toSignal(this.auth.getMe(), { initialValue: null })
+    : signal<MeResponse | null>(null);
 
   isAdmin = computed(() => this.me()?.is_admin ?? false);
 
