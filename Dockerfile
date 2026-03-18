@@ -47,6 +47,8 @@ ENV SENDR_DATABASE_URL=sqlite+aiosqlite:///app/data/sendr.db
 EXPOSE 8000
 
 # Run migrations then start server
+ENV PYTHONPATH=/app/backend/src
+
 CMD cd /app/backend && \
     uv run alembic upgrade head && \
-    uv run uvicorn backend.app:app --host 0.0.0.0 --port 8000
+    uv run uvicorn app:app --host 0.0.0.0 --port 8000

@@ -16,7 +16,7 @@ STATIC_DIR = Path(__file__).resolve().parent.parent.parent.parent / "static"
 def cli() -> None:
     import uvicorn
 
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True, app_dir=str(Path(__file__).resolve().parent))
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
 
 
 @asynccontextmanager
