@@ -21,11 +21,12 @@ def _override_altcha():
 
 
 @pytest.mark.asyncio
-async def test_upload_multiple_no_files_returns_400():
+async def test_upload_multiple_no_files_returns_400(auth_headers):
     """POST /api/files/upload-multiple with no files should return 400."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/files/upload-multiple",
+            headers=auth_headers,
             data={"altcha": json.dumps({"mock": True})},
         )
     # 400 or 422 for missing files
@@ -33,7 +34,7 @@ async def test_upload_multiple_no_files_returns_400():
 
 
 @pytest.mark.asyncio
-async def test_upload_multiple_success():
+async def test_upload_multiple_success(auth_headers):
     """POST /api/files/upload-multiple should upload multiple files."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         files = [
@@ -43,6 +44,7 @@ async def test_upload_multiple_success():
         response = await client.post(
             "/api/files/upload-multiple",
             files=files,
+            headers=auth_headers,
             data={"altcha": json.dumps({"mock": True})},
         )
     assert response.status_code == 201
@@ -58,7 +60,7 @@ async def test_upload_multiple_success():
 
 
 @pytest.mark.asyncio
-async def test_group_info():
+async def test_group_info(auth_headers):
     """GET /api/files/group/{group} should return group info."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         # First upload files
@@ -69,6 +71,7 @@ async def test_group_info():
         upload_resp = await client.post(
             "/api/files/upload-multiple",
             files=files,
+            headers=auth_headers,
             data={"altcha": json.dumps({"mock": True})},
         )
         assert upload_resp.status_code == 201
@@ -84,7 +87,7 @@ async def test_group_info():
 
 
 @pytest.mark.asyncio
-async def test_group_download():
+async def test_group_download(auth_headers):
     """GET /api/files/group/{group}/download should return file or zip."""
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         files = [
@@ -94,6 +97,7 @@ async def test_group_download():
         upload_resp = await client.post(
             "/api/files/upload-multiple",
             files=files,
+            headers=auth_headers,
             data={"altcha": json.dumps({"mock": True})},
         )
         assert upload_resp.status_code == 201

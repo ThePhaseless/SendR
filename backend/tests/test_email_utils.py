@@ -10,22 +10,22 @@ from email_utils import send_verification_email
 
 @pytest.mark.asyncio
 async def test_send_verification_email_logs_code_in_local_env(caplog: pytest.LogCaptureFixture):
-    original_environment = settings.ENVIRONMENT
-    settings.ENVIRONMENT = "local"
+    original_dev_mode = settings.DEV_MODE
+    settings.DEV_MODE = True
 
     try:
         with caplog.at_level(logging.INFO):
             await send_verification_email("user@example.com", "123456")
     finally:
-        settings.ENVIRONMENT = original_environment
+        settings.DEV_MODE = original_dev_mode
 
     assert "VERIFICATION CODE for user@example.com: 123456" in caplog.text
 
 
 @pytest.mark.asyncio
 async def test_send_verification_email_uses_smtp_outside_local_env():
-    original_environment = settings.ENVIRONMENT
-    settings.ENVIRONMENT = "production"
+    original_dev_mode = settings.DEV_MODE
+    settings.DEV_MODE = False
 
     smtp_instance = MagicMock()
 
@@ -35,7 +35,7 @@ async def test_send_verification_email_uses_smtp_outside_local_env():
 
             await send_verification_email("user@example.com", "123456")
     finally:
-        settings.ENVIRONMENT = original_environment
+        settings.DEV_MODE = original_dev_mode
 
     smtp_cls.assert_called_once_with(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30)
     smtp_instance.send_message.assert_called_once()

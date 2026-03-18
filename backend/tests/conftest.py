@@ -11,6 +11,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 import database  # noqa: E402
 from config import settings  # noqa: E402
+from models import AuthToken, User, UserTier  # noqa: E402  # pyright: ignore[reportMissingImports]
+from security import create_access_token, hash_token  # noqa: E402
 
 # Use a temp file for the test database (aiosqlite needs a file path or :memory:)
 _test_engine = create_async_engine("sqlite+aiosqlite://", echo=False)
@@ -45,7 +47,26 @@ async def _init_tables(tmp_path):
 
     yield
 
+    settings.UPLOAD_DIR = original_upload_dir
     async with _test_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.drop_all)
 
-    settings.UPLOAD_DIR = original_upload_dir
+
+@pytest.fixture
+async def auth_headers():
+    """Create a test user and return auth headers with a valid token."""
+    async with _test_session_factory() as session:
+        user = User(email="test@sendr.local", tier=UserTier.basic)
+        session.add(user)
+        await session.flush()
+
+        raw_token, expires_at = create_access_token(user.id)
+        auth_token = AuthToken(
+            user_id=user.id,
+            token=hash_token(raw_token),
+            expires_at=expires_at,
+        )
+        session.add(auth_token)
+        await session.commit()
+
+    return {"Authorization": f"Bearer {raw_token}"}
