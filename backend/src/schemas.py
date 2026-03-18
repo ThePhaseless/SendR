@@ -46,6 +46,11 @@ class QuotaResponse(SQLModel):
     max_file_size_mb: int
 
 
+class LimitsResponse(SQLModel):
+    max_file_size_mb: int
+    max_files_per_week: int
+
+
 class AdminUserUpdateRequest(SQLModel):
     tier: str | None = None
     is_admin: bool | None = None

@@ -1,4 +1,5 @@
 import { Component, CUSTOM_ELEMENTS_SCHEMA, inject, signal } from '@angular/core';
+import { HttpEventType } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
 import { FileService, FileUploadResponse } from '../../services/file.service';
 import {
@@ -19,6 +20,7 @@ export class HomeComponent {
 
   isDragging = signal(false);
   isUploading = signal(false);
+  uploadProgress = signal(0);
   uploadResult = signal<FileUploadResponse | null>(null);
   error = signal<string | null>(null);
   copied = signal(false);
@@ -30,11 +32,22 @@ export class HomeComponent {
     files_limit: number;
     max_file_size_mb: number;
   } | null>(null);
+  maxFileSizeMb = signal(100);
 
   constructor() {
     if (this.authService.isAuthenticated()) {
       this.authService.getQuota().subscribe({
-        next: (q) => this.quota.set(q),
+        next: (q) => {
+          this.quota.set(q);
+          this.maxFileSizeMb.set(q.max_file_size_mb);
+        },
+      });
+    } else {
+      this.authService.getLimits().subscribe({
+        next: (l) => this.maxFileSizeMb.set(l.max_file_size_mb),
+        error: () => {
+          // Keep the default 100 MB limit if the request fails
+        },
       });
     }
   }
@@ -84,6 +97,12 @@ export class HomeComponent {
   }
 
   private stageFile(file: File): void {
+    const maxBytes = this.maxFileSizeMb() * 1024 * 1024;
+    if (file.size > maxBytes) {
+      this.error.set(`File is too large. Maximum allowed size is ${this.maxFileSizeMb()} MB.`);
+      return;
+    }
+
     this.pendingFile = file;
     this.error.set(null);
     this.uploadResult.set(null);
@@ -100,18 +119,25 @@ export class HomeComponent {
     }
 
     this.isUploading.set(true);
+    this.uploadProgress.set(0);
     this.error.set(null);
     this.uploadResult.set(null);
 
     this.fileService.upload(file, this.altchaPayload).subscribe({
-      next: (result) => {
-        this.uploadResult.set(result);
-        this.isUploading.set(false);
-        this.resetAltcha();
+      next: (event) => {
+        if (event.type === HttpEventType.UploadProgress && event.total) {
+          this.uploadProgress.set(Math.round((100 * event.loaded) / event.total));
+        } else if (event.type === HttpEventType.Response && event.body) {
+          this.uploadResult.set(event.body);
+          this.isUploading.set(false);
+          this.uploadProgress.set(0);
+          this.resetAltcha();
+        }
       },
       error: (err) => {
         this.error.set(err.error?.detail ?? 'Upload failed. Please try again.');
         this.isUploading.set(false);
+        this.uploadProgress.set(0);
         this.resetAltcha();
       },
     });

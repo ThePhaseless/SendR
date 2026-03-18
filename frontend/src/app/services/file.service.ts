@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpEvent } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export interface FileUploadResponse {
@@ -24,12 +24,13 @@ interface FileListResponse {
 export class FileService {
   private readonly http = inject(HttpClient);
 
-  upload(file: File, altchaPayload: string): Observable<FileUploadResponse> {
+  upload(file: File, altchaPayload: string): Observable<HttpEvent<FileUploadResponse>> {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('altcha', altchaPayload);
     return this.http.post<FileUploadResponse>('/api/files/upload', formData, {
-      reportProgress: false,
+      reportProgress: true,
+      observe: 'events',
     });
   }
 

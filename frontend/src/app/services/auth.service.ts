@@ -25,6 +25,11 @@ interface QuotaResponse {
   max_file_size_mb: number;
 }
 
+interface LimitsResponse {
+  max_file_size_mb: number;
+  max_files_per_week: number;
+}
+
 const TOKEN_KEY = 'sendr_token';
 const EXPIRES_KEY = 'sendr_token_expires';
 
@@ -34,6 +39,10 @@ const EXPIRES_KEY = 'sendr_token_expires';
 export class AuthService {
   private readonly http = inject(HttpClient);
   authenticated = signal(this.isAuthenticated());
+
+  getLimits(): Observable<LimitsResponse> {
+    return this.http.get<LimitsResponse>('/api/auth/limits');
+  }
 
   requestCode(email: string): Observable<RequestCodeResponse> {
     return this.http.post<RequestCodeResponse>('/api/auth/request-code', {

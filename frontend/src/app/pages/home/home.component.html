@@ -39,8 +39,10 @@
     >
       @if (isUploading()) {
         <div class="upload-progress">
-          <div class="spinner"></div>
-          <p>Uploading...</p>
+          <div class="progress-bar-container">
+            <div class="progress-bar" [style.width.%]="uploadProgress()"></div>
+          </div>
+          <p>Uploading… {{ uploadProgress() }}%</p>
         </div>
       } @else {
         <div class="drop-content">
@@ -65,6 +67,7 @@
     <div class="altcha-container">
       <altcha-widget
         challengeurl="/api/altcha/challenge"
+        auto="onload"
         (statechange)="onAltchaStateChange($event)"
       ></altcha-widget>
     </div>
