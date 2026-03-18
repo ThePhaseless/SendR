@@ -10,7 +10,7 @@ export function formatFileSize(bytes: number): string {
 
 export function extractDownloadToken(downloadUrl: string): string {
   const parts = downloadUrl.split("/");
-  return parts.at(-1) ?? parts.at(-2);
+  return parts.at(-1) ?? parts.at(-2) ?? "";
 }
 
 export function isExpired(expiresAt: string): boolean {
