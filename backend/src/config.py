@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     ALTCHA_EXPIRE_MINUTES: int = 5
     # Dev mode
     DEV_MODE: bool = False
+    # Group download zip threshold (file count above which will_zip is true)
+    GROUP_ZIP_THRESHOLD: int = 3
 
     model_config = {"env_prefix": "SENDR_"}
 

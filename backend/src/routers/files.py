@@ -247,7 +247,7 @@ async def get_group_info(
         upload_group=upload_group,
         total_size_bytes=total_size,
         file_count=len(files),
-        will_zip=len(files) > 3,
+        will_zip=len(files) > settings.GROUP_ZIP_THRESHOLD,
     )
 
 
@@ -290,7 +290,10 @@ async def download_group(
         for f in files:
             file_path = Path(settings.UPLOAD_DIR) / f.stored_filename
             if not file_path.exists():
-                continue
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"File '{f.original_filename}' not found on disk",
+                )
             zf.write(file_path, f.original_filename)
             f.download_count += 1
             session.add(f)
@@ -298,10 +301,11 @@ async def download_group(
     await session.commit()
     zip_buffer.seek(0)
 
+    zip_name = f"sendr-{upload_group[:8]}.zip"
     return StreamingResponse(
         zip_buffer,
         media_type="application/zip",
-        headers={"Content-Disposition": "attachment; filename=sendr-files.zip"},
+        headers={"Content-Disposition": f"attachment; filename={zip_name}"},
     )
 
 
