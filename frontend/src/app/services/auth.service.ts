@@ -1,7 +1,7 @@
-import { inject, Injectable, signal } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
-import { tap } from "rxjs/operators";
+import { inject, Injectable, signal } from "@angular/core";
 import { Observable } from "rxjs";
+import { tap } from "rxjs/operators";
 
 interface RequestCodeResponse {
   message: string;
@@ -81,7 +81,7 @@ export class AuthService {
     return localStorage.getItem(TOKEN_KEY);
   }
 
-  devLogin(role: 'admin' | 'user'): Observable<VerifyCodeResponse> {
+  devLogin(role: "admin" | "user"): Observable<VerifyCodeResponse> {
     return this.http.post<VerifyCodeResponse>(`/api/dev/login/${role}`, {}).pipe(
       tap((res) => {
         localStorage.setItem(TOKEN_KEY, res.token);

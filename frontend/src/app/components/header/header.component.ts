@@ -26,7 +26,7 @@ export class HeaderComponent {
     void this.router.navigate(["/"]);
   }
 
-  devLogin(role: 'admin' | 'user'): void {
+  devLogin(role: "admin" | "user"): void {
     this.auth.devLogin(role).subscribe({
       next: () => {
         window.location.reload();

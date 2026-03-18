@@ -31,8 +31,16 @@ export class JumpingTextComponent implements OnInit {
         el.animate(
           [
             { transform: `translateY(${currentY}px)`, easing: "cubic-bezier(0.33, 1, 0.68, 1)" },
-            { transform: "translateY(-8px)", offset: 0.3, easing: "cubic-bezier(0.34, 1.56, 0.64, 1)" },
-            { transform: "translateY(2px)", offset: 0.65, easing: "cubic-bezier(0.33, 1, 0.68, 1)" },
+            {
+              transform: "translateY(-8px)",
+              offset: 0.3,
+              easing: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+            },
+            {
+              transform: "translateY(2px)",
+              offset: 0.65,
+              easing: "cubic-bezier(0.33, 1, 0.68, 1)",
+            },
             { transform: "translateY(-2px)", offset: 0.82, easing: "ease-in-out" },
             { transform: "translateY(0)" },
           ],

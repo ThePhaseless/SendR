@@ -31,7 +31,7 @@
     @if (groupInfo(); as group) {
       <div class="card file-card">
         <div class="file-icon">📦</div>
-        <h2>{{ group.file_count }} {{ group.file_count === 1 ? 'File' : 'Files' }}</h2>
+        <h2>{{ group.file_count }} {{ group.file_count === 1 ? "File" : "Files" }}</h2>
         <div class="file-meta">
           <span>Total size: {{ formatSize(group.total_size_bytes) }}</span>
         </div>
@@ -45,12 +45,18 @@
             <div class="group-file-item">
               <span class="group-file-name">📄 {{ file.original_filename }}</span>
               <span class="group-file-size">{{ formatSize(file.file_size_bytes) }}</span>
-              <button class="btn btn-secondary btn-sm" [attr.aria-label]="'Download ' + file.original_filename" (click)="downloadSingleFile(file.download_url)">Download</button>
+              <button
+                class="btn btn-secondary btn-sm"
+                [attr.aria-label]="'Download ' + file.original_filename"
+                (click)="downloadSingleFile(file.download_url)"
+              >
+                Download
+              </button>
             </div>
           }
         </div>
         <button class="btn btn-primary btn-lg download-all-btn" (click)="downloadGroup()">
-          {{ group.will_zip ? 'Download All (ZIP)' : 'Download All' }}
+          {{ group.will_zip ? "Download All (ZIP)" : "Download All" }}
         </button>
       </div>
     }
