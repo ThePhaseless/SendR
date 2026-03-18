@@ -12,7 +12,5 @@ import { FileUploadResponse } from './file-upload-response';
 
 export interface FileListResponse { 
     files: Array<FileUploadResponse>;
-    quota_used: number;
-    quota_limit: number;
 }
 

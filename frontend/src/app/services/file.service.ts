@@ -29,8 +29,6 @@ export interface UploadGroupInfoResponse {
 
 interface FileListResponse {
   files: FileUploadResponse[];
-  quota_used: number;
-  quota_limit: number;
 }
 
 @Injectable({

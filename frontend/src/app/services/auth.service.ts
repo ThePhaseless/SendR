@@ -20,14 +20,12 @@ export interface MeResponse {
 }
 
 export interface QuotaResponse {
-  files_used: number;
-  files_limit: number;
   max_file_size_mb: number;
+  max_files_per_upload: number;
 }
 
 export interface LimitsResponse {
   max_file_size_mb: number;
-  max_files_per_week: number;
   max_files_per_upload: number;
 }
 
