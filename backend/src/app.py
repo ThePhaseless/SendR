@@ -6,9 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from config import settings
-from database import init_db
-from routers import admin, altcha, auth, dev, files
+from src.config import settings
+from src.database import init_db
+from src.routers import admin, altcha, auth, dev, files
 
 STATIC_DIR = Path(__file__).resolve().parent.parent.parent.parent / "static"
 
