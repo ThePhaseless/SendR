@@ -1,28 +1,21 @@
 import { Injectable, inject, signal } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import type { Observable } from "rxjs";
-import { tap } from "rxjs/operators";
+import { map, tap } from "rxjs/operators";
+import { AuthService as GeneratedAuthService } from "../api/api/auth.service";
+import type {
+  EmailVerificationRequest,
+  QuotaResponse,
+  TokenResponse,
+  UserResponse,
+} from "../api/model/models";
 
 export interface RequestCodeResponse {
   message: string;
 }
 
-export interface VerifyCodeResponse {
-  token: string;
-  expires_at: string;
-}
-
-export interface MeResponse {
-  id: number;
-  email: string;
-  tier: string;
-  is_admin: boolean;
-}
-
-export interface QuotaResponse {
-  max_file_size_mb: number;
-  max_files_per_upload: number;
-}
+export type VerifyCodeResponse = TokenResponse;
+export type MeResponse = UserResponse;
 
 export interface LimitsResponse {
   max_file_size_mb: number;
@@ -37,6 +30,7 @@ const EXPIRES_KEY = "sendr_token_expires";
 })
 export class AuthService {
   private readonly http = inject(HttpClient);
+  private readonly api = inject(GeneratedAuthService);
   authenticated = signal(this.isAuthenticated());
 
   getLimits(): Observable<LimitsResponse> {
@@ -44,13 +38,14 @@ export class AuthService {
   }
 
   requestCode(email: string): Observable<RequestCodeResponse> {
-    return this.http.post<RequestCodeResponse>("/api/auth/request-code", {
-      email,
-    });
+    const payload: EmailVerificationRequest = { email };
+    return this.api.requestCodeApiAuthRequestCodePost(payload).pipe(
+      map((response) => ({ message: response["message"] ?? "Verification code sent" })),
+    );
   }
 
   verifyCode(email: string, code: string): Observable<VerifyCodeResponse> {
-    return this.http.post<VerifyCodeResponse>("/api/auth/verify-code", { code, email }).pipe(
+    return this.api.verifyCodeApiAuthVerifyCodePost({ code, email }).pipe(
       tap((res) => {
         localStorage.setItem(TOKEN_KEY, res.token);
         localStorage.setItem(EXPIRES_KEY, res.expires_at);
@@ -60,11 +55,11 @@ export class AuthService {
   }
 
   getMe(): Observable<MeResponse> {
-    return this.http.get<MeResponse>("/api/auth/me");
+    return this.api.getMeApiAuthMeGet();
   }
 
   getQuota(): Observable<QuotaResponse> {
-    return this.http.get<QuotaResponse>("/api/auth/quota");
+    return this.api.getQuotaApiAuthQuotaGet();
   }
 
   isAuthenticated(): boolean {
@@ -86,11 +81,15 @@ export class AuthService {
   devLogin(role: "admin" | "user"): Observable<VerifyCodeResponse> {
     return this.http.post<VerifyCodeResponse>(`/api/dev/login/${role}`, {}).pipe(
       tap((res) => {
-        localStorage.setItem(TOKEN_KEY, res.token);
-        localStorage.setItem(EXPIRES_KEY, res.expires_at);
-        this.authenticated.set(true);
+        this.storeToken(res);
       }),
     );
+  }
+
+  storeToken(res: VerifyCodeResponse): void {
+    localStorage.setItem(TOKEN_KEY, res.token);
+    localStorage.setItem(EXPIRES_KEY, res.expires_at);
+    this.authenticated.set(true);
   }
 
   logout(): void {

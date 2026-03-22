@@ -1,5 +1,5 @@
-import { Injectable, inject } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
+import { Injectable, inject } from "@angular/core";
 import type { Observable } from "rxjs";
 
 export interface AdminUser {

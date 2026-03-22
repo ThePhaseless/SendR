@@ -72,6 +72,16 @@ Run the same hooks manually across the full repository:
 pre-commit run --all-files
 ```
 
+When a commit includes backend API source changes, the pre-commit hook now:
+
+- regenerates [openapi.json](/workspaces/SendR/openapi.json) from the FastAPI app
+- regenerates the Angular client in [frontend/src/app/api](/workspaces/SendR/frontend/src/app/api)
+- stages those generated changes into the same commit
+
+That hook requires `uv` plus either `java` or `docker` on the machine running the commit.
+
+CI also validates that [openapi.json](/workspaces/SendR/openapi.json) and [frontend/src/app/api](/workspaces/SendR/frontend/src/app/api) are not stale by regenerating them in GitHub Actions and failing if that produces a diff.
+
 The hook environments are pinned in [.pre-commit-config.yaml](/workspaces/SendR/.pre-commit-config.yaml), so contributors do not need matching global versions of Ruff, Oxlint, or Oxfmt. `core.hooksPath` itself is still a local Git setting, so each clone needs the one-time `git config` command above.
 
 ### Docker

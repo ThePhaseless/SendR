@@ -13,6 +13,13 @@ repos:
 
   - repo: local
     hooks:
+      - id: generate-openapi-client
+        name: generate OpenAPI client
+        language: system
+        entry: bash ./scripts/generate-openapi-client.sh
+        pass_filenames: false
+        files: ^(backend/src/.*\.py|openapi\.json)$
+
       - id: frontend-oxfmt
         name: frontend oxfmt
         language: node
