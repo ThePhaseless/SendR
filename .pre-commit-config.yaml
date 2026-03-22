@@ -20,6 +20,13 @@ repos:
         pass_filenames: false
         files: ^(backend/src/.*\.py|openapi\.json)$
 
+      - id: frontend-build
+        name: frontend build
+        language: system
+        entry: bash -lc 'cd frontend && bun run build'
+        pass_filenames: false
+        files: ^(frontend/.*|backend/src/.*\.py|openapi\.json)$
+
       - id: frontend-oxfmt
         name: frontend oxfmt
         language: node

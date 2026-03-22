@@ -78,7 +78,13 @@ When a commit includes backend API source changes, the pre-commit hook now:
 - regenerates the Angular client in [frontend/src/app/api](/workspaces/SendR/frontend/src/app/api)
 - stages those generated changes into the same commit
 
-That hook requires `uv` plus either `java` or `docker` on the machine running the commit.
+On frontend-related commits, the pre-commit hook also runs:
+
+- frontend format
+- frontend lint
+- frontend build
+
+That hook requires `uv`, `bun`, plus either `java` or `docker` on the machine running the commit.
 
 CI also validates that [openapi.json](/workspaces/SendR/openapi.json) and [frontend/src/app/api](/workspaces/SendR/frontend/src/app/api) are not stale by regenerating them in GitHub Actions and failing if that produces a diff.
 

@@ -7,15 +7,14 @@ import {
   isDevMode,
   signal,
 } from "@angular/core";
-import { AuthService } from "../../services/auth.service";
-import type { LimitsResponse } from "../../services/auth.service";
-import { FileService } from "../../services/file.service";
-import type { FileUploadResponse, MultiFileUploadResponse } from "../../services/file.service";
-import { JumpingTextComponent } from "../../components/jumping-text/jumping-text.component";
-import { extractDownloadToken, formatFileSize } from "../../utils/file.utils";
-import { resolveAppUrl } from "../../utils/url.utils";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { RouterLink } from "@angular/router";
+import { JumpingTextComponent } from "../../components/jumping-text/jumping-text.component";
+import { AuthService } from "../../services/auth.service";
+import type { FileUploadResponse, MultiFileUploadResponse } from "../../services/file.service";
+import { FileService } from "../../services/file.service";
+import { extractDownloadToken, formatFileSize } from "../../utils/file.utils";
+import { resolveAppUrl } from "../../utils/url.utils";
 
 interface UploadFileEntry {
   file: File;
