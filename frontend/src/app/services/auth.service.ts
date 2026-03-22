@@ -1,5 +1,5 @@
-import { Injectable, inject, signal } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
+import { Injectable, inject, signal } from "@angular/core";
 import type { Observable } from "rxjs";
 import { map, tap } from "rxjs/operators";
 import { AuthService as GeneratedAuthService } from "../api/api/auth.service";
@@ -39,9 +39,9 @@ export class AuthService {
 
   requestCode(email: string): Observable<RequestCodeResponse> {
     const payload: EmailVerificationRequest = { email };
-    return this.api.requestCodeApiAuthRequestCodePost(payload).pipe(
-      map((response) => ({ message: response["message"] ?? "Verification code sent" })),
-    );
+    return this.api
+      .requestCodeApiAuthRequestCodePost(payload)
+      .pipe(map((response) => ({ message: response["message"] ?? "Verification code sent" })));
   }
 
   verifyCode(email: string, code: string): Observable<VerifyCodeResponse> {

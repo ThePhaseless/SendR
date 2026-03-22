@@ -119,14 +119,14 @@ When the backend is running, visit:
 
 ## Tier Limits
 
-| Feature          | Basic     | Free | Premium |
-| ---------------- | --------- | ---- | ------- |
-| Email required   | Yes       | Yes  | Yes     |
-| Files per week   | 3         | 5    | 50      |
-| Max file size    | 100 MB    | 1 GB | 10 GB   |
-| Browse history   | No        | Yes  | Yes     |
-| Edit files       | No        | No   | Yes     |
-| Retrieve expired | No        | No   | Yes     |
+| Feature          | Basic  | Free | Premium |
+| ---------------- | ------ | ---- | ------- |
+| Email required   | Yes    | Yes  | Yes     |
+| Files per week   | 3      | 5    | 50      |
+| Max file size    | 100 MB | 1 GB | 10 GB   |
+| Browse history   | No     | Yes  | Yes     |
+| Edit files       | No     | No   | Yes     |
+| Retrieve expired | No     | No   | Yes     |
 
 ## Project Structure
 
