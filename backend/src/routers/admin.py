@@ -8,7 +8,7 @@ from sqlmodel import func, select
 from models import User, UserTier
 from schemas import AdminUserListResponse, AdminUserUpdateRequest, UserResponse
 from security import get_admin_user
-from src.database import get_session
+from database import get_session
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
