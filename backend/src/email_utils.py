@@ -5,7 +5,7 @@ from email.message import EmailMessage
 
 from config import settings
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 
 def _build_verification_message(email: str, code: str) -> EmailMessage:
@@ -34,7 +34,7 @@ def _send_verification_email_sync(email: str, code: str) -> None:
 
 async def send_verification_email(email: str, code: str) -> None:
     """Send verification email, or log the code in dev mode."""
-    if settings.DEV_MODE:
+    if settings.DEV_MODE or settings.is_local_env:
         logger.info("=" * 50)
         logger.info("VERIFICATION CODE for %s: %s", email, code)
         logger.info("=" * 50)

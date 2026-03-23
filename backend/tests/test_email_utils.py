@@ -11,21 +11,44 @@ from email_utils import send_verification_email
 @pytest.mark.asyncio
 async def test_send_verification_email_logs_code_in_local_env(caplog: pytest.LogCaptureFixture):
     original_dev_mode = settings.DEV_MODE
+    original_environment = settings.ENVIRONMENT
     settings.DEV_MODE = True
+    settings.ENVIRONMENT = "production"
 
     try:
         with caplog.at_level(logging.INFO):
             await send_verification_email("user@example.com", "123456")
     finally:
         settings.DEV_MODE = original_dev_mode
+        settings.ENVIRONMENT = original_environment
 
     assert "VERIFICATION CODE for user@example.com: 123456" in caplog.text
 
 
 @pytest.mark.asyncio
+async def test_send_verification_email_logs_code_in_local_environment(caplog: pytest.LogCaptureFixture):
+    original_dev_mode = settings.DEV_MODE
+    original_environment = settings.ENVIRONMENT
+    settings.DEV_MODE = False
+    settings.ENVIRONMENT = "local"
+
+    try:
+        with patch("email_utils.smtplib.SMTP") as smtp_cls, caplog.at_level(logging.INFO):
+            await send_verification_email("user@example.com", "654321")
+    finally:
+        settings.DEV_MODE = original_dev_mode
+        settings.ENVIRONMENT = original_environment
+
+    smtp_cls.assert_not_called()
+    assert "VERIFICATION CODE for user@example.com: 654321" in caplog.text
+
+
+@pytest.mark.asyncio
 async def test_send_verification_email_uses_smtp_outside_local_env():
     original_dev_mode = settings.DEV_MODE
+    original_environment = settings.ENVIRONMENT
     settings.DEV_MODE = False
+    settings.ENVIRONMENT = "production"
 
     smtp_instance = MagicMock()
 
@@ -36,6 +59,7 @@ async def test_send_verification_email_uses_smtp_outside_local_env():
             await send_verification_email("user@example.com", "123456")
     finally:
         settings.DEV_MODE = original_dev_mode
+        settings.ENVIRONMENT = original_environment
 
     smtp_cls.assert_called_once_with(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30)
     smtp_instance.send_message.assert_called_once()
