@@ -23,7 +23,7 @@ async def get_challenge() -> dict:
 
 def verify_altcha_payload(payload: str = Form("", alias="altcha")) -> None:
     """FastAPI dependency that verifies an Altcha solution from form data."""
-    if settings.DEV_MODE:
+    if settings.DEV_MODE or settings.is_local_env:
         return
 
     try:

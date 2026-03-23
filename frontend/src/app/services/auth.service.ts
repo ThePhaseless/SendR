@@ -2,6 +2,7 @@ import { HttpClient } from "@angular/common/http";
 import { Injectable, inject, signal } from "@angular/core";
 import type { Observable } from "rxjs";
 import { map, tap } from "rxjs/operators";
+import { environment } from "../../environments/environment";
 import { AuthService as GeneratedAuthService } from "../api/api/auth.service";
 import type {
   EmailVerificationRequest,
@@ -31,10 +32,11 @@ const EXPIRES_KEY = "sendr_token_expires";
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly api = inject(GeneratedAuthService);
+  private readonly apiUrl = environment.apiUrl;
   authenticated = signal(this.isAuthenticated());
 
   getLimits(): Observable<LimitsResponse> {
-    return this.http.get<LimitsResponse>("/api/auth/limits");
+    return this.http.get<LimitsResponse>(`${this.apiUrl}/api/auth/limits`);
   }
 
   requestCode(email: string): Observable<RequestCodeResponse> {
@@ -79,7 +81,7 @@ export class AuthService {
   }
 
   devLogin(role: "admin" | "user"): Observable<VerifyCodeResponse> {
-    return this.http.post<VerifyCodeResponse>(`/api/dev/login/${role}`, {}).pipe(
+    return this.http.post<VerifyCodeResponse>(`${this.apiUrl}/api/dev/login/${role}`, {}).pipe(
       tap((res) => {
         this.storeToken(res);
       }),
