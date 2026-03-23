@@ -9,10 +9,8 @@
  */
 
 
-export interface UserResponse { 
-    id: number;
-    email: string;
-    tier: string;
-    is_admin?: boolean;
+export interface AdminUserUpdateRequest { 
+    tier?: string | null;
+    is_admin?: boolean | null;
 }
 

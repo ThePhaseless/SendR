@@ -7,12 +7,11 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
+import { UserResponse } from './user-response';
 
 
-export interface UserResponse { 
-    id: number;
-    email: string;
-    tier: string;
-    is_admin?: boolean;
+export interface AdminUserListResponse { 
+    users: Array<UserResponse>;
+    total: number;
 }
 

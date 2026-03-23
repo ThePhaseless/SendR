@@ -22,6 +22,10 @@ import { FileListResponse } from '../model/file-list-response';
 import { FileUploadResponse } from '../model/file-upload-response';
 // @ts-ignore
 import { HTTPValidationError } from '../model/http-validation-error';
+// @ts-ignore
+import { MultiFileUploadResponse } from '../model/multi-file-upload-response';
+// @ts-ignore
+import { UploadGroupInfoResponse } from '../model/upload-group-info-response';
 
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS }                     from '../variables';
@@ -155,6 +159,62 @@ export class FilesService extends BaseService {
     }
 
     /**
+     * Download Group
+     * @endpoint get /api/files/group/{upload_group}/download
+     * @param uploadGroup 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public downloadGroupApiFilesGroupUploadGroupDownloadGet(uploadGroup: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any>;
+    public downloadGroupApiFilesGroupUploadGroupDownloadGet(uploadGroup: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<any>>;
+    public downloadGroupApiFilesGroupUploadGroupDownloadGet(uploadGroup: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<any>>;
+    public downloadGroupApiFilesGroupUploadGroupDownloadGet(uploadGroup: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (uploadGroup === null || uploadGroup === undefined) {
+            throw new Error('Required parameter uploadGroup was null or undefined when calling downloadGroupApiFilesGroupUploadGroupDownloadGet.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/files/group/${this.configuration.encodeParam({name: "uploadGroup", value: uploadGroup, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: undefined})}/download`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<any>('get', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
      * Get File Info
      * @endpoint get /api/files/{download_token}/info
      * @param downloadToken 
@@ -198,6 +258,62 @@ export class FilesService extends BaseService {
         let localVarPath = `/api/files/${this.configuration.encodeParam({name: "downloadToken", value: downloadToken, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: undefined})}/info`;
         const { basePath, withCredentials } = this.configuration;
         return this.httpClient.request<FileUploadResponse>('get', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Get Group Info
+     * @endpoint get /api/files/group/{upload_group}
+     * @param uploadGroup 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public getGroupInfoApiFilesGroupUploadGroupGet(uploadGroup: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<UploadGroupInfoResponse>;
+    public getGroupInfoApiFilesGroupUploadGroupGet(uploadGroup: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<UploadGroupInfoResponse>>;
+    public getGroupInfoApiFilesGroupUploadGroupGet(uploadGroup: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<UploadGroupInfoResponse>>;
+    public getGroupInfoApiFilesGroupUploadGroupGet(uploadGroup: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (uploadGroup === null || uploadGroup === undefined) {
+            throw new Error('Required parameter uploadGroup was null or undefined when calling getGroupInfoApiFilesGroupUploadGroupGet.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/files/group/${this.configuration.encodeParam({name: "uploadGroup", value: uploadGroup, in: "path", style: "simple", explode: false, dataType: "string", dataFormat: undefined})}`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<UploadGroupInfoResponse>('get', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 responseType: <any>responseType_,
@@ -328,14 +444,15 @@ export class FilesService extends BaseService {
      * Upload File
      * @endpoint post /api/files/upload
      * @param file 
+     * @param altcha 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public uploadFileApiFilesUploadPost(file: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<FileUploadResponse>;
-    public uploadFileApiFilesUploadPost(file: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<FileUploadResponse>>;
-    public uploadFileApiFilesUploadPost(file: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<FileUploadResponse>>;
-    public uploadFileApiFilesUploadPost(file: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public uploadFileApiFilesUploadPost(file: string, altcha?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<FileUploadResponse>;
+    public uploadFileApiFilesUploadPost(file: string, altcha?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<FileUploadResponse>>;
+    public uploadFileApiFilesUploadPost(file: string, altcha?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<FileUploadResponse>>;
+    public uploadFileApiFilesUploadPost(file: string, altcha?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (file === null || file === undefined) {
             throw new Error('Required parameter file was null or undefined when calling uploadFileApiFilesUploadPost.');
         }
@@ -375,6 +492,9 @@ export class FilesService extends BaseService {
         if (file !== undefined) {
             localVarFormParams = localVarFormParams.append('file', <any>file) as any || localVarFormParams;
         }
+        if (altcha !== undefined) {
+            localVarFormParams = localVarFormParams.append('altcha', <any>altcha) as any || localVarFormParams;
+        }
 
         let responseType_: 'text' | 'json' | 'blob' = 'json';
         if (localVarHttpHeaderAcceptSelected) {
@@ -390,6 +510,95 @@ export class FilesService extends BaseService {
         let localVarPath = `/api/files/upload`;
         const { basePath, withCredentials } = this.configuration;
         return this.httpClient.request<FileUploadResponse>('post', `${basePath}${localVarPath}`,
+            {
+                context: localVarHttpContext,
+                body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,
+                responseType: <any>responseType_,
+                ...(withCredentials ? { withCredentials } : {}),
+                headers: localVarHeaders,
+                observe: observe,
+                ...(localVarTransferCache !== undefined ? { transferCache: localVarTransferCache } : {}),
+                reportProgress: reportProgress
+            }
+        );
+    }
+
+    /**
+     * Upload Multiple Files
+     * @endpoint post /api/files/upload-multiple
+     * @param files 
+     * @param altcha 
+     * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
+     * @param reportProgress flag to report request and response progress.
+     * @param options additional options
+     */
+    public uploadMultipleFilesApiFilesUploadMultiplePost(files: Array<string>, altcha?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<MultiFileUploadResponse>;
+    public uploadMultipleFilesApiFilesUploadMultiplePost(files: Array<string>, altcha?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<MultiFileUploadResponse>>;
+    public uploadMultipleFilesApiFilesUploadMultiplePost(files: Array<string>, altcha?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<MultiFileUploadResponse>>;
+    public uploadMultipleFilesApiFilesUploadMultiplePost(files: Array<string>, altcha?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+        if (files === null || files === undefined) {
+            throw new Error('Required parameter files was null or undefined when calling uploadMultipleFilesApiFilesUploadMultiplePost.');
+        }
+
+        let localVarHeaders = this.defaultHeaders;
+
+        // authentication (APIKeyHeader) required
+        localVarHeaders = this.configuration.addCredentialToHeaders('APIKeyHeader', 'Authorization', localVarHeaders);
+
+        const localVarHttpHeaderAcceptSelected: string | undefined = options?.httpHeaderAccept ?? this.configuration.selectHeaderAccept([
+            'application/json'
+        ]);
+        if (localVarHttpHeaderAcceptSelected !== undefined) {
+            localVarHeaders = localVarHeaders.set('Accept', localVarHttpHeaderAcceptSelected);
+        }
+
+        const localVarHttpContext: HttpContext = options?.context ?? new HttpContext();
+
+        const localVarTransferCache: boolean = options?.transferCache ?? true;
+
+        // to determine the Content-Type header
+        const consumes: string[] = [
+            'multipart/form-data'
+        ];
+
+        const canConsumeForm = this.canConsumeForm(consumes);
+
+        let localVarFormParams: { append(param: string, value: any): any; };
+        let localVarUseForm = false;
+        let localVarConvertFormParamsToString = false;
+        if (localVarUseForm) {
+            localVarFormParams = new FormData();
+        } else {
+            localVarFormParams = new HttpParams({encoder: this.encoder});
+        }
+
+        if (files) {
+            if (localVarUseForm) {
+                files.forEach((element) => {
+                    localVarFormParams = localVarFormParams.append('files', <any>element) as any || localVarFormParams;
+            })
+            } else {
+                localVarFormParams = localVarFormParams.append('files', [...files].join(COLLECTION_FORMATS['csv'])) as any || localVarFormParams;
+            }
+        }
+        if (altcha !== undefined) {
+            localVarFormParams = localVarFormParams.append('altcha', <any>altcha) as any || localVarFormParams;
+        }
+
+        let responseType_: 'text' | 'json' | 'blob' = 'json';
+        if (localVarHttpHeaderAcceptSelected) {
+            if (localVarHttpHeaderAcceptSelected.startsWith('text')) {
+                responseType_ = 'text';
+            } else if (this.configuration.isJsonMime(localVarHttpHeaderAcceptSelected)) {
+                responseType_ = 'json';
+            } else {
+                responseType_ = 'blob';
+            }
+        }
+
+        let localVarPath = `/api/files/upload-multiple`;
+        const { basePath, withCredentials } = this.configuration;
+        return this.httpClient.request<MultiFileUploadResponse>('post', `${basePath}${localVarPath}`,
             {
                 context: localVarHttpContext,
                 body: localVarConvertFormParamsToString ? localVarFormParams.toString() : localVarFormParams,

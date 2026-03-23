@@ -17,5 +17,6 @@ export interface FileUploadResponse {
     expires_at: string;
     download_count: number;
     is_active: boolean;
+    upload_group?: string | null;
 }
 

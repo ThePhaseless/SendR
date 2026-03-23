@@ -9,10 +9,8 @@
  */
 
 
-export interface UserResponse { 
-    id: number;
-    email: string;
-    tier: string;
-    is_admin?: boolean;
+export interface LimitsResponse { 
+    max_file_size_mb: number;
+    max_files_per_upload: number;
 }
 
