@@ -118,6 +118,8 @@ api.example.com -> api
 
 If the frontend and API are on different origins, update `SENDR_ALLOWED_ORIGINS` for the frontend origin and configure the frontend proxy/base URL at your edge.
 
+By default, the backend allows the local frontend origins plus the current Railway production frontend origin. `SENDR_ALLOWED_ORIGINS` can be provided either as a JSON array or as a comma-separated list.
+
 ## API Documentation
 
 When the backend is running, visit:

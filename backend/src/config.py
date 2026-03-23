@@ -1,11 +1,21 @@
+import json
 import secrets
+from typing import Any
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
 def _generate_hmac_key() -> str:
     return secrets.token_hex(32)
+
+
+def _default_allowed_origins() -> list[str]:
+    return [
+        "http://localhost:4200",
+        "http://localhost:8080",
+        "https://sendr.up.railway.app",
+    ]
 
 
 class Settings(BaseSettings):
@@ -14,7 +24,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me-in-production"
     UPLOAD_DIR: str = "./uploads"
     # CORS
-    ALLOWED_ORIGINS: list[str] = ["http://localhost:4200"]
+    ALLOWED_ORIGINS: list[str] = Field(default_factory=_default_allowed_origins)
     # Email settings
     SMTP_HOST: str = "localhost"
     SMTP_PORT: int = 587
@@ -47,6 +57,24 @@ class Settings(BaseSettings):
     GROUP_ZIP_THRESHOLD: int = 3
 
     model_config = {"env_prefix": "SENDR_"}
+
+    @field_validator("ALLOWED_ORIGINS", mode="before")
+    @classmethod
+    def parse_allowed_origins(cls, value: Any) -> Any:
+        if not isinstance(value, str):
+            return value
+
+        raw_value = value.strip()
+        if not raw_value:
+            return []
+
+        if raw_value.startswith("["):
+            try:
+                return json.loads(raw_value)
+            except json.JSONDecodeError:
+                pass
+
+        return [origin.strip() for origin in raw_value.split(",") if origin.strip()]
 
     @property
     def is_local_env(self) -> bool:
