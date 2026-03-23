@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import func, select
 
+from database import get_session
 from models import User, UserTier
 from schemas import AdminUserListResponse, AdminUserUpdateRequest, UserResponse
 from security import get_admin_user
-from database import get_session
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
