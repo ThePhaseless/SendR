@@ -2,16 +2,16 @@
   "name": "frontend",
   "version": "0.0.0",
   "scripts": {
-    "ng": "ng",
-    "start": "ng serve --host 0.0.0.0",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test",
+    "ng": "bunx --bun --no-install ng",
+    "start": "bunx --bun --no-install ng serve --host 0.0.0.0",
+    "build": "bunx --bun --no-install ng build",
+    "watch": "bunx --bun --no-install ng build --watch --configuration development",
+    "test": "bunx --bun --no-install ng test",
     "lint": "oxlint --import-plugin --promise-plugin --config oxlintrc.json --ignore-pattern src/app/api src/",
     "lint:fix": "oxlint --import-plugin --promise-plugin --fix --config oxlintrc.json --ignore-pattern src/app/api src/",
     "format": "oxfmt src/",
     "format:check": "oxfmt --check src/",
-    "generate-api": "openapi-generator-cli generate -i ../openapi.json -g typescript-angular -o src/app/api --additional-properties=ngVersion=21,providedInRoot=true,fileNaming=kebab-case"
+    "generate-api": "bunx --bun --no-install openapi-generator-cli generate -i ../openapi.json -g typescript-angular -o src/app/api --additional-properties=ngVersion=21,providedInRoot=true,fileNaming=kebab-case"
   },
   "private": true,
   "dependencies": {

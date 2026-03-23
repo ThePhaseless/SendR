@@ -29,28 +29,14 @@ repos:
 
       - id: frontend-oxfmt
         name: frontend oxfmt
-        language: node
-        entry: oxfmt
-        additional_dependencies:
-          - oxfmt@0.41.0
+        language: system
+        entry: bash ./scripts/run-frontend-oxfmt.sh
         files: ^frontend/src/.*\.(ts|tsx|js|jsx|mjs|cjs|json|css|scss|html)$
         exclude: ^frontend/src/app/api/
 
       - id: frontend-oxlint
         name: frontend oxlint
-        language: node
-        entry: oxlint
-        additional_dependencies:
-          - oxlint@1.56.0
-          - oxlint-tsgolint@0.17.0
-          - "@angular-eslint/eslint-plugin@21.3.1"
+        language: system
+        entry: bash ./scripts/run-frontend-oxlint.sh
         files: ^frontend/src/.*\.(ts|tsx|js|jsx)$
         exclude: ^frontend/src/app/api/
-        args:
-          - --import-plugin
-          - --promise-plugin
-          - --fix
-          - --config
-          - frontend/oxlintrc.json
-          - --ignore-pattern
-          - frontend/src/app/api

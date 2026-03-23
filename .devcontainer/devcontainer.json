@@ -1,13 +1,17 @@
 {
   "name": "SendR",
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
   "features": {
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "22"
-    },
     "ghcr.io/devcontainers-extra/features/uv:1": {},
     "ghcr.io/shyim/devcontainers-features/bun:0": {}
   },
+  "mounts": [
+    "source=sendr-uv-cache,target=/home/vscode/.cache/uv,type=volume",
+    "source=sendr-bun-cache,target=/home/vscode/.bun/install/cache,type=volume"
+  ],
   "postCreateCommand": "cd backend && uv sync && cd ../frontend && bun install && cd .. && ./setup-git-hooks.sh",
   "forwardPorts": [
     4200,

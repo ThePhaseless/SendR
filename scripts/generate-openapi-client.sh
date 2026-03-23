@@ -5,9 +5,11 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 backend_dir="$repo_root/backend"
 output_spec="$repo_root/openapi.json"
 output_client_dir="$repo_root/frontend/src/app/api"
+generator_config="$repo_root/frontend/openapitools.json"
 generator_package="@openapitools/openapi-generator-cli@2.30.2"
 generator_version="7.20.0"
 generator_args=(
+  --openapitools "$generator_config"
   generate
   -i "$output_spec"
   -g typescript-angular
@@ -17,6 +19,11 @@ generator_args=(
 
 if ! command -v uv >/dev/null 2>&1; then
   echo "uv is required to export the backend OpenAPI schema." >&2
+  exit 1
+fi
+
+if ! command -v bun >/dev/null 2>&1; then
+  echo "bun is required to generate the Angular API client without Node.js." >&2
   exit 1
 fi
 
@@ -37,12 +44,13 @@ PY
 cd "$repo_root"
 
 if command -v java >/dev/null 2>&1; then
-  if [[ -x "$repo_root/frontend/node_modules/.bin/openapi-generator-cli" ]]; then
-    "$repo_root/frontend/node_modules/.bin/openapi-generator-cli" "${generator_args[@]}"
-  elif command -v npx >/dev/null 2>&1; then
-    npx --yes "$generator_package" "${generator_args[@]}"
+  if [[ -d "$repo_root/frontend/node_modules" ]]; then
+    (
+      cd "$repo_root/frontend"
+      bunx --bun --no-install openapi-generator-cli "${generator_args[@]}"
+    )
   else
-    echo "OpenAPI Generator CLI is unavailable. Install frontend dependencies or ensure npx is available." >&2
+    echo "OpenAPI Generator CLI is unavailable. Install frontend dependencies with bun install first." >&2
     exit 1
   fi
 elif command -v docker >/dev/null 2>&1; then

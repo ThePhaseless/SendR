@@ -15,7 +15,7 @@ A WeTransfer-like file sharing service built with Angular and FastAPI.
 
 - **Frontend**: Angular 19, SCSS, OpenAPI-generated client
 - **Backend**: FastAPI, SQLModel, Alembic (migrations), SQLite
-- **Tooling**: uv (Python), bun (JS), ruff (Python linter), oxlint (TS linter)
+- **Tooling**: uv (Python), bun (JS runtime and package manager), ruff (Python linter), oxlint (TS linter)
 - **Deployment**: Single Docker image
 
 ## Quick Start
@@ -58,6 +58,8 @@ That script installs `pre-commit` with `uv` if needed, sets `core.hooksPath` to 
 
 If you use the devcontainer, this setup runs automatically during container creation.
 
+The devcontainer also includes Java for OpenAPI client generation, uses Bun instead of Node.js for the frontend CLI path, and persists the `uv` and `bun` package caches across rebuilds using Docker volumes to keep subsequent builds faster.
+
 If you prefer to do it manually:
 
 ```bash
@@ -84,11 +86,11 @@ On frontend-related commits, the pre-commit hook also runs:
 - frontend lint
 - frontend build
 
-That hook requires `uv`, `bun`, plus either `java` or `docker` on the machine running the commit.
+That hook requires `uv`, `bun`, plus either `java` or `docker` on the machine running the commit. Node.js is not required for the frontend CLI path because Angular and the OpenAPI generator are invoked through `bun --bun`.
 
 CI also validates that [openapi.json](/workspaces/SendR/openapi.json) and [frontend/src/app/api](/workspaces/SendR/frontend/src/app/api) are not stale by regenerating them in GitHub Actions and failing if that produces a diff.
 
-The hook environments are pinned in [.pre-commit-config.yaml](/workspaces/SendR/.pre-commit-config.yaml), so contributors do not need matching global versions of Ruff, Oxlint, or Oxfmt. `core.hooksPath` itself is still a local Git setting, so each clone needs the one-time `git config` command above.
+The hook environments are defined in [.pre-commit-config.yaml](/workspaces/SendR/.pre-commit-config.yaml). Ruff still runs from its pinned pre-commit environment, while the frontend format and lint hooks run from the repository's Bun-managed dependencies in [frontend/package.json](/workspaces/SendR/frontend/package.json). `core.hooksPath` itself is still a local Git setting, so each clone needs the one-time `git config` command above.
 
 ### Docker
 

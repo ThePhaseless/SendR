@@ -77,7 +77,7 @@ jobs:
 
       - name: Build
         working-directory: frontend
-        run: bunx ng build --configuration production
+        run: bun run build --configuration production
 
   frontend-lint:
     name: "Frontend: Lint"
@@ -149,7 +149,7 @@ jobs:
 
       - name: Test
         working-directory: frontend
-        run: bunx ng test --no-watch --browsers=ChromeHeadless
+        run: bun run test --no-watch --browsers=ChromeHeadless
 
   backend-lint:
     name: "Backend: Lint"

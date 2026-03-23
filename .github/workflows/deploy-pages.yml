@@ -36,7 +36,7 @@ jobs:
 
       - name: Build for GitHub Pages
         working-directory: frontend
-        run: bunx ng build --configuration production --base-href /${{ github.event.repository.name }}/
+        run: bun run build --configuration production --base-href /${{ github.event.repository.name }}/
 
       - name: Add 404.html for SPA routing
         run: cp frontend/dist/frontend/browser/index.html frontend/dist/frontend/browser/404.html
