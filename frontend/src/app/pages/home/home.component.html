@@ -38,16 +38,6 @@
         Upload more files
       </button>
     </div>
-  } @else if (!isAuthenticated()) {
-    <div class="auth-prompt">
-      <div class="auth-prompt-icon">🔒</div>
-      <h2>Verify your email to upload</h2>
-      <p>A quick email verification is all you need to start sharing files.</p>
-      <a routerLink="/auth" class="btn btn-primary">Verify Email</a>
-      <p class="auth-prompt-hint">
-        Already verified? <a routerLink="/auth">Sign in</a> to continue.
-      </p>
-    </div>
   } @else {
     <div
       class="drop-zone"
@@ -119,14 +109,72 @@
       </div>
     }
 
+    @if (!isAuthenticated()) {
+      <div class="inline-auth">
+        <h3>Verify your email to upload</h3>
+        @if (inlineAuthError(); as authErr) {
+          <div class="alert alert-error alert-sm">{{ authErr }}</div>
+        }
+        @if (!codeSent()) {
+          <div class="inline-auth-row">
+            <input
+              type="email"
+              [ngModel]="inlineEmail()"
+              (ngModelChange)="inlineEmail.set($event)"
+              placeholder="your@email.com"
+              class="inline-auth-input"
+            />
+            <button
+              class="btn btn-primary btn-sm"
+              [disabled]="codeRequesting()"
+              (click)="requestInlineCode()"
+            >
+              {{ codeRequesting() ? "Sending…" : "Send Code" }}
+            </button>
+          </div>
+        } @else {
+          <p class="inline-auth-hint">Code sent to {{ inlineEmail() }}</p>
+          <div class="inline-auth-row">
+            <input
+              type="text"
+              [ngModel]="inlineCode()"
+              (ngModelChange)="inlineCode.set($event)"
+              placeholder="Enter verification code"
+              class="inline-auth-input"
+            />
+            <button
+              class="btn btn-primary btn-sm"
+              [disabled]="codeVerifying()"
+              (click)="verifyInlineCode()"
+            >
+              {{ codeVerifying() ? "Verifying…" : "Verify" }}
+            </button>
+          </div>
+        }
+      </div>
+    }
+
     <div class="altcha-container">
       @if (!devMode) {
         <altcha-widget
-          challengeurl="/api/altcha/challenge"
+          [attr.challengeurl]="altchaChallengeUrl"
           auto="onload"
           (statechange)="onAltchaStateChange($event)"
         ></altcha-widget>
       }
     </div>
+
+    @if (pendingFiles().length > 0) {
+      <div class="upload-action">
+        <button class="btn btn-primary btn-lg" [disabled]="!canUpload()" (click)="startUpload()">
+          Upload {{ pendingFiles().length === 1 ? "File" : "Files" }}
+        </button>
+        @if (!isAuthenticated()) {
+          <p class="upload-action-hint">Verify your email above to enable upload</p>
+        } @else if (!altchaVerified() && !devMode) {
+          <p class="upload-action-hint">Waiting for CAPTCHA verification…</p>
+        }
+      </div>
+    }
   }
 </div>

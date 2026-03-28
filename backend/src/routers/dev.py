@@ -20,8 +20,11 @@ async def dev_login(role: str, session: AsyncSession = Depends(get_session)) -> 
     if not settings.DEV_MODE:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
-    if role not in ("admin", "user"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid role. Must be 'admin' or 'user'")
+    if role not in ("admin", "user", "premium"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid role. Must be 'admin', 'user', or 'premium'",
+        )
 
     email = f"dev-{role}@sendr.local"
 
@@ -31,9 +34,12 @@ async def dev_login(role: str, session: AsyncSession = Depends(get_session)) -> 
     user = result.scalars().first()
 
     if not user:
+        tier = UserTier.free
+        if role in ("admin", "premium"):
+            tier = UserTier.premium
         user = User(
             email=email,
-            tier=UserTier.premium if role == "admin" else UserTier.free,
+            tier=tier,
             is_admin=(role == "admin"),
         )
         session.add(user)

@@ -8,7 +8,7 @@ import {
   signal,
 } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
-import { RouterLink } from "@angular/router";
+import { FormsModule } from "@angular/forms";
 import { JumpingTextComponent } from "../../components/jumping-text/jumping-text.component";
 import { AuthService } from "../../services/auth.service";
 import type { FileUploadResponse, MultiFileUploadResponse } from "../../services/file.service";
@@ -28,7 +28,7 @@ interface AltchaStateChangeDetail {
 }
 
 @Component({
-  imports: [JumpingTextComponent, RouterLink],
+  imports: [JumpingTextComponent, FormsModule],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   selector: "app-home",
   styleUrl: "./home.component.scss",
@@ -50,7 +50,16 @@ export class HomeComponent {
   altchaVerified = signal(false);
   pendingFiles = signal<UploadFileEntry[]>([]);
   readonly devMode = isDevMode();
+  readonly altchaChallengeUrl = this.authService.altchaChallengeUrl;
   private altchaPayload = "";
+
+  // Inline auth for unauthenticated users
+  inlineEmail = signal("");
+  inlineCode = signal("");
+  codeSent = signal(false);
+  codeRequesting = signal(false);
+  codeVerifying = signal(false);
+  inlineAuthError = signal<string | null>(null);
 
   private uploadStartTime = 0;
   private lastProgressTime = 0;
@@ -119,10 +128,6 @@ export class HomeComponent {
     if (detail?.state === "verified" && detail.payload) {
       this.altchaPayload = detail.payload;
       this.altchaVerified.set(true);
-      const files = this.pendingFiles();
-      if (files.length > 0) {
-        this.uploadFiles(files.map((file) => file.file));
-      }
     } else if (detail?.state === "error") {
       this.error.set("CAPTCHA verification failed. Please try again.");
       this.altchaVerified.set(false);
@@ -158,10 +163,63 @@ export class HomeComponent {
     this.error.set(null);
     this.uploadResult.set(null);
     this.singleUploadResult.set(null);
+  }
 
-    if (this.altchaVerified() || this.devMode) {
-      this.uploadFiles(combined.map((file) => file.file));
+  canUpload = computed(() => {
+    const hasFiles = this.pendingFiles().length > 0;
+    const captchaOk = this.altchaVerified() || this.devMode;
+    const authenticated = this.isAuthenticated();
+    return hasFiles && captchaOk && authenticated && !this.isUploading();
+  });
+
+  startUpload(): void {
+    const files = this.pendingFiles();
+    if (files.length === 0) {
+      return;
     }
+    this.uploadFiles(files.map((entry) => entry.file));
+  }
+
+  requestInlineCode(): void {
+    const email = this.inlineEmail().trim();
+    if (!email) {
+      this.inlineAuthError.set("Please enter your email address.");
+      return;
+    }
+    this.codeRequesting.set(true);
+    this.inlineAuthError.set(null);
+    this.authService.requestCode(email).subscribe({
+      error: (err) => {
+        this.inlineAuthError.set(this.getErrorDetail(err, "Failed to send verification code."));
+        this.codeRequesting.set(false);
+      },
+      next: () => {
+        this.codeSent.set(true);
+        this.codeRequesting.set(false);
+      },
+    });
+  }
+
+  verifyInlineCode(): void {
+    const email = this.inlineEmail().trim();
+    const code = this.inlineCode().trim();
+    if (!code) {
+      this.inlineAuthError.set("Please enter the verification code.");
+      return;
+    }
+    this.codeVerifying.set(true);
+    this.inlineAuthError.set(null);
+    this.authService.verifyCode(email, code).subscribe({
+      error: (err) => {
+        this.inlineAuthError.set(
+          this.getErrorDetail(err, "Verification failed. Please try again."),
+        );
+        this.codeVerifying.set(false);
+      },
+      next: () => {
+        this.codeVerifying.set(false);
+      },
+    });
   }
 
   private uploadFiles(files: File[]): void {

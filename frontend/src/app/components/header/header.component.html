@@ -5,6 +5,7 @@
       <a routerLink="/" class="nav-link">Home</a>
       @if (auth.authenticated()) {
         <a routerLink="/dashboard" class="nav-link">Dashboard</a>
+        <a routerLink="/premium" class="nav-link">Premium</a>
       }
       @if (isAdmin()) {
         <a routerLink="/admin" class="nav-link">Admin</a>
@@ -13,6 +14,7 @@
     <div class="actions">
       @if (isDevMode) {
         <button class="btn btn-dev btn-sm" (click)="devLogin('user')">Dev: User</button>
+        <button class="btn btn-dev btn-sm" (click)="devLogin('premium')">Dev: Premium</button>
         <button class="btn btn-dev btn-sm" (click)="devLogin('admin')">Dev: Admin</button>
       }
       @if (auth.authenticated()) {

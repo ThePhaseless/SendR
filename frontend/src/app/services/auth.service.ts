@@ -4,12 +4,14 @@ import type { Observable } from "rxjs";
 import { map, tap } from "rxjs/operators";
 import { environment } from "../../environments/environment";
 import { AuthService as GeneratedAuthService } from "../api/api/auth.service";
+import { SubscriptionService } from "../api/api/subscription.service";
 import type {
   EmailVerificationRequest,
   QuotaResponse,
   TokenResponse,
   UserResponse,
 } from "../api/model/models";
+import type { SubscriptionResponse } from "../api/model/subscription-response";
 
 export interface RequestCodeResponse {
   message: string;
@@ -32,7 +34,9 @@ const EXPIRES_KEY = "sendr_token_expires";
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly api = inject(GeneratedAuthService);
+  private readonly subscriptionApi = inject(SubscriptionService);
   private readonly apiUrl = environment.apiUrl;
+  readonly altchaChallengeUrl = new URL("/api/altcha/challenge", this.apiUrl).toString();
   authenticated = signal(this.isAuthenticated());
 
   getLimits(): Observable<LimitsResponse> {
@@ -64,6 +68,18 @@ export class AuthService {
     return this.api.getQuotaApiAuthQuotaGet();
   }
 
+  getSubscription(): Observable<SubscriptionResponse> {
+    return this.subscriptionApi.getSubscriptionApiSubscriptionGet();
+  }
+
+  upgradeToPremium(): Observable<SubscriptionResponse> {
+    return this.subscriptionApi.upgradeToPremiumApiSubscriptionUpgradePost();
+  }
+
+  cancelSubscription(): Observable<SubscriptionResponse> {
+    return this.subscriptionApi.cancelSubscriptionApiSubscriptionCancelPost();
+  }
+
   isAuthenticated(): boolean {
     const token = this.getToken();
     if (!token) {
@@ -80,7 +96,7 @@ export class AuthService {
     return localStorage.getItem(TOKEN_KEY);
   }
 
-  devLogin(role: "admin" | "user"): Observable<VerifyCodeResponse> {
+  devLogin(role: "admin" | "user" | "premium"): Observable<VerifyCodeResponse> {
     return this.http.post<VerifyCodeResponse>(`${this.apiUrl}/api/dev/login/${role}`, {}).pipe(
       tap((res) => {
         this.storeToken(res);

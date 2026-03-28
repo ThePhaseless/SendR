@@ -28,6 +28,12 @@ export const routes: Routes = [
     path: "dashboard",
   },
   {
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import("./pages/premium/premium.component").then((m) => m.PremiumComponent),
+    path: "premium",
+  },
+  {
     canActivate: [adminGuard],
     loadComponent: () => import("./pages/admin/admin.component").then((m) => m.AdminComponent),
     path: "admin",
