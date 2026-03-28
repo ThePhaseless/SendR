@@ -31,8 +31,11 @@ class FileUploadResponse(SQLModel):
     download_url: str
     expires_at: datetime
     download_count: int
+    max_downloads: int | None = None
     is_active: bool
     upload_group: str | None = None
+    message: str | None = None
+    has_password: bool = False
 
 
 class FileListResponse(SQLModel):
@@ -42,6 +45,16 @@ class FileListResponse(SQLModel):
 class QuotaResponse(SQLModel):
     max_file_size_mb: int
     max_files_per_upload: int
+    weekly_uploads_limit: int
+    weekly_uploads_used: int
+    weekly_uploads_remaining: int
+    # Expiry options
+    expiry_options_hours: list[int] | None = None  # Discrete choices (basic)
+    min_expiry_hours: int | None = None  # Range min (free/premium)
+    max_expiry_hours: int | None = None  # Range max (free/premium)
+    # Max download options
+    max_downloads_options: list[int] | None = None  # Discrete choices (basic)
+    max_downloads_limit: int | None = None  # Upper bound for freeform (free/premium)
 
 
 class MultiFileUploadResponse(SQLModel):
@@ -58,9 +71,35 @@ class UploadGroupInfoResponse(SQLModel):
     will_zip: bool
 
 
+class TransferInfoResponse(SQLModel):
+    upload_group: str
+    message: str | None = None
+    sender_email: str | None = None
+    has_password: bool = False
+    created_at: datetime
+    expires_at: datetime
+    files: list[FileUploadResponse]
+    total_size_bytes: int
+    file_count: int
+
+
 class LimitsResponse(SQLModel):
     max_file_size_mb: int
     max_files_per_upload: int
+    weekly_uploads_limit: int
+    # Expiry options for basic tier
+    expiry_options_hours: list[int]
+    # Max download options for basic tier
+    max_downloads_options: list[int]
+
+
+class FileEditRequest(SQLModel):
+    original_filename: str | None = None
+    message: str | None = None
+    password: str | None = None
+    remove_password: bool = False
+    expires_in_hours: int | None = None
+    max_downloads: int | None = None
 
 
 class AdminUserUpdateRequest(SQLModel):
@@ -71,3 +110,10 @@ class AdminUserUpdateRequest(SQLModel):
 class AdminUserListResponse(SQLModel):
     users: list[UserResponse]
     total: int
+
+
+class SubscriptionResponse(SQLModel):
+    plan: str
+    is_active: bool
+    started_at: datetime | None = None
+    expires_at: datetime | None = None

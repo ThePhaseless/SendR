@@ -914,6 +914,17 @@
             "type": "integer",
             "title": "Download Count"
           },
+          "max_downloads": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Downloads"
+          },
           "is_active": {
             "type": "boolean",
             "title": "Is Active"
@@ -928,6 +939,22 @@
               }
             ],
             "title": "Upload Group"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "has_password": {
+            "type": "boolean",
+            "title": "Has Password",
+            "default": false
           }
         },
         "type": "object",
@@ -964,12 +991,33 @@
           "max_files_per_upload": {
             "type": "integer",
             "title": "Max Files Per Upload"
+          },
+          "weekly_uploads_limit": {
+            "type": "integer",
+            "title": "Weekly Uploads Limit"
+          },
+          "expiry_options_hours": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Expiry Options Hours"
+          },
+          "max_downloads_options": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Max Downloads Options"
           }
         },
         "type": "object",
         "required": [
           "max_file_size_mb",
-          "max_files_per_upload"
+          "max_files_per_upload",
+          "weekly_uploads_limit",
+          "expiry_options_hours",
+          "max_downloads_options"
         ],
         "title": "LimitsResponse"
       },
@@ -1008,12 +1056,88 @@
           "max_files_per_upload": {
             "type": "integer",
             "title": "Max Files Per Upload"
+          },
+          "weekly_uploads_limit": {
+            "type": "integer",
+            "title": "Weekly Uploads Limit"
+          },
+          "weekly_uploads_used": {
+            "type": "integer",
+            "title": "Weekly Uploads Used"
+          },
+          "weekly_uploads_remaining": {
+            "type": "integer",
+            "title": "Weekly Uploads Remaining"
+          },
+          "expiry_options_hours": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Options Hours"
+          },
+          "min_expiry_hours": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Expiry Hours"
+          },
+          "max_expiry_hours": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Expiry Hours"
+          },
+          "max_downloads_options": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Downloads Options"
+          },
+          "max_downloads_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Downloads Limit"
           }
         },
         "type": "object",
         "required": [
           "max_file_size_mb",
-          "max_files_per_upload"
+          "max_files_per_upload",
+          "weekly_uploads_limit",
+          "weekly_uploads_used",
+          "weekly_uploads_remaining"
         ],
         "title": "QuotaResponse"
       },

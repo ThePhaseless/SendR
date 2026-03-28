@@ -12,5 +12,8 @@
 export interface LimitsResponse { 
     max_file_size_mb: number;
     max_files_per_upload: number;
+    weekly_uploads_limit: number;
+    expiry_options_hours: Array<number>;
+    max_downloads_options: Array<number>;
 }
 

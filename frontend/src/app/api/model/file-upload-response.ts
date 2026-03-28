@@ -16,7 +16,10 @@ export interface FileUploadResponse {
     download_url: string;
     expires_at: string;
     download_count: number;
+    max_downloads?: number | null;
     is_active: boolean;
     upload_group?: string | null;
+    message?: string | null;
+    has_password?: boolean;
 }
 

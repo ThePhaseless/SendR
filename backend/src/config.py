@@ -39,7 +39,23 @@ class Settings(BaseSettings):
     BASIC_MAX_FILES_PER_UPLOAD: int = 10
     FREE_MAX_FILES_PER_UPLOAD: int = 50
     PREMIUM_MAX_FILES_PER_UPLOAD: int = 0  # 0 means unlimited
-    # File expiration (days)
+    # Weekly upload quotas (0 = unlimited)
+    BASIC_MAX_WEEKLY_UPLOADS: int = 3
+    FREE_MAX_WEEKLY_UPLOADS: int = 5
+    PREMIUM_MAX_WEEKLY_UPLOADS: int = 0
+    # Expiry options per tier (hours)
+    BASIC_EXPIRY_OPTIONS_HOURS: list[int] = [24, 72]  # 1d or 3d only
+    FREE_MIN_EXPIRY_HOURS: int = 1
+    FREE_MAX_EXPIRY_HOURS: int = 168  # 7 days
+    PREMIUM_MIN_EXPIRY_HOURS: int = 1
+    PREMIUM_MAX_EXPIRY_HOURS: int = 720  # 30 days
+    # Max downloads per tier
+    BASIC_MAX_DOWNLOADS_OPTIONS: list[int] = [1, 0]  # 1 or unlimited only
+    FREE_MAX_DOWNLOADS_LIMIT: int = 1000
+    PREMIUM_MAX_DOWNLOADS_LIMIT: int = 1000
+    # Max recipient emails per transfer
+    MAX_RECIPIENT_EMAILS: int = 10
+    # File expiration (days) - default for backwards compatibility
     FILE_EXPIRY_DAYS: int = 7
     FILE_GRACE_PERIOD_DAYS: int = 7
     # Token expiry

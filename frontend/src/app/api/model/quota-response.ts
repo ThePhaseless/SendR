@@ -12,5 +12,13 @@
 export interface QuotaResponse { 
     max_file_size_mb: number;
     max_files_per_upload: number;
+    weekly_uploads_limit: number;
+    weekly_uploads_used: number;
+    weekly_uploads_remaining: number;
+    expiry_options_hours?: Array<number> | null;
+    min_expiry_hours?: number | null;
+    max_expiry_hours?: number | null;
+    max_downloads_options?: Array<number> | null;
+    max_downloads_limit?: number | null;
 }
 

@@ -61,6 +61,18 @@ class FileUpload(SQLModel, table=True):
     is_active: bool = Field(default=True)
 
 
+class Transfer(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int | None = Field(default=None, foreign_key="user.id", index=True)
+    upload_group: str = Field(unique=True, index=True)
+    message: str | None = Field(default=None)
+    recipient_emails: str | None = Field(default=None)  # JSON list of emails
+    password_hash: str | None = Field(default=None)
+    notify_on_download: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=_utcnow)
+    expires_at: datetime
+
+
 class Subscription(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", index=True)
