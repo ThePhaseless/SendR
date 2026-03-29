@@ -14,7 +14,7 @@ COPY alembic.ini ./alembic.ini
 RUN mkdir -p /app/uploads /app/data
 
 ENV SENDR_UPLOAD_DIR=/app/uploads
-ENV SENDR_DATABASE_URL=sqlite+aiosqlite:///app/data/sendr.db
+ENV SENDR_DATABASE_URL=sqlite+aiosqlite:////app/data/sendr.db
 ENV PYTHONPATH=/app/src
 
 EXPOSE 8000
