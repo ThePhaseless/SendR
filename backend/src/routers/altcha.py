@@ -1,4 +1,3 @@
-import json
 from datetime import UTC, datetime, timedelta
 
 from altcha import ChallengeOptions, create_challenge, verify_solution
@@ -23,15 +22,13 @@ async def get_challenge() -> dict:
 
 def verify_altcha_payload(payload: str = Form("", alias="altcha")) -> None:
     """FastAPI dependency that verifies an Altcha solution from form data."""
-    try:
-        data = json.loads(payload)
-    except (json.JSONDecodeError, TypeError) as exc:
+    if not payload:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid Altcha payload.",
-        ) from exc
+        )
 
-    ok, err = verify_solution(data, settings.ALTCHA_HMAC_KEY, check_expires=True)
+    ok, err = verify_solution(payload, settings.ALTCHA_HMAC_KEY, check_expires=True)
     if not ok:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
