@@ -2,16 +2,16 @@ import { HttpErrorResponse, HttpEventType } from "@angular/common/http";
 import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
-import { JumpingTextComponent } from "../../components/jumping-text/jumping-text.component";
-import { AuthService } from "../../services/auth.service";
 import { AltchaService } from "../../api/endpoints/altcha/altcha.service";
-import type { FileUploadResponse, MultiFileUploadResponse } from "../../services/file.service";
-import { FileService } from "../../services/file.service";
-import { extractDownloadToken, formatFileSize, resolveAppUrl } from "../../utils/file.utils";
 import {
   getLimitsApiAuthLimitsGetResource,
   getQuotaApiAuthQuotaGetResource,
 } from "../../api/endpoints/filename.resource";
+import { JumpingTextComponent } from "../../components/jumping-text/jumping-text.component";
+import { AuthService } from "../../services/auth.service";
+import type { FileUploadResponse, MultiFileUploadResponse } from "../../services/file.service";
+import { FileService } from "../../services/file.service";
+import { extractDownloadToken, formatFileSize, resolveAppUrl } from "../../utils/file.utils";
 
 interface UploadFileEntry {
   file: File;

@@ -69,7 +69,7 @@ That script installs `pre-commit` with `uv` if needed, sets `core.hooksPath` to 
 
 If you use the devcontainer, this setup runs automatically during container creation.
 
-The devcontainer also includes Java for OpenAPI client generation, uses Bun instead of Node.js for the frontend CLI path, and persists the `uv` and `bun` package caches across rebuilds using Docker volumes to keep subsequent builds faster.
+The devcontainer uses Bun instead of Node.js for the frontend CLI path and persists the `uv` and `bun` package caches across rebuilds using Docker volumes to keep subsequent builds faster.
 
 If you prefer to do it manually:
 
@@ -97,7 +97,7 @@ On frontend-related commits, the pre-commit hook also runs:
 - frontend lint
 - frontend build
 
-That hook requires `uv`, `bun`, plus either `java` or `docker` on the machine running the commit. Node.js is not required for the frontend CLI path because Angular and the OpenAPI generator are invoked through `bun --bun`.
+That hook requires `uv` and `bun` on the machine running the commit.
 
 CI also validates that [openapi.json](/workspaces/SendR/openapi.json) and [frontend/src/app/api](/workspaces/SendR/frontend/src/app/api) are not stale by regenerating them in GitHub Actions and failing if that produces a diff.
 
@@ -105,29 +105,21 @@ The hook environments are defined in [.pre-commit-config.yaml](/workspaces/SendR
 
 ### Docker
 
-```bash
-docker compose up --build
-```
-
-Open the frontend at `http://localhost:8080`.
-
-Open the API at `http://localhost:8000`.
-
-This Compose setup builds two images:
-
-- `frontend`: Angular app served by nginx
-- `api`: FastAPI backend
-
-In Docker, the frontend nginx container proxies `/api/*` to the backend container so the browser keeps using relative API paths without browser-side CORS.
-
-For production, put your own reverse proxy or load balancer in front of those two services and route subdomains there:
+Each service has its own Dockerfile and is built/deployed as a separate container:
 
 ```bash
-app.example.com -> frontend
-api.example.com -> api
+docker build -t sendr-api ./backend
+docker build -t sendr-frontend ./frontend
 ```
 
-If the frontend and API are on different origins, update `SENDR_ALLOWED_ORIGINS` for the frontend origin and configure the frontend proxy/base URL at your edge.
+The frontend nginx container proxies `/api/*` requests to the backend. Set the `API_URL` environment variable on the frontend container to point to the backend (defaults to `http://api:8000`):
+
+```bash
+docker run -p 8000:8000 sendr-api
+docker run -p 8080:80 -e API_URL=http://sendr-api:8000 sendr-frontend
+```
+
+For production, put your own reverse proxy or load balancer in front of the two services.
 
 By default, the backend does not allow any cross-origin browser frontend origins. `SENDR_ALLOWED_ORIGINS` can be provided either as a JSON array or as a comma-separated list when you intentionally deploy the frontend and API on different origins.
 

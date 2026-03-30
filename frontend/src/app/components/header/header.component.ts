@@ -1,8 +1,8 @@
 import { Component, computed, inject, signal } from "@angular/core";
 import { Router, RouterLink } from "@angular/router";
 import { environment } from "../../../environments/environment";
-import { AuthService } from "../../services/auth.service";
 import { getMeApiAuthMeGetResource } from "../../api/endpoints/filename.resource";
+import { AuthService } from "../../services/auth.service";
 
 @Component({
   imports: [RouterLink],
