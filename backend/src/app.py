@@ -1,27 +1,30 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+from alembic.config import Config
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from alembic import command
 from config import settings
-from database import init_db
 from routers import admin, altcha, auth, dev, files, subscription
 
 STATIC_DIR = Path(__file__).resolve().parent.parent.parent.parent / "static"
+_ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
 
 
-def cli() -> None:
-    import uvicorn
-
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+def _run_migrations() -> None:
+    cfg = Config(str(_ALEMBIC_INI))
+    cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("+aiosqlite", ""))
+    cfg.attributes["skip_logging_config"] = True
+    command.upgrade(cfg, "head")
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    await init_db()
+    _run_migrations()
     yield
 
 

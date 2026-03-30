@@ -1,7 +1,7 @@
 import asyncio
 from logging.config import fileConfig
 
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlmodel import SQLModel
 
@@ -13,11 +13,15 @@ from models import *  # type: ignore # noqa: F401, F403
 config = context.config
 
 # Interpret the config file for Python logging.
-# This line sets up loggers basically.
-if config.config_file_name is not None:
+# Skip when called programmatically (e.g., from app lifespan) to avoid
+# reconfiguring loggers and breaking the host process.
+if not config.attributes.get("skip_logging_config") and config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = SQLModel.metadata
+
+_url = config.get_main_option("sqlalchemy.url") or ""
+_is_async = "+aiosqlite" in _url or "+asyncpg" in _url
 
 
 def run_migrations_offline() -> None:
@@ -46,6 +50,20 @@ def do_run_migrations(connection):
         context.run_migrations()
 
 
+def run_migrations_online_sync() -> None:
+    """Run migrations in 'online' mode with sync engine."""
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section, {}),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
+    with connectable.connect() as connection:
+        do_run_migrations(connection)
+
+    connectable.dispose()
+
+
 async def run_async_migrations() -> None:
     """Run migrations in 'online' mode with async engine."""
     connectable = async_engine_from_config(
@@ -62,7 +80,10 @@ async def run_async_migrations() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    asyncio.run(run_async_migrations())
+    if _is_async:
+        asyncio.run(run_async_migrations())
+    else:
+        run_migrations_online_sync()
 
 
 if context.is_offline_mode():

@@ -25,7 +25,8 @@
         "oxc.oxc-vscode",
         "Angular.ng-template",
         "ms-python.python",
-        "tamasfe.even-better-toml"
+        "tamasfe.even-better-toml",
+        "oven.bun-vscode"
       ]
     }
   }
