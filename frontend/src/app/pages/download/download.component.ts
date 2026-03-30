@@ -1,10 +1,12 @@
 import { Component, computed, inject, signal } from "@angular/core";
-import { catchError, map, of } from "rxjs";
 import { formatFileSize, isExpired } from "../../utils/file.utils";
 import { ActivatedRoute } from "@angular/router";
 import { DatePipe } from "@angular/common";
 import { FileService } from "../../services/file.service";
-import { toSignal } from "@angular/core/rxjs-interop";
+import {
+  getFileInfoApiFilesDownloadTokenInfoGetResource,
+  getGroupInfoApiFilesGroupUploadGroupGetResource,
+} from "../../api/endpoints/filename.resource";
 
 @Component({
   imports: [DatePipe],
@@ -21,33 +23,34 @@ export class DownloadComponent {
 
   isGroup = Boolean(this.group);
 
-  private readonly fileInfoResult = this.token
-    ? toSignal(
-        this.fileService.getFileInfo(this.token).pipe(
-          map((info) => ({ error: null, info })),
-          catchError(() => of({ error: "File not found or has expired.", info: null })),
-        ),
-      )
-    : signal({ error: this.group ? null : "Invalid download link.", info: null });
+  private readonly fileInfoResource = this.token
+    ? getFileInfoApiFilesDownloadTokenInfoGetResource(signal(this.token))
+    : undefined;
 
-  private readonly groupInfoResult = this.group
-    ? toSignal(
-        this.fileService.getGroupInfo(this.group).pipe(
-          map((info) => ({ error: null, info })),
-          catchError(() => of({ error: "Files not found or have expired.", info: null })),
-        ),
-      )
-    : signal({ error: null, info: null });
+  private readonly groupInfoResource = this.group
+    ? getGroupInfoApiFilesGroupUploadGroupGetResource(signal(this.group))
+    : undefined;
 
-  fileInfo = computed(() => this.fileInfoResult()?.info ?? null);
-  groupInfo = computed(() => this.groupInfoResult()?.info ?? null);
-  error = computed(() => this.fileInfoResult()?.error ?? this.groupInfoResult()?.error ?? null);
+  fileInfo = computed(() => this.fileInfoResource?.value() ?? null);
+  groupInfo = computed(() => this.groupInfoResource?.value() ?? null);
+  error = computed(() => {
+    if (this.token && this.fileInfoResource?.error()) {
+      return "File not found or has expired.";
+    }
+    if (this.group && this.groupInfoResource?.error()) {
+      return "Files not found or have expired.";
+    }
+    if (!this.token && !this.group) {
+      return "Invalid download link.";
+    }
+    return null;
+  });
   loading = computed(() => {
     if (this.token) {
-      return this.fileInfoResult() === undefined;
+      return this.fileInfoResource?.isLoading() ?? false;
     }
     if (this.group) {
-      return this.groupInfoResult() === undefined;
+      return this.groupInfoResource?.isLoading() ?? false;
     }
     return false;
   });

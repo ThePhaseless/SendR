@@ -2,8 +2,7 @@ import { Component, computed, inject, signal } from "@angular/core";
 import { Router, RouterLink } from "@angular/router";
 import { environment } from "../../../environments/environment";
 import { AuthService } from "../../services/auth.service";
-import type { MeResponse } from "../../services/auth.service";
-import { toSignal } from "@angular/core/rxjs-interop";
+import { getMeApiAuthMeGetResource } from "../../api/endpoints/filename.resource";
 
 @Component({
   imports: [RouterLink],
@@ -18,11 +17,9 @@ export class HeaderComponent {
   readonly showDevTools = environment.enableDevTools;
   readonly menuOpen = signal(false);
 
-  private readonly me = this.auth.isAuthenticated()
-    ? toSignal(this.auth.getMe(), { initialValue: null })
-    : signal<MeResponse | null>(null);
+  private readonly me = this.auth.isAuthenticated() ? getMeApiAuthMeGetResource() : undefined;
 
-  isAdmin = computed(() => this.me()?.is_admin ?? false);
+  isAdmin = computed(() => this.me?.value()?.is_admin ?? false);
 
   toggleMenu(): void {
     this.menuOpen.update((v) => !v);

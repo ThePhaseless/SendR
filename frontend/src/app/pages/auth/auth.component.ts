@@ -54,7 +54,7 @@ export class AuthComponent {
         this.loading.set(false);
       },
       next: (res) => {
-        this.message.set(res.message);
+        this.message.set(res["message"] ?? "Verification code sent");
         this.step.set("code");
         this.loading.set(false);
       },

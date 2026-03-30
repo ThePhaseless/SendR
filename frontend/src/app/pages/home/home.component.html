@@ -144,7 +144,7 @@
           </div>
 
           <div class="altcha-container">
-            @if (!bypassCaptcha && altchaChallenge(); as challenge) {
+            @if (altchaChallenge(); as challenge) {
               <altcha-widget
                 [attr.challenge]="challenge"
                 auto="onload"
@@ -156,12 +156,12 @@
           <div class="upload-action">
             <button
               class="btn btn-primary btn-lg"
-              [disabled]="isUploading() || (!altchaVerified() && !bypassCaptcha)"
+              [disabled]="isUploading() || !altchaVerified()"
               (click)="startUpload()"
             >
               Upload {{ pendingFiles().length === 1 ? "File" : "Files" }}
             </button>
-            @if (!altchaVerified() && !bypassCaptcha) {
+            @if (!altchaVerified()) {
               <p class="upload-action-hint">Waiting for CAPTCHA verification…</p>
             }
           </div>

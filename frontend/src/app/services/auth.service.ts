@@ -1,38 +1,20 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable, inject, signal } from "@angular/core";
 import type { Observable } from "rxjs";
-import { map, tap } from "rxjs/operators";
+import { tap } from "rxjs/operators";
 import { environment } from "../../environments/environment";
-import { resolveApiUrl } from "../utils/url.utils";
-import { AuthService as GeneratedAuthService } from "../api/api/auth.service";
-import { SubscriptionService } from "../api/api/subscription.service";
+import { AuthService as ApiAuthService } from "../api/endpoints/auth/auth.service";
+import { SubscriptionService as ApiSubscriptionService } from "../api/endpoints/subscription/subscription.service";
 import type {
-  EmailVerificationRequest,
+  LimitsResponse,
   QuotaResponse,
+  SubscriptionResponse,
   TokenResponse,
   UserResponse,
-} from "../api/model/models";
-import type { SubscriptionResponse } from "../api/model/subscription-response";
-
-export interface RequestCodeResponse {
-  message: string;
-}
+} from "../api/model";
 
 export type VerifyCodeResponse = TokenResponse;
 export type MeResponse = UserResponse;
-
-export interface LimitsResponse {
-  max_file_size_mb: number;
-  max_files_per_upload: number;
-}
-
-export interface AltchaChallengeResponse {
-  algorithm: string;
-  challenge: string;
-  maxNumber: number;
-  salt: string;
-  signature: string;
-}
 
 const TOKEN_KEY = "sendr_token";
 const EXPIRES_KEY = "sendr_token_expires";
@@ -42,34 +24,19 @@ const EXPIRES_KEY = "sendr_token_expires";
 })
 export class AuthService {
   private readonly http = inject(HttpClient);
-  private readonly api = inject(GeneratedAuthService);
-  private readonly subscriptionApi = inject(SubscriptionService);
+  private readonly api = inject(ApiAuthService);
+  private readonly subscriptionApi = inject(ApiSubscriptionService);
   private readonly apiUrl = environment.apiUrl;
   authenticated = signal(this.isAuthenticated());
 
-  getAltchaChallenge(): Observable<AltchaChallengeResponse> {
-    return this.http.get<AltchaChallengeResponse>(
-      resolveApiUrl("/api/altcha/challenge", this.apiUrl),
-    );
-  }
-
-  getLimits(): Observable<LimitsResponse> {
-    return this.http.get<LimitsResponse>(`${this.apiUrl}/api/auth/limits`);
-  }
-
-  requestCode(email: string): Observable<RequestCodeResponse> {
-    const payload: EmailVerificationRequest = { email };
-    return this.api
-      .requestCodeApiAuthRequestCodePost(payload)
-      .pipe(map((response) => ({ message: response["message"] ?? "Verification code sent" })));
+  requestCode(email: string): Observable<Record<string, string>> {
+    return this.api.requestCodeApiAuthRequestCodePost({ email });
   }
 
   verifyCode(email: string, code: string): Observable<VerifyCodeResponse> {
     return this.api.verifyCodeApiAuthVerifyCodePost({ code, email }).pipe(
       tap((res) => {
-        localStorage.setItem(TOKEN_KEY, res.token);
-        localStorage.setItem(EXPIRES_KEY, res.expires_at);
-        this.authenticated.set(true);
+        this.storeToken(res);
       }),
     );
   }
@@ -80,6 +47,10 @@ export class AuthService {
 
   getQuota(): Observable<QuotaResponse> {
     return this.api.getQuotaApiAuthQuotaGet();
+  }
+
+  getLimits(): Observable<LimitsResponse> {
+    return this.api.getLimitsApiAuthLimitsGet();
   }
 
   getSubscription(): Observable<SubscriptionResponse> {

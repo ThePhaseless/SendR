@@ -1,14 +1,17 @@
 import { HttpErrorResponse, HttpEventType } from "@angular/common/http";
 import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject, signal } from "@angular/core";
-import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
-import { environment } from "../../../environments/environment";
 import { JumpingTextComponent } from "../../components/jumping-text/jumping-text.component";
-import { type AltchaChallengeResponse, AuthService } from "../../services/auth.service";
+import { AuthService } from "../../services/auth.service";
+import { AltchaService } from "../../api/endpoints/altcha/altcha.service";
 import type { FileUploadResponse, MultiFileUploadResponse } from "../../services/file.service";
 import { FileService } from "../../services/file.service";
 import { extractDownloadToken, formatFileSize, resolveAppUrl } from "../../utils/file.utils";
+import {
+  getLimitsApiAuthLimitsGetResource,
+  getQuotaApiAuthQuotaGetResource,
+} from "../../api/endpoints/filename.resource";
 
 interface UploadFileEntry {
   file: File;
@@ -31,6 +34,7 @@ interface AltchaStateChangeDetail {
 export class HomeComponent {
   private readonly fileService = inject(FileService);
   private readonly authService = inject(AuthService);
+  private readonly altchaService = inject(AltchaService);
   private readonly router = inject(Router);
 
   isDragging = signal(false);
@@ -45,7 +49,6 @@ export class HomeComponent {
   altchaVerified = signal(false);
   altchaChallenge = signal<string | null>(null);
   pendingFiles = signal<UploadFileEntry[]>([]);
-  readonly bypassCaptcha = environment.bypassCaptcha;
   private altchaPayload = "";
 
   // Auth popup for unauthenticated users
@@ -67,19 +70,16 @@ export class HomeComponent {
   private lastProgressTime = 0;
   private lastProgressBytes = 0;
 
-  private readonly limitsData = toSignal(
-    this.authService.isAuthenticated() ? this.authService.getQuota() : this.authService.getLimits(),
-    { initialValue: null },
-  );
+  private readonly limitsData = this.authService.isAuthenticated()
+    ? getQuotaApiAuthQuotaGetResource()
+    : getLimitsApiAuthLimitsGetResource();
 
   constructor() {
-    if (!this.bypassCaptcha) {
-      this.loadAltchaChallenge();
-    }
+    this.loadAltchaChallenge();
   }
 
   maxFileSizeMb = computed<number>(() => {
-    const l = this.limitsData();
+    const l = this.limitsData.value();
     if (l) {
       return l.max_file_size_mb;
     }
@@ -91,7 +91,7 @@ export class HomeComponent {
   }
 
   maxFilesPerUpload = computed<number>(() => {
-    const l = this.limitsData();
+    const l = this.limitsData.value();
     if (l) {
       return l.max_files_per_upload;
     }
@@ -176,7 +176,7 @@ export class HomeComponent {
 
   canUpload = computed(() => {
     const hasFiles = this.pendingFiles().length > 0;
-    const captchaOk = this.altchaVerified() || this.bypassCaptcha;
+    const captchaOk = this.altchaVerified();
     const authenticated = this.isAuthenticated();
     return hasFiles && captchaOk && authenticated && !this.isUploading();
   });
@@ -264,7 +264,7 @@ export class HomeComponent {
   }
 
   private uploadFiles(files: File[]): void {
-    if (!this.altchaPayload && !this.bypassCaptcha) {
+    if (!this.altchaPayload) {
       this.error.set("Please complete the CAPTCHA verification first.");
       return;
     }
@@ -439,18 +439,16 @@ export class HomeComponent {
   private resetAltcha(): void {
     this.altchaVerified.set(false);
     this.altchaPayload = "";
-    if (!this.bypassCaptcha) {
-      this.loadAltchaChallenge();
-    }
+    this.loadAltchaChallenge();
   }
 
   private loadAltchaChallenge(): void {
-    this.authService.getAltchaChallenge().subscribe({
+    this.altchaService.getChallengeApiAltchaChallengeGet().subscribe({
       error: () => {
         this.altchaChallenge.set(null);
         this.error.set("Unable to load CAPTCHA challenge. Please try again later.");
       },
-      next: (challenge: AltchaChallengeResponse) => {
+      next: (challenge) => {
         this.altchaChallenge.set(JSON.stringify(challenge));
       },
     });

@@ -3,8 +3,7 @@ import type { OnInit } from "@angular/core";
 import { RouterLink } from "@angular/router";
 import { DatePipe } from "@angular/common";
 import { AuthService } from "../../services/auth.service";
-import type { UserResponse } from "../../api/model/models";
-import type { SubscriptionResponse } from "../../api/model/subscription-response";
+import type { SubscriptionResponse, UserResponse } from "../../api/model";
 
 @Component({
   imports: [RouterLink, DatePipe],

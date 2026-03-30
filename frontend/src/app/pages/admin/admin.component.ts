@@ -67,7 +67,7 @@ export class AdminComponent implements OnInit {
   startEdit(user: AdminUser): void {
     this.editingUser.set(user);
     this.editTier = user.tier;
-    this.editIsAdmin = user.is_admin;
+    this.editIsAdmin = user.is_admin ?? false;
   }
 
   cancelEdit(): void {
