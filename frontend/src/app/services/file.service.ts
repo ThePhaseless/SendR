@@ -11,6 +11,7 @@ export interface FileUploadResponse {
   download_url: string;
   expires_at: string;
   download_count: number;
+  max_downloads: number | null;
   is_active: boolean;
 }
 
@@ -39,10 +40,20 @@ export class FileService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = environment.apiUrl;
 
-  upload(file: File, altchaPayload: string): Observable<HttpEvent<FileUploadResponse>> {
+  upload(
+    file: File,
+    altchaPayload: string,
+    options?: { expiryHours?: number; maxDownloads?: number },
+  ): Observable<HttpEvent<FileUploadResponse>> {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("altcha", altchaPayload);
+    if (options?.expiryHours !== undefined) {
+      formData.append("expiry_hours", String(options.expiryHours));
+    }
+    if (options?.maxDownloads !== undefined && options.maxDownloads > 0) {
+      formData.append("max_downloads", String(options.maxDownloads));
+    }
     return this.http.post<FileUploadResponse>(`${this.apiUrl}/api/files/upload`, formData, {
       observe: "events",
       reportProgress: true,
@@ -72,12 +83,19 @@ export class FileService {
   uploadMultiple(
     files: File[],
     altchaPayload: string,
+    options?: { expiryHours?: number; maxDownloads?: number },
   ): Observable<HttpEvent<MultiFileUploadResponse>> {
     const formData = new FormData();
     for (const file of files) {
       formData.append("files", file);
     }
     formData.append("altcha", altchaPayload);
+    if (options?.expiryHours !== undefined) {
+      formData.append("expiry_hours", String(options.expiryHours));
+    }
+    if (options?.maxDownloads !== undefined && options.maxDownloads > 0) {
+      formData.append("max_downloads", String(options.maxDownloads));
+    }
     return this.http.post<MultiFileUploadResponse>(
       `${this.apiUrl}/api/files/upload-multiple`,
       formData,

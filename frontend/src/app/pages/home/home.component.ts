@@ -9,6 +9,7 @@ import {
 } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
+import { Router } from "@angular/router";
 import { JumpingTextComponent } from "../../components/jumping-text/jumping-text.component";
 import { AuthService } from "../../services/auth.service";
 import type { FileUploadResponse, MultiFileUploadResponse } from "../../services/file.service";
@@ -37,6 +38,7 @@ interface AltchaStateChangeDetail {
 export class HomeComponent {
   private readonly fileService = inject(FileService);
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   isDragging = signal(false);
   isUploading = signal(false);
@@ -53,13 +55,20 @@ export class HomeComponent {
   readonly altchaChallengeUrl = this.authService.altchaChallengeUrl;
   private altchaPayload = "";
 
-  // Inline auth for unauthenticated users
-  inlineEmail = signal("");
-  inlineCode = signal("");
-  codeSent = signal(false);
-  codeRequesting = signal(false);
-  codeVerifying = signal(false);
-  inlineAuthError = signal<string | null>(null);
+  // Auth popup for unauthenticated users
+  showAuthPopup = signal(false);
+  popupEmail = signal("");
+  popupCode = signal("");
+  popupCodeSent = signal(false);
+  popupCodeRequesting = signal(false);
+  popupCodeVerifying = signal(false);
+  popupAuthError = signal<string | null>(null);
+
+  // Upload settings
+  /** Default 7 days */
+  expiryHours = signal(168);
+  /** 0 = unlimited */
+  maxDownloads = signal(0);
 
   private uploadStartTime = 0;
   private lastProgressTime = 0;
@@ -173,53 +182,85 @@ export class HomeComponent {
   });
 
   startUpload(): void {
-    const files = this.pendingFiles();
-    if (files.length === 0) {
+    if (this.pendingFiles().length === 0) {
       return;
     }
-    this.uploadFiles(files.map((entry) => entry.file));
+    if (!this.isAuthenticated()) {
+      this.showAuthPopup.set(true);
+      return;
+    }
+    this.uploadFiles(this.pendingFiles().map((entry) => entry.file));
   }
 
-  requestInlineCode(): void {
-    const email = this.inlineEmail().trim();
+  openAuthPopup(): void {
+    this.showAuthPopup.set(true);
+  }
+
+  closeAuthPopup(): void {
+    this.showAuthPopup.set(false);
+    this.popupAuthError.set(null);
+  }
+
+  goToLogin(): void {
+    const email = this.popupEmail().trim();
+    void this.router.navigate(["/auth"], { queryParams: email ? { email } : {} });
+  }
+
+  goToRegister(): void {
+    const email = this.popupEmail().trim();
+    void this.router.navigate(["/auth"], {
+      queryParams: { mode: "register", ...(email ? { email } : {}) },
+    });
+  }
+
+  requestPopupCode(): void {
+    const email = this.popupEmail().trim();
     if (!email) {
-      this.inlineAuthError.set("Please enter your email address.");
+      this.popupAuthError.set("Please enter your email address.");
       return;
     }
-    this.codeRequesting.set(true);
-    this.inlineAuthError.set(null);
+    this.popupCodeRequesting.set(true);
+    this.popupAuthError.set(null);
     this.authService.requestCode(email).subscribe({
       error: (err) => {
-        this.inlineAuthError.set(this.getErrorDetail(err, "Failed to send verification code."));
-        this.codeRequesting.set(false);
+        this.popupAuthError.set(this.getErrorDetail(err, "Failed to send verification code."));
+        this.popupCodeRequesting.set(false);
       },
       next: () => {
-        this.codeSent.set(true);
-        this.codeRequesting.set(false);
+        this.popupCodeSent.set(true);
+        this.popupCodeRequesting.set(false);
       },
     });
   }
 
-  verifyInlineCode(): void {
-    const email = this.inlineEmail().trim();
-    const code = this.inlineCode().trim();
+  verifyPopupCode(): void {
+    const email = this.popupEmail().trim();
+    const code = this.popupCode().trim();
     if (!code) {
-      this.inlineAuthError.set("Please enter the verification code.");
+      this.popupAuthError.set("Please enter the verification code.");
       return;
     }
-    this.codeVerifying.set(true);
-    this.inlineAuthError.set(null);
+    this.popupCodeVerifying.set(true);
+    this.popupAuthError.set(null);
     this.authService.verifyCode(email, code).subscribe({
       error: (err) => {
-        this.inlineAuthError.set(
-          this.getErrorDetail(err, "Verification failed. Please try again."),
-        );
-        this.codeVerifying.set(false);
+        this.popupAuthError.set(this.getErrorDetail(err, "Verification failed. Please try again."));
+        this.popupCodeVerifying.set(false);
       },
       next: () => {
-        this.codeVerifying.set(false);
+        this.popupCodeVerifying.set(false);
+        this.showAuthPopup.set(false);
       },
     });
+  }
+
+  navigateToDownload(): void {
+    const link = this.getShareableLink();
+    if (!link) {
+      return;
+    }
+    const url = new URL(link);
+    void this.router.navigateByUrl(url.pathname);
   }
 
   private uploadFiles(files: File[]): void {
@@ -243,7 +284,41 @@ export class HomeComponent {
     const totalSize = files.reduce((sum, file) => sum + file.size, 0);
 
     if (files.length === 1) {
-      this.fileService.upload(files[0], this.altchaPayload).subscribe({
+      this.fileService
+        .upload(files[0], this.altchaPayload, {
+          expiryHours: this.expiryHours(),
+          maxDownloads: this.maxDownloads(),
+        })
+        .subscribe({
+          error: (err) => {
+            this.error.set(this.getErrorDetail(err, "Upload failed. Please try again."));
+            this.isUploading.set(false);
+            this.uploadProgress.set(0);
+            this.resetAltcha();
+          },
+          next: (event) => {
+            if (event.type === HttpEventType.UploadProgress && event.total !== undefined) {
+              const progress =
+                event.total === 0 ? 100 : Math.round((100 * event.loaded) / event.total);
+              this.uploadProgress.set(progress);
+              this.updateSpeedAndEta(event.loaded, totalSize);
+            } else if (event.type === HttpEventType.Response && event.body) {
+              this.singleUploadResult.set(event.body);
+              this.isUploading.set(false);
+              this.uploadProgress.set(0);
+              this.resetAltcha();
+            }
+          },
+        });
+      return;
+    }
+
+    this.fileService
+      .uploadMultiple(files, this.altchaPayload, {
+        expiryHours: this.expiryHours(),
+        maxDownloads: this.maxDownloads(),
+      })
+      .subscribe({
         error: (err) => {
           this.error.set(this.getErrorDetail(err, "Upload failed. Please try again."));
           this.isUploading.set(false);
@@ -257,36 +332,13 @@ export class HomeComponent {
             this.uploadProgress.set(progress);
             this.updateSpeedAndEta(event.loaded, totalSize);
           } else if (event.type === HttpEventType.Response && event.body) {
-            this.singleUploadResult.set(event.body);
+            this.uploadResult.set(event.body);
             this.isUploading.set(false);
             this.uploadProgress.set(0);
             this.resetAltcha();
           }
         },
       });
-      return;
-    }
-
-    this.fileService.uploadMultiple(files, this.altchaPayload).subscribe({
-      error: (err) => {
-        this.error.set(this.getErrorDetail(err, "Upload failed. Please try again."));
-        this.isUploading.set(false);
-        this.uploadProgress.set(0);
-        this.resetAltcha();
-      },
-      next: (event) => {
-        if (event.type === HttpEventType.UploadProgress && event.total !== undefined) {
-          const progress = event.total === 0 ? 100 : Math.round((100 * event.loaded) / event.total);
-          this.uploadProgress.set(progress);
-          this.updateSpeedAndEta(event.loaded, totalSize);
-        } else if (event.type === HttpEventType.Response && event.body) {
-          this.uploadResult.set(event.body);
-          this.isUploading.set(false);
-          this.uploadProgress.set(0);
-          this.resetAltcha();
-        }
-      },
-    });
   }
 
   private updateSpeedAndEta(loaded: number, total: number): void {

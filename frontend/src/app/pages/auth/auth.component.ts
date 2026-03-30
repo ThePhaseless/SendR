@@ -2,7 +2,7 @@ import { HttpErrorResponse } from "@angular/common/http";
 import { Component, inject, signal } from "@angular/core";
 import { AuthService } from "../../services/auth.service";
 import { FormsModule } from "@angular/forms";
-import { Router } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 
 @Component({
   imports: [FormsModule],
@@ -13,6 +13,9 @@ import { Router } from "@angular/router";
 export class AuthComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  readonly isRegister = this.route.snapshot.queryParamMap.get("mode") === "register";
 
   private getErrorDetail(error: unknown, fallback: string): string {
     if (
@@ -32,7 +35,7 @@ export class AuthComponent {
   }
 
   step = signal<"email" | "code">("email");
-  email = "";
+  email = this.route.snapshot.queryParamMap.get("email") ?? "";
   code = "";
   loading = signal(false);
   error = signal<string | null>(null);

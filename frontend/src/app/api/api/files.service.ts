@@ -444,15 +444,17 @@ export class FilesService extends BaseService {
      * Upload File
      * @endpoint post /api/files/upload
      * @param file 
+     * @param expiryHours 
+     * @param maxDownloads 
      * @param altcha 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public uploadFileApiFilesUploadPost(file: string, altcha?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<FileUploadResponse>;
-    public uploadFileApiFilesUploadPost(file: string, altcha?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<FileUploadResponse>>;
-    public uploadFileApiFilesUploadPost(file: string, altcha?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<FileUploadResponse>>;
-    public uploadFileApiFilesUploadPost(file: string, altcha?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public uploadFileApiFilesUploadPost(file: string, expiryHours?: number, maxDownloads?: number, altcha?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<FileUploadResponse>;
+    public uploadFileApiFilesUploadPost(file: string, expiryHours?: number, maxDownloads?: number, altcha?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<FileUploadResponse>>;
+    public uploadFileApiFilesUploadPost(file: string, expiryHours?: number, maxDownloads?: number, altcha?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<FileUploadResponse>>;
+    public uploadFileApiFilesUploadPost(file: string, expiryHours?: number, maxDownloads?: number, altcha?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (file === null || file === undefined) {
             throw new Error('Required parameter file was null or undefined when calling uploadFileApiFilesUploadPost.');
         }
@@ -492,6 +494,12 @@ export class FilesService extends BaseService {
         if (file !== undefined) {
             localVarFormParams = localVarFormParams.append('file', <any>file) as any || localVarFormParams;
         }
+        if (expiryHours !== undefined) {
+            localVarFormParams = localVarFormParams.append('expiry_hours', <any>expiryHours) as any || localVarFormParams;
+        }
+        if (maxDownloads !== undefined) {
+            localVarFormParams = localVarFormParams.append('max_downloads', <any>maxDownloads) as any || localVarFormParams;
+        }
         if (altcha !== undefined) {
             localVarFormParams = localVarFormParams.append('altcha', <any>altcha) as any || localVarFormParams;
         }
@@ -527,15 +535,17 @@ export class FilesService extends BaseService {
      * Upload Multiple Files
      * @endpoint post /api/files/upload-multiple
      * @param files 
+     * @param expiryHours 
+     * @param maxDownloads 
      * @param altcha 
      * @param observe set whether or not to return the data Observable as the body, response or events. defaults to returning the body.
      * @param reportProgress flag to report request and response progress.
      * @param options additional options
      */
-    public uploadMultipleFilesApiFilesUploadMultiplePost(files: Array<string>, altcha?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<MultiFileUploadResponse>;
-    public uploadMultipleFilesApiFilesUploadMultiplePost(files: Array<string>, altcha?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<MultiFileUploadResponse>>;
-    public uploadMultipleFilesApiFilesUploadMultiplePost(files: Array<string>, altcha?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<MultiFileUploadResponse>>;
-    public uploadMultipleFilesApiFilesUploadMultiplePost(files: Array<string>, altcha?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
+    public uploadMultipleFilesApiFilesUploadMultiplePost(files: Array<string>, expiryHours?: number, maxDownloads?: number, altcha?: string, observe?: 'body', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<MultiFileUploadResponse>;
+    public uploadMultipleFilesApiFilesUploadMultiplePost(files: Array<string>, expiryHours?: number, maxDownloads?: number, altcha?: string, observe?: 'response', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpResponse<MultiFileUploadResponse>>;
+    public uploadMultipleFilesApiFilesUploadMultiplePost(files: Array<string>, expiryHours?: number, maxDownloads?: number, altcha?: string, observe?: 'events', reportProgress?: boolean, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<HttpEvent<MultiFileUploadResponse>>;
+    public uploadMultipleFilesApiFilesUploadMultiplePost(files: Array<string>, expiryHours?: number, maxDownloads?: number, altcha?: string, observe: any = 'body', reportProgress: boolean = false, options?: {httpHeaderAccept?: 'application/json', context?: HttpContext, transferCache?: boolean}): Observable<any> {
         if (files === null || files === undefined) {
             throw new Error('Required parameter files was null or undefined when calling uploadMultipleFilesApiFilesUploadMultiplePost.');
         }
@@ -580,6 +590,12 @@ export class FilesService extends BaseService {
             } else {
                 localVarFormParams = localVarFormParams.append('files', [...files].join(COLLECTION_FORMATS['csv'])) as any || localVarFormParams;
             }
+        }
+        if (expiryHours !== undefined) {
+            localVarFormParams = localVarFormParams.append('expiry_hours', <any>expiryHours) as any || localVarFormParams;
+        }
+        if (maxDownloads !== undefined) {
+            localVarFormParams = localVarFormParams.append('max_downloads', <any>maxDownloads) as any || localVarFormParams;
         }
         if (altcha !== undefined) {
             localVarFormParams = localVarFormParams.append('altcha', <any>altcha) as any || localVarFormParams;

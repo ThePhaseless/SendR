@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import aiofiles
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlmodel import select
 
@@ -43,6 +43,37 @@ def _get_limits(tier: UserTier) -> tuple[int, int]:
     return settings.BASIC_MAX_FILE_SIZE_MB, settings.BASIC_MAX_FILES_PER_UPLOAD
 
 
+def _resolve_expiry(expiry_hours: int | None, tier: UserTier) -> timedelta:
+    """Resolve the expiry duration, clamping to tier limits."""
+    if expiry_hours is None:
+        return timedelta(days=settings.FILE_EXPIRY_DAYS)
+    if tier == UserTier.premium:
+        clamped = max(settings.PREMIUM_MIN_EXPIRY_HOURS, min(expiry_hours, settings.PREMIUM_MAX_EXPIRY_HOURS))
+    elif tier == UserTier.free:
+        clamped = max(settings.FREE_MIN_EXPIRY_HOURS, min(expiry_hours, settings.FREE_MAX_EXPIRY_HOURS))
+    else:
+        # Basic tier: pick closest allowed option
+        allowed = settings.BASIC_EXPIRY_OPTIONS_HOURS
+        clamped = min(allowed, key=lambda h: abs(h - expiry_hours)) if allowed else 72
+    return timedelta(hours=clamped)
+
+
+def _resolve_max_downloads(max_downloads: int | None, tier: UserTier) -> int | None:
+    """Resolve max_downloads, applying tier limits. 0 or None means unlimited."""
+    if max_downloads is None or max_downloads <= 0:
+        return None
+    if tier == UserTier.premium:
+        limit = settings.PREMIUM_MAX_DOWNLOADS_LIMIT
+    elif tier == UserTier.free:
+        limit = settings.FREE_MAX_DOWNLOADS_LIMIT
+    else:
+        allowed = settings.BASIC_MAX_DOWNLOADS_OPTIONS
+        if 0 in allowed and max_downloads not in allowed:
+            return None
+        return min(allowed, key=lambda h: abs(h - max_downloads)) if allowed else max_downloads
+    return min(max_downloads, limit) if limit > 0 else max_downloads
+
+
 def _build_download_url(download_token: str) -> str:
     return f"/api/files/{download_token}"
 
@@ -55,6 +86,7 @@ def _to_response(f: FileUpload) -> FileUploadResponse:
         download_url=_build_download_url(f.download_token),
         expires_at=f.expires_at,
         download_count=f.download_count,
+        max_downloads=f.max_downloads,
         is_active=f.is_active,
         upload_group=f.upload_group,
     )
@@ -66,6 +98,8 @@ async def upload_file(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
     _altcha: None = Depends(verify_altcha_payload),
+    expiry_hours: int | None = Form(None),
+    max_downloads: int | None = Form(None),
 ) -> FileUploadResponse:
     # Get tier limits
     max_size_mb, _ = _get_limits(user.tier)
@@ -92,7 +126,8 @@ async def upload_file(
 
     # Create DB record
     download_token = secrets.token_urlsafe(32)
-    expires_at = _utcnow() + timedelta(days=settings.FILE_EXPIRY_DAYS)
+    expires_at = _utcnow() + _resolve_expiry(expiry_hours, user.tier)
+    resolved_max_downloads = _resolve_max_downloads(max_downloads, user.tier)
 
     file_upload = FileUpload(
         user_id=user.id,
@@ -101,6 +136,7 @@ async def upload_file(
         file_size_bytes=file_size,
         download_token=download_token,
         expires_at=expires_at,
+        max_downloads=resolved_max_downloads,
     )
     session.add(file_upload)
     await session.commit()
@@ -115,6 +151,8 @@ async def upload_multiple_files(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
     _altcha: None = Depends(verify_altcha_payload),
+    expiry_hours: int | None = Form(None),
+    max_downloads: int | None = Form(None),
 ) -> MultiFileUploadResponse:
     if not files:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No files provided")
@@ -152,7 +190,8 @@ async def upload_multiple_files(
     upload_dir = Path(settings.UPLOAD_DIR)
     upload_dir.mkdir(parents=True, exist_ok=True)
     upload_group = secrets.token_urlsafe(32)
-    expires_at = _utcnow() + timedelta(days=settings.FILE_EXPIRY_DAYS)
+    expires_at = _utcnow() + _resolve_expiry(expiry_hours, user.tier)
+    resolved_max_downloads = _resolve_max_downloads(max_downloads, user.tier)
     saved_uploads: list[FileUpload] = []
 
     for original_name, content in file_contents:
@@ -169,6 +208,7 @@ async def upload_multiple_files(
             download_token=secrets.token_urlsafe(32),
             upload_group=upload_group,
             expires_at=expires_at,
+            max_downloads=resolved_max_downloads,
         )
         session.add(file_upload)
         saved_uploads.append(file_upload)

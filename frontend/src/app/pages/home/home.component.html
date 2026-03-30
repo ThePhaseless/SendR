@@ -4,9 +4,7 @@
       Share files with
       <app-jumping-text class="highlight" text="anyone" />
     </h1>
-    <p class="subtitle">
-      Upload your files and get a shareable link instantly. Email verification required.
-    </p>
+    <p class="subtitle">Upload your files and get a shareable link instantly.</p>
   </div>
 
   @if (error(); as err) {
@@ -34,9 +32,12 @@
           {{ copied() ? "Copied!" : "Copy Link" }}
         </button>
       </div>
-      <button class="btn btn-secondary upload-another" (click)="resetUpload()">
-        Upload more files
-      </button>
+      <div class="result-actions">
+        <button class="btn btn-primary" (click)="navigateToDownload()">Go to Download Page</button>
+        <button class="btn btn-secondary upload-another" (click)="resetUpload()">
+          Upload more files
+        </button>
+      </div>
     </div>
   } @else {
     <div
@@ -103,54 +104,35 @@
           }
         </div>
         <p class="staged-total">Total: {{ formatSize(totalPendingSize()) }}</p>
-        @if (!devMode) {
-          <p class="staged-hint">Complete the verification below to upload</p>
-        }
       </div>
-    }
 
-    @if (!isAuthenticated()) {
-      <div class="inline-auth">
-        <h3>Verify your email to upload</h3>
-        @if (inlineAuthError(); as authErr) {
-          <div class="alert alert-error alert-sm">{{ authErr }}</div>
-        }
-        @if (!codeSent()) {
-          <div class="inline-auth-row">
-            <input
-              type="email"
-              [ngModel]="inlineEmail()"
-              (ngModelChange)="inlineEmail.set($event)"
-              placeholder="your@email.com"
-              class="inline-auth-input"
-            />
-            <button
-              class="btn btn-primary btn-sm"
-              [disabled]="codeRequesting()"
-              (click)="requestInlineCode()"
-            >
-              {{ codeRequesting() ? "Sending…" : "Send Code" }}
-            </button>
-          </div>
-        } @else {
-          <p class="inline-auth-hint">Code sent to {{ inlineEmail() }}</p>
-          <div class="inline-auth-row">
-            <input
-              type="text"
-              [ngModel]="inlineCode()"
-              (ngModelChange)="inlineCode.set($event)"
-              placeholder="Enter verification code"
-              class="inline-auth-input"
-            />
-            <button
-              class="btn btn-primary btn-sm"
-              [disabled]="codeVerifying()"
-              (click)="verifyInlineCode()"
-            >
-              {{ codeVerifying() ? "Verifying…" : "Verify" }}
-            </button>
-          </div>
-        }
+      <div class="upload-settings">
+        <h3>Upload Settings</h3>
+        <div class="settings-row">
+          <label for="expiry">Expires after</label>
+          <select id="expiry" [ngModel]="expiryHours()" (ngModelChange)="expiryHours.set($event)">
+            <option [ngValue]="1">1 hour</option>
+            <option [ngValue]="24">1 day</option>
+            <option [ngValue]="72">3 days</option>
+            <option [ngValue]="168">7 days</option>
+            <option [ngValue]="720">30 days</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <label for="max-downloads">Max downloads</label>
+          <select
+            id="max-downloads"
+            [ngModel]="maxDownloads()"
+            (ngModelChange)="maxDownloads.set($event)"
+          >
+            <option [ngValue]="0">Unlimited</option>
+            <option [ngValue]="1">1</option>
+            <option [ngValue]="5">5</option>
+            <option [ngValue]="10">10</option>
+            <option [ngValue]="50">50</option>
+            <option [ngValue]="100">100</option>
+          </select>
+        </div>
       </div>
     }
 
@@ -166,15 +148,89 @@
 
     @if (pendingFiles().length > 0) {
       <div class="upload-action">
-        <button class="btn btn-primary btn-lg" [disabled]="!canUpload()" (click)="startUpload()">
+        <button
+          class="btn btn-primary btn-lg"
+          [disabled]="isUploading() || (!altchaVerified() && !devMode)"
+          (click)="startUpload()"
+        >
           Upload {{ pendingFiles().length === 1 ? "File" : "Files" }}
         </button>
-        @if (!isAuthenticated()) {
-          <p class="upload-action-hint">Verify your email above to enable upload</p>
-        } @else if (!altchaVerified() && !devMode) {
+        @if (!altchaVerified() && !devMode) {
           <p class="upload-action-hint">Waiting for CAPTCHA verification…</p>
         }
       </div>
     }
+  }
+
+  @if (showAuthPopup()) {
+    <div class="popup-overlay" (click)="closeAuthPopup()">
+      <div class="popup-card card" (click)="$event.stopPropagation()">
+        <button class="popup-close" (click)="closeAuthPopup()" aria-label="Close">✕</button>
+
+        <div class="popup-section">
+          <h2>Quick Upload</h2>
+          <p class="popup-hint">Verify your email to upload without an account</p>
+
+          @if (popupAuthError(); as authErr) {
+            <div class="alert alert-error alert-sm">{{ authErr }}</div>
+          }
+
+          @if (!popupCodeSent()) {
+            <div class="popup-form-row">
+              <input
+                type="email"
+                [ngModel]="popupEmail()"
+                (ngModelChange)="popupEmail.set($event)"
+                placeholder="your@email.com"
+                class="form-input"
+              />
+              <button
+                class="btn btn-primary btn-sm"
+                [disabled]="popupCodeRequesting()"
+                (click)="requestPopupCode()"
+              >
+                {{ popupCodeRequesting() ? "Sending…" : "Send Code" }}
+              </button>
+            </div>
+          } @else {
+            <p class="popup-code-hint">Code sent to {{ popupEmail() }}</p>
+            <div class="popup-form-row">
+              <input
+                type="text"
+                [ngModel]="popupCode()"
+                (ngModelChange)="popupCode.set($event)"
+                placeholder="Enter verification code"
+                class="form-input"
+              />
+              <button
+                class="btn btn-primary btn-sm"
+                [disabled]="popupCodeVerifying()"
+                (click)="verifyPopupCode()"
+              >
+                {{ popupCodeVerifying() ? "Verifying…" : "Verify" }}
+              </button>
+            </div>
+          }
+        </div>
+
+        <div class="popup-divider">
+          <span>or</span>
+        </div>
+
+        <div class="popup-section">
+          <h2>Create an Account</h2>
+          <div class="popup-benefits">
+            <div class="popup-benefit">📊 Dashboard to manage your uploads</div>
+            <div class="popup-benefit">📁 Larger file size limits</div>
+            <div class="popup-benefit">⏳ Longer file expiry options</div>
+            <div class="popup-benefit">⭐ Upgrade to Premium for unlimited uploads</div>
+          </div>
+          <div class="popup-auth-buttons">
+            <button class="btn btn-primary" (click)="goToRegister()">Register</button>
+            <button class="btn btn-secondary" (click)="goToLogin()">Login</button>
+          </div>
+        </div>
+      </div>
+    </div>
   }
 </div>

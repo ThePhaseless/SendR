@@ -18,7 +18,10 @@
         <h2>{{ file.original_filename }}</h2>
         <div class="file-meta">
           <span>Size: {{ formatSize(file.file_size_bytes) }}</span>
-          <span>Downloads: {{ file.download_count }}</span>
+          <span
+            >Downloads: {{ file.download_count
+            }}{{ file.max_downloads ? " / " + file.max_downloads : "" }}</span
+          >
           <span>Expires: {{ file.expires_at | date: "medium" }}</span>
         </div>
         @if (!file.is_active || isExpired(file.expires_at)) {
