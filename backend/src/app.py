@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -11,15 +12,19 @@ from alembic import command
 from config import settings
 from routers import admin, altcha, auth, dev, files, subscription
 
+logger = logging.getLogger(__name__)
+
 STATIC_DIR = Path(__file__).resolve().parent.parent.parent.parent / "static"
 _ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
 
 
 def _run_migrations() -> None:
+    logger.info("Running database migrations...")
     cfg = Config(str(_ALEMBIC_INI))
     cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("+aiosqlite", ""))
     cfg.attributes["skip_logging_config"] = True
     command.upgrade(cfg, "head")
+    logger.info("Database migrations complete.")
 
 
 @asynccontextmanager
