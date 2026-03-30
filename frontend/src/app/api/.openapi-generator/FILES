@@ -7,6 +7,7 @@ api/altcha.service.ts
 api/api.ts
 api/auth.service.ts
 api/files.service.ts
+api/subscription.service.ts
 configuration.ts
 encoder.ts
 git_push.sh
@@ -23,6 +24,7 @@ model/location-inner.ts
 model/models.ts
 model/multi-file-upload-response.ts
 model/quota-response.ts
+model/subscription-response.ts
 model/token-response.ts
 model/upload-group-info-response.ts
 model/user-response.ts

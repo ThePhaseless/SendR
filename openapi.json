@@ -746,6 +746,86 @@
           }
         }
       }
+    },
+    "/api/subscription": {
+      "get": {
+        "tags": [
+          "subscription"
+        ],
+        "summary": "Get Subscription",
+        "operationId": "get_subscription_api_subscription_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/api/subscription/upgrade": {
+      "post": {
+        "tags": [
+          "subscription"
+        ],
+        "summary": "Upgrade To Premium",
+        "description": "Mock upgrade to premium. In production, this would integrate with a payment provider.",
+        "operationId": "upgrade_to_premium_api_subscription_upgrade_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/api/subscription/cancel": {
+      "post": {
+        "tags": [
+          "subscription"
+        ],
+        "summary": "Cancel Subscription",
+        "description": "Cancel premium subscription. Downgrades user to free tier.",
+        "operationId": "cancel_subscription_api_subscription_cancel_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1184,6 +1264,48 @@
           "weekly_uploads_remaining"
         ],
         "title": "QuotaResponse"
+      },
+      "SubscriptionResponse": {
+        "properties": {
+          "plan": {
+            "type": "string",
+            "title": "Plan"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "plan",
+          "is_active"
+        ],
+        "title": "SubscriptionResponse"
       },
       "TokenResponse": {
         "properties": {

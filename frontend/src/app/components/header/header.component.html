@@ -1,27 +1,32 @@
 <header class="header">
   <div class="header-inner">
     <a routerLink="/" class="logo">SendR</a>
-    <nav class="nav">
-      <a routerLink="/" class="nav-link">Home</a>
-      @if (auth.authenticated()) {
-        <a routerLink="/dashboard" class="nav-link">Dashboard</a>
-        <a routerLink="/premium" class="nav-link">Premium</a>
-      }
-      @if (isAdmin()) {
-        <a routerLink="/admin" class="nav-link">Admin</a>
-      }
-    </nav>
-    <div class="actions">
-      @if (showDevTools) {
-        <button class="btn btn-dev btn-sm" (click)="devLogin('user')">Dev: User</button>
-        <button class="btn btn-dev btn-sm" (click)="devLogin('premium')">Dev: Premium</button>
-        <button class="btn btn-dev btn-sm" (click)="devLogin('admin')">Dev: Admin</button>
-      }
-      @if (auth.authenticated()) {
-        <button class="btn btn-secondary btn-sm" (click)="logout()">Logout</button>
-      } @else {
-        <a routerLink="/auth" class="btn btn-primary btn-sm">Login</a>
-      }
+    <button class="menu-toggle" (click)="toggleMenu()" aria-label="Toggle menu">
+      {{ menuOpen() ? "✕" : "☰" }}
+    </button>
+    <div class="header-content" [class.open]="menuOpen()">
+      <nav class="nav">
+        <a routerLink="/" class="nav-link" (click)="closeMenu()">Home</a>
+        @if (auth.authenticated()) {
+          <a routerLink="/dashboard" class="nav-link" (click)="closeMenu()">Dashboard</a>
+          <a routerLink="/premium" class="nav-link" (click)="closeMenu()">Premium</a>
+        }
+        @if (isAdmin()) {
+          <a routerLink="/admin" class="nav-link" (click)="closeMenu()">Admin</a>
+        }
+      </nav>
+      <div class="actions">
+        @if (showDevTools) {
+          <button class="btn btn-dev btn-sm" (click)="devLogin('user')">Dev: User</button>
+          <button class="btn btn-dev btn-sm" (click)="devLogin('premium')">Dev: Premium</button>
+          <button class="btn btn-dev btn-sm" (click)="devLogin('admin')">Dev: Admin</button>
+        }
+        @if (auth.authenticated()) {
+          <button class="btn btn-secondary btn-sm" (click)="logout()">Logout</button>
+        } @else {
+          <a routerLink="/auth" class="btn btn-primary btn-sm" (click)="closeMenu()">Login</a>
+        }
+      </div>
     </div>
   </div>
 </header>

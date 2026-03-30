@@ -63,9 +63,15 @@ h1 {
 .tier-card {
   padding: 1.5rem;
   text-align: center;
+  display: flex;
+  flex-direction: column;
 
   &.highlighted {
     border: 2px solid var(--primary, #4a90d9);
+  }
+
+  &.current {
+    box-shadow: 0 0 0 2px var(--success, #27ae60);
   }
 
   h3 {
@@ -83,6 +89,7 @@ h1 {
     padding: 0;
     margin: 0;
     text-align: left;
+    flex: 1;
 
     li {
       padding: 0.35rem 0;
@@ -100,6 +107,10 @@ h1 {
       }
     }
   }
+}
+
+.btn-tier {
+  margin-top: 1rem;
 }
 
 .actions {

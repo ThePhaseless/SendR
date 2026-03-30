@@ -3,6 +3,9 @@
   flex-direction: column;
   align-items: center;
   padding-top: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .hero {
@@ -89,6 +92,48 @@
 
   &.uploading {
     cursor: default;
+  }
+}
+
+.upload-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 1.5rem;
+
+  .drop-zone {
+    max-width: none;
+  }
+}
+
+.upload-col-left {
+  width: 100%;
+  max-width: 600px;
+}
+
+.upload-col-right {
+  width: 100%;
+  max-width: 600px;
+}
+
+@media (min-width: 860px) {
+  .upload-layout {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  .upload-col-left {
+    flex: 1;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .upload-col-right {
+    flex: 1;
+    max-width: none;
+    min-width: 0;
   }
 }
 
@@ -268,11 +313,9 @@
 }
 
 .staged-files {
-  margin-top: 1rem;
   padding: 1rem 1.5rem;
   background: var(--staged-bg);
   border-radius: 0.5rem;
-  max-width: 600px;
   width: 100%;
 
   h3 {
@@ -353,7 +396,6 @@
 }
 
 .upload-settings {
-  max-width: 600px;
   width: 100%;
   margin-top: 1rem;
   padding: 1rem 1.5rem;

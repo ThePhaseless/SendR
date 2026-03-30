@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from config import settings
 from database import init_db
-from routers import admin, altcha, auth, dev, files
+from routers import admin, altcha, auth, dev, files, subscription
 
 STATIC_DIR = Path(__file__).resolve().parent.parent.parent.parent / "static"
 
@@ -44,6 +44,7 @@ app.include_router(admin.router)
 app.include_router(altcha.router)
 app.include_router(auth.router)
 app.include_router(files.router)
+app.include_router(subscription.router)
 
 if settings.DEV_MODE:
     app.include_router(dev.router)

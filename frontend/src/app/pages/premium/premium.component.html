@@ -15,15 +15,15 @@
           user()?.tier ?? "basic"
         }}</span>
         @if (sub.is_active && sub.expires_at) {
-          <p>Expires: {{ sub.expires_at | date: "mediumDate" }}</p>
+          <p>Active until {{ sub.expires_at | date: "mediumDate" }}</p>
         }
       </div>
     }
 
     <div class="tiers">
-      <div class="tier-card card">
+      <div class="tier-card card" [class.current]="user()?.tier === 'basic'">
         <h3>Basic</h3>
-        <p class="price">No account</p>
+        <p class="price">No account needed</p>
         <ul>
           <li>3 uploads per week</li>
           <li>Expiry: 1 day or 3 days</li>
@@ -32,9 +32,9 @@
         </ul>
       </div>
 
-      <div class="tier-card card">
+      <div class="tier-card card" [class.current]="user()?.tier === 'free'">
         <h3>Free</h3>
-        <p class="price">Free account</p>
+        <p class="price">Free forever</p>
         <ul>
           <li>5 uploads per week</li>
           <li>Expiry: 1 hour – 7 days</li>
@@ -42,11 +42,16 @@
           <li>Password protection</li>
           <li>Dashboard &amp; file management</li>
         </ul>
+        @if (isPremium()) {
+          <button class="btn btn-tier secondary" [disabled]="processing()" (click)="cancel()">
+            {{ processing() ? "Processing…" : "Downgrade to Free" }}
+          </button>
+        }
       </div>
 
-      <div class="tier-card card highlighted">
+      <div class="tier-card card highlighted" [class.current]="isPremium()">
         <h3>Premium</h3>
-        <p class="price">Mock upgrade</p>
+        <p class="price">All features included</p>
         <ul>
           <li>Unlimited uploads</li>
           <li>Expiry: 1 hour – 30 days</li>
@@ -56,19 +61,15 @@
           <li>Recover deleted files</li>
           <li>Download notifications</li>
         </ul>
+        @if (!isPremium()) {
+          <button class="btn btn-tier primary" [disabled]="processing()" (click)="upgrade()">
+            {{ processing() ? "Processing…" : "Upgrade to Premium" }}
+          </button>
+        }
       </div>
     </div>
 
     <div class="actions">
-      @if (!isPremium()) {
-        <button class="btn primary" [disabled]="processing()" (click)="upgrade()">
-          {{ processing() ? "Processing…" : "Upgrade to Premium" }}
-        </button>
-      } @else {
-        <button class="btn danger" [disabled]="processing()" (click)="cancel()">
-          {{ processing() ? "Processing…" : "Cancel Subscription" }}
-        </button>
-      }
       <a routerLink="/dashboard" class="btn secondary">Back to Dashboard</a>
     </div>
   }

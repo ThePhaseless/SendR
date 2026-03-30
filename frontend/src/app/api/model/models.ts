@@ -9,6 +9,7 @@ export * from './limits-response';
 export * from './location-inner';
 export * from './multi-file-upload-response';
 export * from './quota-response';
+export * from './subscription-response';
 export * from './token-response';
 export * from './upload-group-info-response';
 export * from './user-response';

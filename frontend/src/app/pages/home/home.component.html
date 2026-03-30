@@ -40,126 +40,134 @@
       </div>
     </div>
   } @else {
-    <div
-      class="drop-zone"
-      [class.dragging]="isDragging()"
-      [class.uploading]="isUploading()"
-      (dragover)="onDragOver($event)"
-      (dragleave)="onDragLeave($event)"
-      (drop)="onDrop($event)"
-    >
-      @if (isUploading()) {
-        <div class="upload-progress">
-          <div
-            class="progress-bar-container"
-            role="progressbar"
-            [attr.aria-valuenow]="uploadProgress()"
-            aria-valuemin="0"
-            aria-valuemax="100"
-            aria-label="Upload progress"
-          >
-            <div class="progress-bar" [style.width.%]="uploadProgress()"></div>
-          </div>
-          <p class="progress-text">Uploading… {{ uploadProgress() }}%</p>
-          @if (uploadSpeed() > 0) {
-            <div class="upload-stats">
-              <span>{{ formatSpeed(uploadSpeed()) }}</span>
-              <span>&middot;</span>
-              <span>{{ formatTime(estimatedTimeRemaining()) }} remaining</span>
-            </div>
-          }
-        </div>
-      } @else {
-        <div class="drop-content">
-          <div class="drop-icon">📁</div>
-          <p class="drop-text">Drag & drop your files here</p>
-          <p class="drop-or">or</p>
-          <label class="btn btn-primary file-label">
-            Choose Files
-            <input type="file" (change)="onFileSelected($event)" multiple hidden />
-          </label>
-          <p class="drop-hint">
-            Up to
-            {{ maxFilesPerUpload() === 0 ? "unlimited" : maxFilesPerUpload() }}
-            files, {{ maxFileSizeMb() }} MB total
-          </p>
-        </div>
-      }
-    </div>
-
-    @if (pendingFiles().length > 0) {
-      <div class="staged-files">
-        <h3>Selected files ({{ pendingFiles().length }})</h3>
-        <div class="staged-file-list">
-          @for (entry of pendingFiles(); track entry.name; let i = $index) {
-            <div class="staged-file-item">
-              <span class="staged-file-name">📄 {{ entry.name }}</span>
-              <span class="staged-file-size">{{ formatSize(entry.size) }}</span>
-              @if (!isUploading()) {
-                <button class="btn-remove" (click)="removeFile(i)" aria-label="Remove file">
-                  ✕
-                </button>
+    <div class="upload-layout">
+      <div class="upload-col-left">
+        <div
+          class="drop-zone"
+          [class.dragging]="isDragging()"
+          [class.uploading]="isUploading()"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+        >
+          @if (isUploading()) {
+            <div class="upload-progress">
+              <div
+                class="progress-bar-container"
+                role="progressbar"
+                [attr.aria-valuenow]="uploadProgress()"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-label="Upload progress"
+              >
+                <div class="progress-bar" [style.width.%]="uploadProgress()"></div>
+              </div>
+              <p class="progress-text">Uploading… {{ uploadProgress() }}%</p>
+              @if (uploadSpeed() > 0) {
+                <div class="upload-stats">
+                  <span>{{ formatSpeed(uploadSpeed()) }}</span>
+                  <span>&middot;</span>
+                  <span>{{ formatTime(estimatedTimeRemaining()) }} remaining</span>
+                </div>
               }
             </div>
+          } @else {
+            <div class="drop-content">
+              <div class="drop-icon">📁</div>
+              <p class="drop-text">Drag & drop your files here</p>
+              <p class="drop-or">or</p>
+              <label class="btn btn-primary file-label">
+                Choose Files
+                <input type="file" (change)="onFileSelected($event)" multiple hidden />
+              </label>
+              <p class="drop-hint">
+                Up to
+                {{ maxFilesPerUpload() === 0 ? "unlimited" : maxFilesPerUpload() }}
+                files, {{ maxFileSizeMb() }} MB total
+              </p>
+            </div>
           }
         </div>
-        <p class="staged-total">Total: {{ formatSize(totalPendingSize()) }}</p>
       </div>
 
-      <div class="upload-settings">
-        <h3>Upload Settings</h3>
-        <div class="settings-row">
-          <label for="expiry">Expires after</label>
-          <select id="expiry" [ngModel]="expiryHours()" (ngModelChange)="expiryHours.set($event)">
-            <option [ngValue]="1">1 hour</option>
-            <option [ngValue]="24">1 day</option>
-            <option [ngValue]="72">3 days</option>
-            <option [ngValue]="168">7 days</option>
-            <option [ngValue]="720">30 days</option>
-          </select>
-        </div>
-        <div class="settings-row">
-          <label for="max-downloads">Max downloads</label>
-          <select
-            id="max-downloads"
-            [ngModel]="maxDownloads()"
-            (ngModelChange)="maxDownloads.set($event)"
-          >
-            <option [ngValue]="0">Unlimited</option>
-            <option [ngValue]="1">1</option>
-            <option [ngValue]="5">5</option>
-            <option [ngValue]="10">10</option>
-            <option [ngValue]="50">50</option>
-            <option [ngValue]="100">100</option>
-          </select>
-        </div>
-      </div>
-    }
+      @if (pendingFiles().length > 0) {
+        <div class="upload-col-right">
+          <div class="staged-files">
+            <h3>Selected files ({{ pendingFiles().length }})</h3>
+            <div class="staged-file-list">
+              @for (entry of pendingFiles(); track entry.name; let i = $index) {
+                <div class="staged-file-item">
+                  <span class="staged-file-name">📄 {{ entry.name }}</span>
+                  <span class="staged-file-size">{{ formatSize(entry.size) }}</span>
+                  @if (!isUploading()) {
+                    <button class="btn-remove" (click)="removeFile(i)" aria-label="Remove file">
+                      ✕
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+            <p class="staged-total">Total: {{ formatSize(totalPendingSize()) }}</p>
+          </div>
 
-    <div class="altcha-container">
-      @if (!bypassCaptcha && altchaChallenge(); as challenge) {
-        <altcha-widget
-          [attr.challenge]="challenge"
-          auto="onload"
-          (statechange)="onAltchaStateChange($event)"
-        ></altcha-widget>
+          <div class="upload-settings">
+            <h3>Upload Settings</h3>
+            <div class="settings-row">
+              <label for="expiry">Expires after</label>
+              <select
+                id="expiry"
+                [ngModel]="expiryHours()"
+                (ngModelChange)="expiryHours.set($event)"
+              >
+                <option [ngValue]="1">1 hour</option>
+                <option [ngValue]="24">1 day</option>
+                <option [ngValue]="72">3 days</option>
+                <option [ngValue]="168">7 days</option>
+                <option [ngValue]="720">30 days</option>
+              </select>
+            </div>
+            <div class="settings-row">
+              <label for="max-downloads">Max downloads</label>
+              <select
+                id="max-downloads"
+                [ngModel]="maxDownloads()"
+                (ngModelChange)="maxDownloads.set($event)"
+              >
+                <option [ngValue]="0">Unlimited</option>
+                <option [ngValue]="1">1</option>
+                <option [ngValue]="5">5</option>
+                <option [ngValue]="10">10</option>
+                <option [ngValue]="50">50</option>
+                <option [ngValue]="100">100</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="altcha-container">
+            @if (!bypassCaptcha && altchaChallenge(); as challenge) {
+              <altcha-widget
+                [attr.challenge]="challenge"
+                auto="onload"
+                (statechange)="onAltchaStateChange($event)"
+              ></altcha-widget>
+            }
+          </div>
+
+          <div class="upload-action">
+            <button
+              class="btn btn-primary btn-lg"
+              [disabled]="isUploading() || (!altchaVerified() && !bypassCaptcha)"
+              (click)="startUpload()"
+            >
+              Upload {{ pendingFiles().length === 1 ? "File" : "Files" }}
+            </button>
+            @if (!altchaVerified() && !bypassCaptcha) {
+              <p class="upload-action-hint">Waiting for CAPTCHA verification…</p>
+            }
+          </div>
+        </div>
       }
     </div>
-
-    @if (pendingFiles().length > 0) {
-      <div class="upload-action">
-        <button
-          class="btn btn-primary btn-lg"
-          [disabled]="isUploading() || (!altchaVerified() && !bypassCaptcha)"
-          (click)="startUpload()"
-        >
-          Upload {{ pendingFiles().length === 1 ? "File" : "Files" }}
-        </button>
-        @if (!altchaVerified() && !bypassCaptcha) {
-          <p class="upload-action-hint">Waiting for CAPTCHA verification…</p>
-        }
-      </div>
-    }
   }
 
   @if (showAuthPopup()) {

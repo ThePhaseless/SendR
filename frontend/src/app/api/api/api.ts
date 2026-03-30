@@ -6,4 +6,6 @@ export * from './auth.service';
 import { AuthService } from './auth.service';
 export * from './files.service';
 import { FilesService } from './files.service';
-export const APIS = [AdminService, AltchaService, AuthService, FilesService];
+export * from './subscription.service';
+import { SubscriptionService } from './subscription.service';
+export const APIS = [AdminService, AltchaService, AuthService, FilesService, SubscriptionService];

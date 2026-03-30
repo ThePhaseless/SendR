@@ -16,6 +16,7 @@ export class HeaderComponent {
   readonly auth = inject(AuthService);
 
   readonly showDevTools = environment.enableDevTools;
+  readonly menuOpen = signal(false);
 
   private readonly me = this.auth.isAuthenticated()
     ? toSignal(this.auth.getMe(), { initialValue: null })
@@ -23,8 +24,17 @@ export class HeaderComponent {
 
   isAdmin = computed(() => this.me()?.is_admin ?? false);
 
+  toggleMenu(): void {
+    this.menuOpen.update((v) => !v);
+  }
+
+  closeMenu(): void {
+    this.menuOpen.set(false);
+  }
+
   logout(): void {
     this.auth.logout();
+    this.menuOpen.set(false);
     void this.router.navigate(["/"]);
   }
 
