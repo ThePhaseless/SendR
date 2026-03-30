@@ -21,9 +21,28 @@ _ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
 def _run_migrations() -> None:
     logger.info("Running database migrations...")
     cfg = Config(str(_ALEMBIC_INI))
-    cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("+aiosqlite", ""))
+    sync_url = settings.DATABASE_URL.replace("+aiosqlite", "")
+    cfg.set_main_option("sqlalchemy.url", sync_url)
     cfg.attributes["skip_logging_config"] = True
-    command.upgrade(cfg, "head")
+
+    # If the DB has tables but no alembic_version (created by old init_db),
+    # stamp it at head so alembic doesn't try to re-create everything.
+    from sqlalchemy import create_engine, inspect
+
+    engine = create_engine(sync_url)
+    with engine.connect() as conn:
+        inspector = inspect(conn)
+        tables = inspector.get_table_names()
+        has_alembic = "alembic_version" in tables
+        has_app_tables = "user" in tables
+
+        if has_app_tables and not has_alembic:
+            logger.info("Existing database without alembic tracking detected, stamping at head...")
+            command.stamp(cfg, "head")
+        else:
+            command.upgrade(cfg, "head")
+    engine.dispose()
+
     logger.info("Database migrations complete.")
 
 
