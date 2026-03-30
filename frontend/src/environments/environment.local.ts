@@ -1,5 +1,5 @@
 export const environment = {
   apiUrl: "",
-  bypassCaptcha: true,
+  bypassCaptcha: false,
   enableDevTools: true,
 };
