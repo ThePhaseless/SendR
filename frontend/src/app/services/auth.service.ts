@@ -3,6 +3,7 @@ import { Injectable, inject, signal } from "@angular/core";
 import type { Observable } from "rxjs";
 import { map, tap } from "rxjs/operators";
 import { environment } from "../../environments/environment";
+import { resolveApiUrl } from "../utils/url.utils";
 import { AuthService as GeneratedAuthService } from "../api/api/auth.service";
 import { SubscriptionService } from "../api/api/subscription.service";
 import type {
@@ -25,6 +26,14 @@ export interface LimitsResponse {
   max_files_per_upload: number;
 }
 
+export interface AltchaChallengeResponse {
+  algorithm: string;
+  challenge: string;
+  maxNumber: number;
+  salt: string;
+  signature: string;
+}
+
 const TOKEN_KEY = "sendr_token";
 const EXPIRES_KEY = "sendr_token_expires";
 
@@ -36,8 +45,13 @@ export class AuthService {
   private readonly api = inject(GeneratedAuthService);
   private readonly subscriptionApi = inject(SubscriptionService);
   private readonly apiUrl = environment.apiUrl;
-  readonly altchaChallengeUrl = new URL("/api/altcha/challenge", this.apiUrl).toString();
   authenticated = signal(this.isAuthenticated());
+
+  getAltchaChallenge(): Observable<AltchaChallengeResponse> {
+    return this.http.get<AltchaChallengeResponse>(
+      resolveApiUrl("/api/altcha/challenge", this.apiUrl),
+    );
+  }
 
   getLimits(): Observable<LimitsResponse> {
     return this.http.get<LimitsResponse>(`${this.apiUrl}/api/auth/limits`);

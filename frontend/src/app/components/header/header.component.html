@@ -12,7 +12,7 @@
       }
     </nav>
     <div class="actions">
-      @if (isDevMode) {
+      @if (showDevTools) {
         <button class="btn btn-dev btn-sm" (click)="devLogin('user')">Dev: User</button>
         <button class="btn btn-dev btn-sm" (click)="devLogin('premium')">Dev: Premium</button>
         <button class="btn btn-dev btn-sm" (click)="devLogin('admin')">Dev: Admin</button>

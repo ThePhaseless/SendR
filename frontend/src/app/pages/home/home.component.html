@@ -137,9 +137,9 @@
     }
 
     <div class="altcha-container">
-      @if (!devMode) {
+      @if (!bypassCaptcha && altchaChallenge(); as challenge) {
         <altcha-widget
-          [attr.challengeurl]="altchaChallengeUrl"
+          [attr.challenge]="challenge"
           auto="onload"
           (statechange)="onAltchaStateChange($event)"
         ></altcha-widget>
@@ -150,12 +150,12 @@
       <div class="upload-action">
         <button
           class="btn btn-primary btn-lg"
-          [disabled]="isUploading() || (!altchaVerified() && !devMode)"
+          [disabled]="isUploading() || (!altchaVerified() && !bypassCaptcha)"
           (click)="startUpload()"
         >
           Upload {{ pendingFiles().length === 1 ? "File" : "Files" }}
         </button>
-        @if (!altchaVerified() && !devMode) {
+        @if (!altchaVerified() && !bypassCaptcha) {
           <p class="upload-action-hint">Waiting for CAPTCHA verification…</p>
         }
       </div>

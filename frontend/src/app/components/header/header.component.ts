@@ -1,5 +1,6 @@
-import { Component, computed, inject, isDevMode, signal } from "@angular/core";
+import { Component, computed, inject, signal } from "@angular/core";
 import { Router, RouterLink } from "@angular/router";
+import { environment } from "../../../environments/environment";
 import { AuthService } from "../../services/auth.service";
 import type { MeResponse } from "../../services/auth.service";
 import { toSignal } from "@angular/core/rxjs-interop";
@@ -14,7 +15,7 @@ export class HeaderComponent {
   private readonly router = inject(Router);
   readonly auth = inject(AuthService);
 
-  readonly isDevMode = isDevMode();
+  readonly showDevTools = environment.enableDevTools;
 
   private readonly me = this.auth.isAuthenticated()
     ? toSignal(this.auth.getMe(), { initialValue: null })

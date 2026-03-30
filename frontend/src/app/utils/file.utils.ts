@@ -16,3 +16,5 @@ export function extractDownloadToken(downloadUrl: string): string {
 export function isExpired(expiresAt: string): boolean {
   return new Date(expiresAt) < new Date();
 }
+
+export { resolveAppUrl } from "./url.utils";

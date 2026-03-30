@@ -28,13 +28,14 @@ A WeTransfer-like file sharing service built with Angular and FastAPI.
 cd backend
 uv sync
 uv run alembic upgrade head
-uv run backend
+SENDR_ENVIRONMENT=production uv run uvicorn src.app:app --host 0.0.0.0 --port 8000
 ```
 
-Backend email verification behavior is environment-aware:
+The backend now defaults to production-safe behavior:
 
-- `SENDR_ENVIRONMENT=local` logs verification codes instead of sending email
-- any other value sends the code using the configured SMTP settings
+- `SENDR_ENVIRONMENT=production` keeps CAPTCHA enabled and sends verification codes using the configured SMTP settings
+- `SENDR_ENVIRONMENT=local` is an explicit local-dev opt-in that logs verification codes instead of sending email and relaxes CAPTCHA verification
+- `SENDR_DEV_MODE=true` is a separate explicit opt-in for dev-only backend routes
 
 **Frontend:**
 
@@ -43,6 +44,16 @@ cd frontend
 bun install
 bun start
 ```
+
+`bun start` now serves the frontend with the production configuration by default.
+
+If you explicitly want local-only developer conveniences such as dev login buttons and frontend CAPTCHA bypass, use:
+
+```bash
+bun run start:local-dev
+```
+
+Both frontend entrypoints use the same relative `/api` base path. During local Angular development, `/api/*` is proxied to `http://localhost:8000`. In Docker, nginx proxies `/api/*` to the backend container.
 
 ### Pre-commit Hooks
 
@@ -107,7 +118,7 @@ This Compose setup builds two images:
 - `frontend`: Angular app served by nginx
 - `api`: FastAPI backend
 
-In Docker, the frontend nginx container proxies `/api/*` to the backend container so the browser can keep using relative API paths.
+In Docker, the frontend nginx container proxies `/api/*` to the backend container so the browser keeps using relative API paths without browser-side CORS.
 
 For production, put your own reverse proxy or load balancer in front of those two services and route subdomains there:
 
@@ -118,7 +129,7 @@ api.example.com -> api
 
 If the frontend and API are on different origins, update `SENDR_ALLOWED_ORIGINS` for the frontend origin and configure the frontend proxy/base URL at your edge.
 
-By default, the backend allows the local frontend origins plus the current Railway production frontend origin. `SENDR_ALLOWED_ORIGINS` can be provided either as a JSON array or as a comma-separated list.
+By default, the backend does not allow any cross-origin browser frontend origins. `SENDR_ALLOWED_ORIGINS` can be provided either as a JSON array or as a comma-separated list when you intentionally deploy the frontend and API on different origins.
 
 ## API Documentation
 

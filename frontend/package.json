@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "bunx --bun --no-install ng",
-    "start": "bunx --bun --no-install ng serve --host 0.0.0.0",
+    "start": "bunx --bun --no-install ng serve --host 0.0.0.0 --proxy-config proxy.conf.json",
     "build": "bunx --bun --no-install ng build",
     "watch": "bunx --bun --no-install ng build --watch --configuration development",
     "test": "bunx --bun --no-install ng test",

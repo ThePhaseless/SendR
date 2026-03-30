@@ -2,12 +2,12 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlmodel import select
+from sqlmodel import func, select
 
 from config import settings
 from database import get_session
 from email_utils import send_verification_email
-from models import AuthToken, User, UserTier, VerificationCode, _utcnow
+from models import AuthToken, FileUpload, User, UserTier, VerificationCode, _utcnow
 from rate_limit import auth_rate_limiter, get_client_ip
 from schemas import (
     CodeVerificationRequest,
@@ -36,6 +36,14 @@ def _get_max_file_size_for_tier(tier: UserTier) -> tuple[int, int]:
     if tier == UserTier.free:
         return settings.FREE_MAX_FILE_SIZE_MB, settings.FREE_MAX_FILES_PER_UPLOAD
     return settings.BASIC_MAX_FILE_SIZE_MB, settings.BASIC_MAX_FILES_PER_UPLOAD
+
+
+def _weekly_limit_for_tier(tier: UserTier) -> int:
+    if tier == UserTier.premium:
+        return settings.PREMIUM_MAX_WEEKLY_UPLOADS
+    if tier == UserTier.free:
+        return settings.FREE_MAX_WEEKLY_UPLOADS
+    return settings.BASIC_MAX_WEEKLY_UPLOADS
 
 
 @router.post("/request-code", status_code=status.HTTP_200_OK)
@@ -117,16 +125,51 @@ async def get_limits() -> LimitsResponse:
     return LimitsResponse(
         max_file_size_mb=settings.BASIC_MAX_FILE_SIZE_MB,
         max_files_per_upload=settings.BASIC_MAX_FILES_PER_UPLOAD,
+        weekly_uploads_limit=settings.BASIC_MAX_WEEKLY_UPLOADS,
+        expiry_options_hours=settings.BASIC_EXPIRY_OPTIONS_HOURS,
+        max_downloads_options=settings.BASIC_MAX_DOWNLOADS_OPTIONS,
     )
 
 
 @router.get("/quota")
 async def get_quota(
     user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ) -> QuotaResponse:
     max_file_size_mb, max_files_per_upload = _get_max_file_size_for_tier(user.tier)
 
-    return QuotaResponse(
+    # Count uploads in the last 7 days
+    one_week_ago = _utcnow() - timedelta(days=7)
+    result = await session.exec(
+        select(func.count(FileUpload.id)).where(
+            FileUpload.user_id == user.id,
+            FileUpload.created_at >= one_week_ago,
+        )
+    )
+    weekly_used = result.one()
+
+    weekly_limit = _weekly_limit_for_tier(user.tier)
+    weekly_remaining = max(0, weekly_limit - weekly_used) if weekly_limit > 0 else weekly_limit
+
+    quota = QuotaResponse(
         max_file_size_mb=max_file_size_mb,
         max_files_per_upload=max_files_per_upload,
+        weekly_uploads_limit=weekly_limit,
+        weekly_uploads_used=weekly_used,
+        weekly_uploads_remaining=weekly_remaining,
     )
+
+    # Populate tier-specific expiry/download options
+    if user.tier == UserTier.basic:
+        quota.expiry_options_hours = settings.BASIC_EXPIRY_OPTIONS_HOURS
+        quota.max_downloads_options = settings.BASIC_MAX_DOWNLOADS_OPTIONS
+    elif user.tier == UserTier.free:
+        quota.min_expiry_hours = settings.FREE_MIN_EXPIRY_HOURS
+        quota.max_expiry_hours = settings.FREE_MAX_EXPIRY_HOURS
+        quota.max_downloads_limit = settings.FREE_MAX_DOWNLOADS_LIMIT
+    elif user.tier == UserTier.premium:
+        quota.min_expiry_hours = settings.PREMIUM_MIN_EXPIRY_HOURS
+        quota.max_expiry_hours = settings.PREMIUM_MAX_EXPIRY_HOURS
+        quota.max_downloads_limit = settings.PREMIUM_MAX_DOWNLOADS_LIMIT
+
+    return quota

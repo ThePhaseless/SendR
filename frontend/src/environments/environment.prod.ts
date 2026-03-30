@@ -1,3 +1,5 @@
 export const environment = {
-  apiUrl: "https://api-sendr.up.railway.app",
+  apiUrl: "",
+  bypassCaptcha: false,
+  enableDevTools: false,
 };

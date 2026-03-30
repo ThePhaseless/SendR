@@ -1,21 +1,14 @@
 import { HttpErrorResponse, HttpEventType } from "@angular/common/http";
-import {
-  CUSTOM_ELEMENTS_SCHEMA,
-  Component,
-  computed,
-  inject,
-  isDevMode,
-  signal,
-} from "@angular/core";
+import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
 import { Router } from "@angular/router";
+import { environment } from "../../../environments/environment";
 import { JumpingTextComponent } from "../../components/jumping-text/jumping-text.component";
-import { AuthService } from "../../services/auth.service";
+import { type AltchaChallengeResponse, AuthService } from "../../services/auth.service";
 import type { FileUploadResponse, MultiFileUploadResponse } from "../../services/file.service";
 import { FileService } from "../../services/file.service";
-import { extractDownloadToken, formatFileSize } from "../../utils/file.utils";
-import { resolveAppUrl } from "../../utils/url.utils";
+import { extractDownloadToken, formatFileSize, resolveAppUrl } from "../../utils/file.utils";
 
 interface UploadFileEntry {
   file: File;
@@ -50,9 +43,9 @@ export class HomeComponent {
   error = signal<string | null>(null);
   copied = signal(false);
   altchaVerified = signal(false);
+  altchaChallenge = signal<string | null>(null);
   pendingFiles = signal<UploadFileEntry[]>([]);
-  readonly devMode = isDevMode();
-  readonly altchaChallengeUrl = this.authService.altchaChallengeUrl;
+  readonly bypassCaptcha = environment.bypassCaptcha;
   private altchaPayload = "";
 
   // Auth popup for unauthenticated users
@@ -78,6 +71,12 @@ export class HomeComponent {
     this.authService.isAuthenticated() ? this.authService.getQuota() : this.authService.getLimits(),
     { initialValue: null },
   );
+
+  constructor() {
+    if (!this.bypassCaptcha) {
+      this.loadAltchaChallenge();
+    }
+  }
 
   maxFileSizeMb = computed<number>(() => {
     const l = this.limitsData();
@@ -141,6 +140,7 @@ export class HomeComponent {
       this.error.set("CAPTCHA verification failed. Please try again.");
       this.altchaVerified.set(false);
       this.altchaPayload = "";
+      this.loadAltchaChallenge();
     }
   }
 
@@ -176,7 +176,7 @@ export class HomeComponent {
 
   canUpload = computed(() => {
     const hasFiles = this.pendingFiles().length > 0;
-    const captchaOk = this.altchaVerified() || this.devMode;
+    const captchaOk = this.altchaVerified() || this.bypassCaptcha;
     const authenticated = this.isAuthenticated();
     return hasFiles && captchaOk && authenticated && !this.isUploading();
   });
@@ -264,7 +264,7 @@ export class HomeComponent {
   }
 
   private uploadFiles(files: File[]): void {
-    if (!this.altchaPayload && !this.devMode) {
+    if (!this.altchaPayload && !this.bypassCaptcha) {
       this.error.set("Please complete the CAPTCHA verification first.");
       return;
     }
@@ -439,6 +439,21 @@ export class HomeComponent {
   private resetAltcha(): void {
     this.altchaVerified.set(false);
     this.altchaPayload = "";
+    if (!this.bypassCaptcha) {
+      this.loadAltchaChallenge();
+    }
+  }
+
+  private loadAltchaChallenge(): void {
+    this.authService.getAltchaChallenge().subscribe({
+      error: () => {
+        this.altchaChallenge.set(null);
+        this.error.set("Unable to load CAPTCHA challenge. Please try again later.");
+      },
+      next: (challenge: AltchaChallengeResponse) => {
+        this.altchaChallenge.set(JSON.stringify(challenge));
+      },
+    });
   }
 
   private getAltchaStateDetail(event: Event): AltchaStateChangeDetail | null {

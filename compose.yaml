@@ -8,12 +8,12 @@ services:
     ports:
       - "8000:8000"
     environment:
-      SENDR_ENVIRONMENT: local
-      SENDR_ALLOWED_ORIGINS: '["http://localhost:8080"]'
+      SENDR_ENVIRONMENT: production
     # Additional environment variables — uncomment and customise as needed:
     # environment:
     #   SENDR_ENVIRONMENT: production
-    #   SENDR_ALLOWED_ORIGINS: '["http://localhost:8080", "https://app.example.com"]'
+    #   SENDR_ALLOWED_ORIGINS: '["https://app.example.com"]'
+    #   SENDR_DEV_MODE: false
     #   SENDR_SECRET_KEY: change-me-in-production
     #   SENDR_SMTP_HOST: localhost
     #   SENDR_SMTP_PORT: 587

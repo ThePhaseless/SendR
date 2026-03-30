@@ -11,15 +11,11 @@ def _generate_hmac_key() -> str:
 
 
 def _default_allowed_origins() -> list[str]:
-    return [
-        "http://localhost:4200",
-        "http://localhost:8080",
-        "https://sendr.up.railway.app",
-    ]
+    return []
 
 
 class Settings(BaseSettings):
-    ENVIRONMENT: str = "local"
+    ENVIRONMENT: str = "production"
     DATABASE_URL: str = "sqlite+aiosqlite:///./sendr.db"
     SECRET_KEY: str = "change-me-in-production"
     UPLOAD_DIR: str = "./uploads"
