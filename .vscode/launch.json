@@ -1,40 +1,42 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Python Debugger: FastAPI",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "uvicorn",
-            "cwd": "${workspaceFolder}/backend/src",
-            "args": [
-                "app:app",
-                "--reload",
-                "--host",
-                "0.0.0.0"
-            ],
-            "jinja": true
-        },
-        {
-            "name": "ng serve",
-            "type": "chrome",
-            "cwd": "${workspaceFolder}/frontend",
-            "request": "launch",
-            "preLaunchTask": "bun: start",
-            "url": "http://localhost:4200/"
-        }
-    ],
-    "compounds": [
-        {
-            "name": "Debug Full Stack",
-            "configurations": [
-                "Python Debugger: FastAPI",
-                "ng serve"
-            ],
-            "stopAll": true
-        }
-    ]
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python Debugger: FastAPI",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "cwd": "${workspaceFolder}/backend/src",
+      "env": {
+        "SENDR_DEV_MODE": "true"
+      },
+      "args": [
+        "app:app",
+        "--reload",
+        "--host",
+        "0.0.0.0"
+      ],
+      "jinja": true
+    },
+    {
+      "name": "Debug Frontend in Chrome",
+      "type": "chrome",
+      "request": "launch",
+      "preLaunchTask": "bun: start",
+      "url": "http://localhost:4200/"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug Full Stack",
+      "configurations": [
+        "Python Debugger: FastAPI",
+        "Debug Frontend in Chrome"
+      ],
+      "stopAll": true
+    }
+  ]
 }
