@@ -6,7 +6,8 @@
   },
   "features": {
     "ghcr.io/devcontainers-extra/features/uv:1": {},
-    "ghcr.io/shyim/devcontainers-features/bun:0": {}
+    "ghcr.io/shyim/devcontainers-features/bun:0": {},
+    "ghcr.io/devcontainers/features/node:1": {}
   },
   "mounts": [
     "source=sendr-uv-cache,target=/home/vscode/.cache/uv,type=volume",
@@ -26,7 +27,8 @@
         "Angular.ng-template",
         "ms-python.python",
         "tamasfe.even-better-toml",
-        "oven.bun-vscode"
+        "oven.bun-vscode",
+        "bradlc.vscode-tailwindcss"
       ]
     }
   }
