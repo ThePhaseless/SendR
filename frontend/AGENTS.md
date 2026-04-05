@@ -48,6 +48,14 @@ export class {{ClassName}} {
 </section>
 ```
 
+## Verification
+
+Before finishing any task you **must**:
+
+1. **Build** the project (run the build task or `bun run build`) and ensure there are no compilation errors.
+2. **Test in the browser** — start the dev server and open the app with the built-in browser to visually verify the change works as expected.
+3. **Fix all errors** — if the build fails or the browser shows runtime errors, fix them before considering the task complete.
+
 When you update a component, be sure to put the logic in the ts file, the styles in the css file and the html template in the html file.
 
 ## Resources
