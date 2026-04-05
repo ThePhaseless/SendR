@@ -28,26 +28,26 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     SMTP_FROM: str = "noreply@sendr.app"
     # File limits
-    BASIC_MAX_FILE_SIZE_MB: int = 100
+    TEMPORARY_MAX_FILE_SIZE_MB: int = 100
     FREE_MAX_FILE_SIZE_MB: int = 1024
     PREMIUM_MAX_FILE_SIZE_MB: int = 10240
     # Max files per single upload
-    BASIC_MAX_FILES_PER_UPLOAD: int = 10
+    TEMPORARY_MAX_FILES_PER_UPLOAD: int = 10
     FREE_MAX_FILES_PER_UPLOAD: int = 50
     PREMIUM_MAX_FILES_PER_UPLOAD: int = 0  # 0 means unlimited
     # Weekly upload quotas (0 = unlimited)
-    BASIC_MAX_WEEKLY_UPLOADS: int = 3
+    TEMPORARY_MAX_WEEKLY_UPLOADS: int = 3
     FREE_MAX_WEEKLY_UPLOADS: int = 5
     PREMIUM_MAX_WEEKLY_UPLOADS: int = 0
     # Expiry options per tier (hours)
-    BASIC_EXPIRY_OPTIONS_HOURS: list[int] = [24, 72]  # 1d or 3d only
+    TEMPORARY_EXPIRY_OPTIONS_HOURS: list[int] = [24, 72]  # 1d or 3d only
     FREE_MIN_EXPIRY_HOURS: int = 1
     FREE_MAX_EXPIRY_HOURS: int = 168  # 7 days
     PREMIUM_MIN_EXPIRY_HOURS: int = 1
     PREMIUM_MAX_EXPIRY_HOURS: int = 720  # 30 days
     # Max downloads per tier
-    BASIC_MAX_DOWNLOADS_OPTIONS: list[int] = [1, 0]  # 1 or unlimited only
-    FREE_MAX_DOWNLOADS_LIMIT: int = 1000
+    TEMPORARY_MAX_DOWNLOADS_OPTIONS: list[int] = [1, 0]  # 1 or unlimited only
+    FREE_MAX_DOWNLOADS_LIMIT: int = 10
     PREMIUM_MAX_DOWNLOADS_LIMIT: int = 1000
     # Max recipient emails per transfer
     MAX_RECIPIENT_EMAILS: int = 10

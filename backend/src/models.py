@@ -11,7 +11,7 @@ def _utcnow() -> datetime:
 
 
 class UserTier(enum.StrEnum):
-    basic = "basic"
+    temporary = "temporary"
     free = "free"
     premium = "premium"
 

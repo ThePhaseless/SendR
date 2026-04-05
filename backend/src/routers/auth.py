@@ -35,7 +35,7 @@ def _get_max_file_size_for_tier(tier: UserTier) -> tuple[int, int]:
         return settings.PREMIUM_MAX_FILE_SIZE_MB, settings.PREMIUM_MAX_FILES_PER_UPLOAD
     if tier == UserTier.free:
         return settings.FREE_MAX_FILE_SIZE_MB, settings.FREE_MAX_FILES_PER_UPLOAD
-    return settings.BASIC_MAX_FILE_SIZE_MB, settings.BASIC_MAX_FILES_PER_UPLOAD
+    return settings.TEMPORARY_MAX_FILE_SIZE_MB, settings.TEMPORARY_MAX_FILES_PER_UPLOAD
 
 
 def _weekly_limit_for_tier(tier: UserTier) -> int:
@@ -43,7 +43,7 @@ def _weekly_limit_for_tier(tier: UserTier) -> int:
         return settings.PREMIUM_MAX_WEEKLY_UPLOADS
     if tier == UserTier.free:
         return settings.FREE_MAX_WEEKLY_UPLOADS
-    return settings.BASIC_MAX_WEEKLY_UPLOADS
+    return settings.TEMPORARY_MAX_WEEKLY_UPLOADS
 
 
 @router.post("/request-code", status_code=status.HTTP_200_OK)
@@ -97,9 +97,14 @@ async def verify_code(
     result = await session.execute(stmt)
     user = result.scalars().first()
     if not user:
-        user = User(email=body.email, tier=UserTier.basic)
+        tier = UserTier.free if body.create_account else UserTier.temporary
+        user = User(email=body.email, tier=tier)
         session.add(user)
         await session.flush()
+    elif body.create_account and user.tier == UserTier.temporary:
+        # Upgrade temporary user to free on registration
+        user.tier = UserTier.free
+        session.add(user)
 
     # Create access token
     raw_token, expires_at = create_access_token(user.id)
@@ -121,13 +126,13 @@ async def get_me(user: User = Depends(get_current_user)) -> UserResponse:
 
 @router.get("/limits")
 async def get_limits() -> LimitsResponse:
-    """Return upload limits for basic tier (public, no auth required)."""
+    """Return upload limits for temporary tier (public, no auth required)."""
     return LimitsResponse(
-        max_file_size_mb=settings.BASIC_MAX_FILE_SIZE_MB,
-        max_files_per_upload=settings.BASIC_MAX_FILES_PER_UPLOAD,
-        weekly_uploads_limit=settings.BASIC_MAX_WEEKLY_UPLOADS,
-        expiry_options_hours=settings.BASIC_EXPIRY_OPTIONS_HOURS,
-        max_downloads_options=settings.BASIC_MAX_DOWNLOADS_OPTIONS,
+        max_file_size_mb=settings.TEMPORARY_MAX_FILE_SIZE_MB,
+        max_files_per_upload=settings.TEMPORARY_MAX_FILES_PER_UPLOAD,
+        weekly_uploads_limit=settings.TEMPORARY_MAX_WEEKLY_UPLOADS,
+        expiry_options_hours=settings.TEMPORARY_EXPIRY_OPTIONS_HOURS,
+        max_downloads_options=settings.TEMPORARY_MAX_DOWNLOADS_OPTIONS,
     )
 
 
@@ -160,9 +165,9 @@ async def get_quota(
     )
 
     # Populate tier-specific expiry/download options
-    if user.tier == UserTier.basic:
-        quota.expiry_options_hours = settings.BASIC_EXPIRY_OPTIONS_HOURS
-        quota.max_downloads_options = settings.BASIC_MAX_DOWNLOADS_OPTIONS
+    if user.tier == UserTier.temporary:
+        quota.expiry_options_hours = settings.TEMPORARY_EXPIRY_OPTIONS_HOURS
+        quota.max_downloads_options = settings.TEMPORARY_MAX_DOWNLOADS_OPTIONS
     elif user.tier == UserTier.free:
         quota.min_expiry_hours = settings.FREE_MIN_EXPIRY_HOURS
         quota.max_expiry_hours = settings.FREE_MAX_EXPIRY_HOURS

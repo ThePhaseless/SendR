@@ -10,6 +10,7 @@ class EmailVerificationRequest(SQLModel):
 class CodeVerificationRequest(SQLModel):
     email: str
     code: str
+    create_account: bool = False
 
 
 class TokenResponse(SQLModel):
@@ -49,11 +50,11 @@ class QuotaResponse(SQLModel):
     weekly_uploads_used: int
     weekly_uploads_remaining: int
     # Expiry options
-    expiry_options_hours: list[int] | None = None  # Discrete choices (basic)
+    expiry_options_hours: list[int] | None = None  # Discrete choices (temporary)
     min_expiry_hours: int | None = None  # Range min (free/premium)
     max_expiry_hours: int | None = None  # Range max (free/premium)
     # Max download options
-    max_downloads_options: list[int] | None = None  # Discrete choices (basic)
+    max_downloads_options: list[int] | None = None  # Discrete choices (temporary)
     max_downloads_limit: int | None = None  # Upper bound for freeform (free/premium)
 
 
@@ -87,9 +88,9 @@ class LimitsResponse(SQLModel):
     max_file_size_mb: int
     max_files_per_upload: int
     weekly_uploads_limit: int
-    # Expiry options for basic tier
+    # Expiry options for temporary tier
     expiry_options_hours: list[int]
-    # Max download options for basic tier
+    # Max download options for temporary tier
     max_downloads_options: list[int]
 
 

@@ -6,8 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CodeVerificationRequest {
-  email: string;
-  code: string;
-  create_account?: boolean;
-}
+export type RefreshDownloadLinkApiFilesFileIdRefreshPostParams = {
+expiry_hours?: number | null;
+};

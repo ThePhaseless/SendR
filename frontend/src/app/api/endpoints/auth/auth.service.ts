@@ -189,7 +189,7 @@ export class AuthService {
     );
   }
 /**
- * Return upload limits for basic tier (public, no auth required).
+ * Return upload limits for temporary tier (public, no auth required).
  * @summary Get Limits
  */
  getLimitsApiAuthLimitsGet<TData = LimitsResponse>( options?: HttpClientBodyOptions): Observable<TData>;

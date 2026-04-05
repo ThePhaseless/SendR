@@ -16,7 +16,13 @@ from config import settings
 from database import get_session
 from models import FileUpload, User, UserTier, _utcnow
 from routers.altcha import verify_altcha_payload
-from schemas import FileListResponse, FileUploadResponse, MultiFileUploadResponse, UploadGroupInfoResponse
+from schemas import (
+    FileEditRequest,
+    FileListResponse,
+    FileUploadResponse,
+    MultiFileUploadResponse,
+    UploadGroupInfoResponse,
+)
 from security import get_current_user
 
 if TYPE_CHECKING:
@@ -40,7 +46,7 @@ def _get_limits(tier: UserTier) -> tuple[int, int]:
         )
     if tier == UserTier.free:
         return settings.FREE_MAX_FILE_SIZE_MB, settings.FREE_MAX_FILES_PER_UPLOAD
-    return settings.BASIC_MAX_FILE_SIZE_MB, settings.BASIC_MAX_FILES_PER_UPLOAD
+    return settings.TEMPORARY_MAX_FILE_SIZE_MB, settings.TEMPORARY_MAX_FILES_PER_UPLOAD
 
 
 def _resolve_expiry(expiry_hours: int | None, tier: UserTier) -> timedelta:
@@ -52,8 +58,8 @@ def _resolve_expiry(expiry_hours: int | None, tier: UserTier) -> timedelta:
     elif tier == UserTier.free:
         clamped = max(settings.FREE_MIN_EXPIRY_HOURS, min(expiry_hours, settings.FREE_MAX_EXPIRY_HOURS))
     else:
-        # Basic tier: pick closest allowed option
-        allowed = settings.BASIC_EXPIRY_OPTIONS_HOURS
+        # Temporary tier: pick closest allowed option
+        allowed = settings.TEMPORARY_EXPIRY_OPTIONS_HOURS
         clamped = min(allowed, key=lambda h: abs(h - expiry_hours)) if allowed else 72
     return timedelta(hours=clamped)
 
@@ -67,7 +73,7 @@ def _resolve_max_downloads(max_downloads: int | None, tier: UserTier) -> int | N
     elif tier == UserTier.free:
         limit = settings.FREE_MAX_DOWNLOADS_LIMIT
     else:
-        allowed = settings.BASIC_MAX_DOWNLOADS_OPTIONS
+        allowed = settings.TEMPORARY_MAX_DOWNLOADS_OPTIONS
         if 0 in allowed and max_downloads not in allowed:
             return None
         return min(allowed, key=lambda h: abs(h - max_downloads)) if allowed else max_downloads
@@ -392,6 +398,7 @@ async def refresh_download_link(
     file_id: int,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
+    expiry_hours: int | None = None,
 ) -> FileUploadResponse:
     stmt = select(FileUpload).where(
         FileUpload.id == file_id,
@@ -403,11 +410,72 @@ async def refresh_download_link(
     if not file_upload:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
 
+    now = _utcnow()
+
+    # Free users can only refresh before expiry
+    if user.tier == UserTier.free and now > file_upload.expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Free users can only refresh uploads before they expire.",
+        )
+
+    # Premium users can refresh up to 14 days after expiry
+    if user.tier == UserTier.premium and now > file_upload.expires_at + timedelta(days=14):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Upload expired more than 2 weeks ago and can no longer be refreshed.",
+        )
+
+    # Temporary users cannot refresh
+    if user.tier == UserTier.temporary:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Create a free account to refresh your uploads.",
+        )
+
     # Generate new download token
     file_upload.download_token = secrets.token_urlsafe(32)
     file_upload.download_count = 0
-    file_upload.expires_at = _utcnow() + timedelta(days=settings.FILE_EXPIRY_DAYS)
+    file_upload.expires_at = now + _resolve_expiry(expiry_hours, user.tier)
     file_upload.is_active = True
+
+    session.add(file_upload)
+    await session.commit()
+    await session.refresh(file_upload)
+
+    return _to_response(file_upload)
+
+
+@router.patch("/{file_id}")
+async def edit_file(
+    file_id: int,
+    body: FileEditRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> FileUploadResponse:
+    """Edit file metadata without changing the download link. Premium only."""
+    if user.tier != UserTier.premium:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only premium users can edit uploads.",
+        )
+
+    stmt = select(FileUpload).where(
+        FileUpload.id == file_id,
+        FileUpload.user_id == user.id,
+    )
+    result = await session.execute(stmt)
+    file_upload = result.scalars().first()
+
+    if not file_upload:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    if body.original_filename is not None:
+        file_upload.original_filename = _sanitize_filename(body.original_filename)
+    if body.expires_in_hours is not None:
+        file_upload.expires_at = _utcnow() + _resolve_expiry(body.expires_in_hours, user.tier)
+    if body.max_downloads is not None:
+        file_upload.max_downloads = _resolve_max_downloads(body.max_downloads, user.tier)
 
     session.add(file_upload)
     await session.commit()

@@ -56,7 +56,7 @@ async def _init_tables(tmp_path):
 async def auth_headers():
     """Create a test user and return auth headers with a valid token."""
     async with _test_session_factory() as session:
-        user = User(email="test@sendr.local", tier=UserTier.basic)
+        user = User(email="test@sendr.local", tier=UserTier.temporary)
         session.add(user)
         await session.flush()
 

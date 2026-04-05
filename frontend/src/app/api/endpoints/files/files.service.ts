@@ -29,9 +29,11 @@ import type {
   BodyUploadFileApiFilesUploadPost,
   BodyUploadMultipleFilesApiFilesUploadMultiplePost,
   DeactivateFileApiFilesFileIdDelete200,
+  FileEditRequest,
   FileListResponse,
   FileUploadResponse,
   MultiFileUploadResponse,
+  RefreshDownloadLinkApiFilesFileIdRefreshPostParams,
   UploadGroupInfoResponse
 } from '../../model';
 
@@ -74,7 +76,54 @@ type HttpClientObserveOptions = HttpClientOptions & {
   readonly observe?: 'body' | 'events' | 'response';
 };
 
+type AngularHttpParamValue = string | number | boolean | Array<string | number | boolean>;
+type AngularHttpParamValueWithNullable = AngularHttpParamValue | null;
 
+function filterParams(
+  params: Record<string, unknown>,
+  requiredNullableKeys?: ReadonlySet<string>,
+  preserveRequiredNullables?: false,
+): Record<string, AngularHttpParamValue>;
+function filterParams(
+  params: Record<string, unknown>,
+  requiredNullableKeys: ReadonlySet<string> | undefined,
+  preserveRequiredNullables: true,
+): Record<string, AngularHttpParamValueWithNullable>;
+function filterParams(
+  params: Record<string, unknown>,
+  requiredNullableKeys: ReadonlySet<string> = new Set(),
+  preserveRequiredNullables = false,
+): Record<string, AngularHttpParamValueWithNullable> {
+  const filteredParams: Record<string, AngularHttpParamValueWithNullable> = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (Array.isArray(value)) {
+      const filtered = value.filter(
+        (item) =>
+          item != null &&
+          (typeof item === 'string' ||
+            typeof item === 'number' ||
+            typeof item === 'boolean'),
+      ) as Array<string | number | boolean>;
+      if (filtered.length) {
+        filteredParams[key] = filtered;
+      }
+    } else if (
+      preserveRequiredNullables &&
+      value === null &&
+      requiredNullableKeys.has(key)
+    ) {
+      filteredParams[key] = value;
+    } else if (
+      value != null &&
+      (typeof value === 'string' ||
+        typeof value === 'number' ||
+        typeof value === 'boolean')
+    ) {
+      filteredParams[key] = value;
+    }
+  }
+  return filteredParams;
+}
 
 
 
@@ -345,14 +394,59 @@ if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha !== undefined) {
 /**
  * @summary Refresh Download Link
  */
- refreshDownloadLinkApiFilesFileIdRefreshPost<TData = FileUploadResponse>(fileId: number, options?: HttpClientBodyOptions): Observable<TData>;
- refreshDownloadLinkApiFilesFileIdRefreshPost<TData = FileUploadResponse>(fileId: number, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- refreshDownloadLinkApiFilesFileIdRefreshPost<TData = FileUploadResponse>(fileId: number, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+ refreshDownloadLinkApiFilesFileIdRefreshPost<TData = FileUploadResponse>(fileId: number,
+    params?: RefreshDownloadLinkApiFilesFileIdRefreshPostParams, options?: HttpClientBodyOptions): Observable<TData>;
+ refreshDownloadLinkApiFilesFileIdRefreshPost<TData = FileUploadResponse>(fileId: number,
+    params?: RefreshDownloadLinkApiFilesFileIdRefreshPostParams, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ refreshDownloadLinkApiFilesFileIdRefreshPost<TData = FileUploadResponse>(fileId: number,
+    params?: RefreshDownloadLinkApiFilesFileIdRefreshPostParams, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
   refreshDownloadLinkApiFilesFileIdRefreshPost<TData = FileUploadResponse>(
-    fileId: number, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    fileId: number,
+    params?: RefreshDownloadLinkApiFilesFileIdRefreshPostParams, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    const filteredParams = filterParams({...params, ...options?.params}, new Set<string>([]));
+
     if (options?.observe === 'events') {
       return this.http.post<TData>(
       `/api/files/${fileId}/refresh`,undefined,{
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+        params: filteredParams,}
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.post<TData>(
+      `/api/files/${fileId}/refresh`,undefined,{
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+        params: filteredParams,}
+    );
+    }
+
+    return this.http.post<TData>(
+      `/api/files/${fileId}/refresh`,undefined,{
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+        params: filteredParams,}
+    );
+  }
+/**
+ * Edit file metadata without changing the download link. Premium only.
+ * @summary Edit File
+ */
+ editFileApiFilesFileIdPatch<TData = FileUploadResponse>(fileId: number,
+    fileEditRequest: FileEditRequest, options?: HttpClientBodyOptions): Observable<TData>;
+ editFileApiFilesFileIdPatch<TData = FileUploadResponse>(fileId: number,
+    fileEditRequest: FileEditRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ editFileApiFilesFileIdPatch<TData = FileUploadResponse>(fileId: number,
+    fileEditRequest: FileEditRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  editFileApiFilesFileIdPatch<TData = FileUploadResponse>(
+    fileId: number,
+    fileEditRequest: FileEditRequest, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.patch<TData>(
+      `/api/files/${fileId}`,
+      fileEditRequest,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
       }
@@ -360,16 +454,18 @@ if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha !== undefined) {
     }
 
     if (options?.observe === 'response') {
-      return this.http.post<TData>(
-      `/api/files/${fileId}/refresh`,undefined,{
+      return this.http.patch<TData>(
+      `/api/files/${fileId}`,
+      fileEditRequest,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
       }
     );
     }
 
-    return this.http.post<TData>(
-      `/api/files/${fileId}/refresh`,undefined,{
+    return this.http.patch<TData>(
+      `/api/files/${fileId}`,
+      fileEditRequest,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }

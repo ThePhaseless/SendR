@@ -325,7 +325,7 @@
           "auth"
         ],
         "summary": "Get Limits",
-        "description": "Return upload limits for basic tier (public, no auth required).",
+        "description": "Return upload limits for temporary tier (public, no auth required).",
         "operationId": "get_limits_api_auth_limits_get",
         "responses": {
           "200": {
@@ -670,6 +670,22 @@
               "type": "integer",
               "title": "File Id"
             }
+          },
+          {
+            "name": "expiry_hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Expiry Hours"
+            }
           }
         ],
         "responses": {
@@ -697,6 +713,62 @@
       }
     },
     "/api/files/{file_id}": {
+      "patch": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Edit File",
+        "description": "Edit file metadata without changing the download link. Premium only.",
+        "operationId": "edit_file_api_files__file_id__patch",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "File Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileEditRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
       "delete": {
         "tags": [
           "files"
@@ -973,6 +1045,11 @@
           "code": {
             "type": "string",
             "title": "Code"
+          },
+          "create_account": {
+            "type": "boolean",
+            "title": "Create Account",
+            "default": false
           }
         },
         "type": "object",
@@ -994,6 +1071,72 @@
           "email"
         ],
         "title": "EmailVerificationRequest"
+      },
+      "FileEditRequest": {
+        "properties": {
+          "original_filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Filename"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "remove_password": {
+            "type": "boolean",
+            "title": "Remove Password",
+            "default": false
+          },
+          "expires_in_hours": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires In Hours"
+          },
+          "max_downloads": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Downloads"
+          }
+        },
+        "type": "object",
+        "title": "FileEditRequest"
       },
       "FileListResponse": {
         "properties": {
