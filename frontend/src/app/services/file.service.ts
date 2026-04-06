@@ -43,7 +43,7 @@ export class FileService {
         file,
         max_downloads:
           options?.maxDownloads && options.maxDownloads > 0 ? options.maxDownloads : undefined,
-        password: options?.password || undefined,
+        password: options?.password ?? undefined,
       },
       { observe: "events", reportProgress: true },
     );
@@ -87,7 +87,7 @@ export class FileService {
         files,
         max_downloads:
           options?.maxDownloads && options.maxDownloads > 0 ? options.maxDownloads : undefined,
-        password: options?.password || undefined,
+        password: options?.password ?? undefined,
       },
       { observe: "events", reportProgress: true },
     );

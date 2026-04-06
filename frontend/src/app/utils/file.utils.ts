@@ -1,69 +1,71 @@
 /** Map MIME type prefixes to emojis */
 const MIME_PREFIX_EMOJI: Record<string, string> = {
-  image: "🖼️",
-  video: "🎬",
-  audio: "🎵",
-  text: "📝",
-  font: "🔤",
   application: "📦",
+  audio: "🎵",
+  font: "🔤",
+  image: "🖼️",
+  text: "📝",
+  video: "🎬",
 };
 
 /** Map file extensions to emojis (overrides MIME prefix) */
 const EXT_EMOJI: Record<string, string> = {
-  pdf: "📕",
-  doc: "📘",
-  docx: "📘",
-  xls: "📊",
-  xlsx: "📊",
-  ppt: "📙",
-  pptx: "📙",
-  zip: "🗜️",
-  rar: "🗜️",
   "7z": "🗜️",
-  tar: "🗜️",
-  gz: "🗜️",
+  bat: "🖥️",
   bz2: "🗜️",
-  xz: "🗜️",
-  json: "📋",
-  xml: "📋",
-  csv: "📊",
-  html: "🌐",
-  css: "🎨",
-  js: "⚙️",
-  ts: "⚙️",
-  py: "🐍",
-  java: "☕",
   c: "⚙️",
   cpp: "⚙️",
-  rs: "🦀",
-  go: "🐹",
-  rb: "💎",
-  php: "🐘",
-  sh: "🖥️",
-  bat: "🖥️",
-  exe: "⚙️",
-  dmg: "💿",
-  iso: "💿",
-  svg: "🖼️",
-  md: "📝",
-  txt: "📝",
-  log: "📝",
-  yml: "📋",
-  yaml: "📋",
-  toml: "📋",
-  ini: "📋",
-  env: "🔒",
-  key: "🔑",
-  pem: "🔑",
-  sql: "🗄️",
+  css: "🎨",
+  csv: "📊",
   db: "🗄️",
+  dmg: "💿",
+  doc: "📘",
+  docx: "📘",
+  env: "🔒",
+  exe: "⚙️",
+  go: "🐹",
+  gz: "🗜️",
+  html: "🌐",
+  ini: "📋",
+  iso: "💿",
+  java: "☕",
+  js: "⚙️",
+  json: "📋",
+  key: "🔑",
+  log: "📝",
+  md: "📝",
+  pdf: "📕",
+  pem: "🔑",
+  php: "🐘",
+  ppt: "📙",
+  pptx: "📙",
+  py: "🐍",
+  rar: "🗜️",
+  rb: "💎",
+  rs: "🦀",
+  sh: "🖥️",
+  sql: "🗄️",
   sqlite: "🗄️",
+  svg: "🖼️",
+  tar: "🗜️",
+  toml: "📋",
+  ts: "⚙️",
+  txt: "📝",
+  xls: "📊",
+  xlsx: "📊",
+  xml: "📋",
+  xz: "🗜️",
+  yaml: "📋",
+  yml: "📋",
+  zip: "🗜️",
 };
 
 /** Return an emoji for a given MIME type string */
 export function mimeToEmoji(mime: string): string {
   const ext = mime.split("/").pop()?.toLowerCase() ?? "";
-  if (EXT_EMOJI[ext]) return EXT_EMOJI[ext];
+  if (EXT_EMOJI[ext]) {
+    return EXT_EMOJI[ext];
+  }
   const prefix = mime.split("/")[0];
   return MIME_PREFIX_EMOJI[prefix] ?? "📄";
 }
@@ -71,7 +73,9 @@ export function mimeToEmoji(mime: string): string {
 /** Return an emoji for a filename based on its extension */
 export function filenameToEmoji(name: string): string {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
-  if (EXT_EMOJI[ext]) return EXT_EMOJI[ext];
+  if (EXT_EMOJI[ext]) {
+    return EXT_EMOJI[ext];
+  }
   return "📄";
 }
 

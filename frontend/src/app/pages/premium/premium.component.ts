@@ -50,9 +50,15 @@ export class PremiumComponent implements OnInit {
 
   tierDisplayName(): string {
     const tier = this.user()?.tier;
-    if (tier === "temporary") return "Temporary";
-    if (tier === "free") return "Free";
-    if (tier === "premium") return "Premium";
+    if (tier === "temporary") {
+      return "Temporary";
+    }
+    if (tier === "free") {
+      return "Free";
+    }
+    if (tier === "premium") {
+      return "Premium";
+    }
     return tier ?? "Unknown";
   }
 

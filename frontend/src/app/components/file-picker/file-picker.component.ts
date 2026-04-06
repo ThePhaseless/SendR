@@ -48,7 +48,7 @@ export class FilePickerComponent {
   filesChanged = output<UploadFileEntry[]>();
 
   isDragging = signal(false);
-  collapsedFolders = signal(new Set());
+  collapsedFolders = signal(new Set<string>());
 
   totalPendingSize = computed(() => this.pendingFiles().reduce((sum, f) => sum + f.size, 0));
 

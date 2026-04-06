@@ -118,7 +118,20 @@
     <div class="popup-overlay" (click)="closeAuthPopup()">
       <div class="popup-card card" (click)="$event.stopPropagation()">
         <button class="popup-close" (click)="closeAuthPopup()" aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
         </button>
 
         <div class="popup-section">
@@ -180,8 +193,12 @@
             <li class="popup-benefit">Upgrade to Premium for unlimited uploads</li>
           </ul>
           <div class="popup-auth-buttons">
-            <a class="btn btn-primary" routerLink="/auth" [queryParams]="{ mode: 'register' }">Register</a>
-            <a class="btn btn-secondary" routerLink="/auth" [queryParams]="{ mode: 'login' }">Login</a>
+            <a class="btn btn-primary" routerLink="/auth" [queryParams]="{ mode: 'register' }"
+              >Register</a
+            >
+            <a class="btn btn-secondary" routerLink="/auth" [queryParams]="{ mode: 'login' }"
+              >Login</a
+            >
           </div>
         </div>
       </div>

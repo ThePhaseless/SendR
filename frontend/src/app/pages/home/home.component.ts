@@ -109,11 +109,15 @@ export class HomeComponent {
 
   userTier = computed(() => {
     const l = this.limitsData.value();
-    if (!l) return "temporary";
+    if (!l) {
+      return "temporary";
+    }
     // QuotaResponse has min_expiry_hours, LimitsResponse doesn't
     if ("min_expiry_hours" in l && l.min_expiry_hours !== undefined) {
       // Authenticated user, determine tier from limits
-      if ((l as { max_expiry_hours?: number | null }).max_expiry_hours === 720) return "premium";
+      if ((l as { max_expiry_hours?: number | null }).max_expiry_hours === 720) {
+        return "premium";
+      }
       return "free";
     }
     return "temporary";

@@ -34,7 +34,7 @@ export class DashboardComponent implements OnInit {
   error = signal<string | null>(null);
   copiedGroupKey = signal<string | null>(null);
   expandedGroupKey = signal<string | null>(null);
-  userTier = signal<string>("temporary");
+  userTier = signal("temporary");
 
   // Unified panel settings (bound to upload-settings component)
   panelExpiryHours = signal(168);
@@ -89,7 +89,9 @@ export class DashboardComponent implements OnInit {
     groups.sort((a, b) => {
       const aExpired = this.isGroupExpired(a) ? 1 : 0;
       const bExpired = this.isGroupExpired(b) ? 1 : 0;
-      if (aExpired !== bExpired) return aExpired - bExpired;
+      if (aExpired !== bExpired) {
+        return aExpired - bExpired;
+      }
       const aExpiry = Math.max(...a.files.map((f) => new Date(f.expires_at).getTime()));
       const bExpiry = Math.max(...b.files.map((f) => new Date(f.expires_at).getTime()));
       return bExpiry - aExpiry;
@@ -101,7 +103,9 @@ export class DashboardComponent implements OnInit {
   ngOnInit(): void {
     this.loadFiles();
     this.authService.getMe().subscribe({
-      next: (me) => this.userTier.set(me.tier),
+      next: (me) => {
+        this.userTier.set(me.tier);
+      },
     });
   }
 
@@ -135,7 +139,9 @@ export class DashboardComponent implements OnInit {
   }
 
   canRefresh(group: UploadGroup): boolean {
-    if (this.userTier() === "temporary") return false;
+    if (this.userTier() === "temporary") {
+      return false;
+    }
     if (this.isGroupExpired(group)) {
       return this.userTier() === "premium" && this.isWithinGrace(group);
     }
@@ -161,7 +167,9 @@ export class DashboardComponent implements OnInit {
   getGroupDownloads(group: UploadGroup): string {
     const total = group.files.reduce((sum, f) => sum + f.download_count, 0);
     const maxDl = group.files[0]?.max_downloads;
-    if (maxDl) return `${total}/${maxDl * group.files.length}`;
+    if (maxDl) {
+      return `${total}/${maxDl * group.files.length}`;
+    }
     return `${total}`;
   }
 
@@ -175,7 +183,9 @@ export class DashboardComponent implements OnInit {
     }
     void navigator.clipboard.writeText(link);
     this.copiedGroupKey.set(group.key);
-    setTimeout(() => this.copiedGroupKey.set(null), 2000);
+    setTimeout(() => {
+      this.copiedGroupKey.set(null);
+    }, 2000);
   }
 
   getDownloadPageUrl(group: UploadGroup): string {
@@ -297,7 +307,9 @@ export class DashboardComponent implements OnInit {
   /** Execute refresh after confirmation. */
   executeRefresh(): void {
     const group = this.pendingRefreshGroup();
-    if (!group) return;
+    if (!group) {
+      return;
+    }
     this.showRefreshWarning.set(false);
     this.pendingRefreshGroup.set(null);
     this.isSaving.set(true);
@@ -369,7 +381,9 @@ export class DashboardComponent implements OnInit {
   /** Remove a single file (delete from server). */
   removeFile(file: FileUploadResponse, group: UploadGroup): void {
     this.fileService.deleteFile(file.id).subscribe({
-      error: () => this.error.set("Failed to delete file."),
+      error: () => {
+        this.error.set("Failed to delete file.");
+      },
       next: () => {
         this.files.update((files) => files.filter((f) => f.id !== file.id));
         if (group.files.length <= 1) {
@@ -384,7 +398,9 @@ export class DashboardComponent implements OnInit {
     this.expandedGroupKey.set(null);
     for (const file of group.files) {
       this.fileService.deleteFile(file.id).subscribe({
-        error: () => this.error.set("Failed to delete upload."),
+        error: () => {
+          this.error.set("Failed to delete upload.");
+        },
         next: () => {
           this.files.update((files) => files.filter((f) => f.id !== file.id));
         },

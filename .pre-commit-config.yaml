@@ -6,12 +6,12 @@ repos:
         name: backend ruff check
         files: ^backend/.*\.py$
         pass_filenames: false
-        args: [backend/]
+        args: [--fix, backend/]
       - id: ruff-format
         name: backend ruff format
         files: ^backend/.*\.py$
         pass_filenames: false
-        args: [--check, backend/]
+        args: [backend/]
 
   - repo: local
     hooks:
@@ -25,14 +25,14 @@ repos:
       - id: frontend-build
         name: frontend build
         language: system
-        entry: bash -lc 'cd frontend && bun run build'
+        entry: bash -c 'unset NODE_OPTIONS; cd frontend && bun run build'
         pass_filenames: false
         files: ^(frontend/.*|backend/src/.*\.py|openapi\.json)$
 
       - id: frontend-oxfmt
         name: frontend oxfmt
         language: system
-        entry: bash -c 'cd frontend && bun run format:check'
+        entry: bash -c 'unset NODE_OPTIONS; cd frontend && bun run format'
         pass_filenames: false
         files: ^frontend/src/.*\.(ts|tsx|js|jsx|mjs|cjs|json|css|scss|html)$
         exclude: ^frontend/src/app/api/
@@ -40,6 +40,6 @@ repos:
       - id: frontend-oxlint
         name: frontend oxlint
         language: system
-        entry: bash -c 'cd frontend && bun run lint'
+        entry: bash -c 'unset NODE_OPTIONS; cd frontend && bun run lint:fix'
         pass_filenames: false
         files: ^frontend/src/.*\.(ts|tsx|js|jsx)$
