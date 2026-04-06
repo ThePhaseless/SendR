@@ -1,12 +1,12 @@
-import { Component, computed, inject, signal } from "@angular/core";
-import { formatFileSize, isExpired } from "../../utils/file.utils";
-import { ActivatedRoute } from "@angular/router";
 import { DatePipe } from "@angular/common";
-import { FileService } from "../../services/file.service";
+import { Component, computed, inject, signal } from "@angular/core";
+import { ActivatedRoute } from "@angular/router";
 import {
   getFileInfoApiFilesDownloadTokenInfoGetResource,
   getGroupInfoApiFilesGroupUploadGroupGetResource,
 } from "../../api/endpoints/filename.resource";
+import { FileService } from "../../services/file.service";
+import { filenameToEmoji, formatFileSize, isExpired } from "../../utils/file.utils";
 
 @Component({
   imports: [DatePipe],
@@ -73,5 +73,9 @@ export class DownloadComponent {
 
   isExpired(expiresAt: string): boolean {
     return isExpired(expiresAt);
+  }
+
+  getFileEmoji(name: string): string {
+    return filenameToEmoji(name);
   }
 }

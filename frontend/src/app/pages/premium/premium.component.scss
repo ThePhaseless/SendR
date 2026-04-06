@@ -1,165 +1,118 @@
+@reference "tailwindcss";
+
 .premium-page {
-  max-width: 900px;
-  margin: 2rem auto;
-  padding: 0 1rem;
+  @apply max-w-[900px] mx-auto py-8 px-4;
 }
 
-h1 {
-  text-align: center;
-  margin-bottom: 1.5rem;
+.page-header-section {
+  @apply text-center mb-8;
 }
 
-.loading {
-  text-align: center;
-  color: var(--text-muted, #999);
+.current-tier-banner {
+  @apply flex flex-col items-center gap-1 rounded-xl mx-auto;
+  padding: 1rem 2rem;
+  max-width: 320px;
+  border: 2px solid var(--color-border);
+  background: var(--color-card-bg);
+
+  &.tier-temporary {
+    border-color: var(--color-text-secondary);
+  }
+
+  &.tier-free {
+    border-color: var(--color-badge-text);
+  }
+
+  &.tier-premium {
+    border-color: var(--color-accent);
+  }
+}
+
+.current-tier-label {
+  @apply text-xs uppercase tracking-wider font-semibold;
+  color: var(--color-text-secondary);
+}
+
+.current-tier-name {
+  @apply text-2xl font-bold;
+  font-family: "Comba", "Georgia", serif;
+  color: var(--color-text);
+}
+
+.tier-expiry {
+  color: var(--color-text-secondary);
+  @apply text-xs;
 }
 
 .error {
-  color: var(--danger, #e74c3c);
-  text-align: center;
-  margin-bottom: 1rem;
-}
-
-.current-plan {
-  text-align: center;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-
-  h2 {
-    margin: 0 0 0.5rem;
-  }
-
-  .tier-badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 1rem;
-    font-weight: 600;
-    text-transform: capitalize;
-
-    &.basic {
-      background: var(--border, #ddd);
-      color: var(--text, #333);
-    }
-
-    &.free {
-      background: var(--primary, #4a90d9);
-      color: #fff;
-    }
-
-    &.premium {
-      background: linear-gradient(135deg, #f5af19, #f12711);
-      color: #fff;
-    }
-  }
+  color: var(--color-danger);
+  @apply text-center mb-4;
 }
 
 .tiers {
-  display: grid;
+  @apply grid gap-6 mb-8;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
 }
 
 .tier-card {
-  padding: 1.5rem;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
+  @apply flex flex-col;
+  padding: 0;
+  overflow: hidden;
 
   &.highlighted {
-    border: 2px solid var(--primary, #4a90d9);
+    border: 2px solid var(--color-primary);
   }
 
   &.current {
-    box-shadow: 0 0 0 2px var(--success, #27ae60);
-  }
-
-  h3 {
-    margin: 0 0 0.5rem;
-  }
-
-  .price {
-    font-size: 0.9rem;
-    color: var(--text-muted, #999);
-    margin-bottom: 1rem;
+    box-shadow: 0 0 0 2px var(--color-success);
   }
 
   ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    text-align: left;
-    flex: 1;
+    @apply list-none p-0 m-0 text-left flex-1;
+    padding: 0 1.5rem;
+  }
+}
 
-    li {
-      padding: 0.35rem 0;
-      border-bottom: 1px solid var(--border, #eee);
-      font-size: 0.9rem;
+.tier-card-header {
+  @apply text-center;
+  padding: 1.25rem 1.5rem 1rem;
 
-      &::before {
-        content: "✓ ";
-        color: var(--primary, #4a90d9);
-        font-weight: 700;
-      }
+  h3 {
+    @apply m-0 mb-1 text-lg font-bold;
+  }
 
-      &:last-child {
-        border-bottom: none;
-      }
-    }
+  .price {
+    color: var(--color-text-secondary);
+    @apply text-[0.85rem] m-0;
+  }
+}
+
+.tier-card li {
+  border-bottom: 1px solid var(--color-border);
+  @apply py-1.5 text-[0.85rem];
+
+  &::before {
+    content: "✓ ";
+    color: var(--color-primary);
+    @apply font-bold;
+  }
+
+  &:last-child {
+    @apply border-b-0;
   }
 }
 
 .btn-tier {
-  margin-top: 1rem;
+  @apply mt-auto;
+  margin: 1rem 1.5rem 1.5rem;
+}
+
+.tier-note {
+  color: var(--color-text-secondary);
+  @apply text-xs italic;
+  padding: 0 1.5rem 1rem;
 }
 
 .actions {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.btn {
-  padding: 0.65rem 1.5rem;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  font-size: 1rem;
-  text-decoration: none;
-  display: inline-block;
-  text-align: center;
-
-  &.primary {
-    background: var(--primary, #4a90d9);
-    color: #fff;
-
-    &:hover:not(:disabled) {
-      opacity: 0.9;
-    }
-  }
-
-  &.secondary {
-    background: var(--card-bg, #f5f5f5);
-    color: var(--text, #333);
-    border: 1px solid var(--border, #ddd);
-
-    &:hover {
-      background: var(--border, #ddd);
-    }
-  }
-
-  &.danger {
-    background: var(--danger, #e74c3c);
-    color: #fff;
-
-    &:hover:not(:disabled) {
-      opacity: 0.9;
-    }
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  @apply flex justify-center gap-4 flex-wrap;
 }

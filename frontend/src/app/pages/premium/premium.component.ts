@@ -1,9 +1,9 @@
-import { Component, inject, signal } from "@angular/core";
-import type { OnInit } from "@angular/core";
-import { RouterLink } from "@angular/router";
 import { DatePipe } from "@angular/common";
-import { AuthService } from "../../services/auth.service";
+import type { OnInit } from "@angular/core";
+import { Component, inject, signal } from "@angular/core";
+import { RouterLink } from "@angular/router";
 import type { SubscriptionResponse, UserResponse } from "../../api/model";
+import { AuthService } from "../../services/auth.service";
 
 @Component({
   imports: [RouterLink, DatePipe],
@@ -46,6 +46,14 @@ export class PremiumComponent implements OnInit {
 
   isPremium(): boolean {
     return this.user()?.tier === "premium";
+  }
+
+  tierDisplayName(): string {
+    const tier = this.user()?.tier;
+    if (tier === "temporary") return "Temporary";
+    if (tier === "free") return "Free";
+    if (tier === "premium") return "Premium";
+    return tier ?? "Unknown";
   }
 
   upgrade(): void {

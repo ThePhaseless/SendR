@@ -2,67 +2,88 @@
   @if (loading()) {
     <p class="loading">Loading subscription info…</p>
   } @else {
-    <h1>Premium</h1>
+    <div class="page-header-section">
+      @if (subscription(); as sub) {
+        <div class="current-tier-banner" [class]="'tier-' + (user()?.tier ?? 'temporary')">
+          <span class="current-tier-label">Your current tier</span>
+          <span class="current-tier-name">{{ tierDisplayName() }}</span>
+          @if (sub.is_active && sub.expires_at) {
+            <span class="tier-expiry">Active until {{ sub.expires_at | date: "mediumDate" }}</span>
+          }
+        </div>
+      }
+    </div>
 
     @if (error()) {
       <p class="error">{{ error() }}</p>
     }
 
-    @if (subscription(); as sub) {
-      <div class="current-plan card">
-        <h2>Your Plan</h2>
-        <span class="tier-badge" [class]="user()?.tier ?? 'basic'">{{
-          user()?.tier ?? "basic"
-        }}</span>
-        @if (sub.is_active && sub.expires_at) {
-          <p>Active until {{ sub.expires_at | date: "mediumDate" }}</p>
-        }
-      </div>
-    }
-
     <div class="tiers">
-      <div class="tier-card card" [class.current]="user()?.tier === 'basic'">
-        <h3>Basic</h3>
-        <p class="price">No account needed</p>
+      <div class="tier-card card" [class.current]="user()?.tier === 'temporary'">
+        <div class="tier-card-header">
+          <h3>Temporary</h3>
+          <p class="price">No account needed</p>
+        </div>
         <ul>
           <li>3 uploads per week</li>
+          <li>Up to 100 MB per upload</li>
+          <li>Up to 10 files per upload</li>
           <li>Expiry: 1 day or 3 days</li>
           <li>Downloads: 1 or unlimited</li>
-          <li>Password protection</li>
         </ul>
+        @if (user()?.tier === "temporary") {
+          <p class="tier-note">Create a free account for more features</p>
+        }
       </div>
 
       <div class="tier-card card" [class.current]="user()?.tier === 'free'">
-        <h3>Free</h3>
-        <p class="price">Free forever</p>
+        <div class="tier-card-header">
+          <h3>Free</h3>
+          <p class="price">Free forever</p>
+        </div>
         <ul>
           <li>5 uploads per week</li>
+          <li>Up to 1 GB per upload</li>
+          <li>Up to 50 files per upload</li>
           <li>Expiry: 1 hour – 7 days</li>
-          <li>Custom download limits (up to 1000)</li>
-          <li>Password protection</li>
+          <li>Downloads: unlimited or 1–10</li>
           <li>Dashboard &amp; file management</li>
+          <li>Refresh uploads before expiry</li>
         </ul>
+        @if (user()?.tier === "temporary") {
+          <a
+            routerLink="/auth"
+            [queryParams]="{ mode: 'register' }"
+            class="btn btn-primary btn-tier"
+            >Create Free Account</a
+          >
+        }
         @if (isPremium()) {
-          <button class="btn btn-tier secondary" [disabled]="processing()" (click)="cancel()">
+          <button class="btn btn-secondary btn-tier" [disabled]="processing()" (click)="cancel()">
             {{ processing() ? "Processing…" : "Downgrade to Free" }}
           </button>
         }
       </div>
 
       <div class="tier-card card highlighted" [class.current]="isPremium()">
-        <h3>Premium</h3>
-        <p class="price">All features included</p>
+        <div class="tier-card-header">
+          <h3>Premium</h3>
+          <p class="price">All features included</p>
+        </div>
         <ul>
           <li>Unlimited uploads</li>
+          <li>Up to 10 GB per upload</li>
+          <li>Unlimited files per upload</li>
           <li>Expiry: 1 hour – 30 days</li>
-          <li>Custom download limits (up to 1000)</li>
-          <li>Password protection</li>
-          <li>Edit file metadata</li>
-          <li>Recover deleted files</li>
+          <li>Downloads: unlimited or any count</li>
+          <li>Dashboard &amp; file management</li>
+          <li>Refresh uploads before expiry</li>
+          <li>Reupload up to 2 weeks after expiry</li>
+          <li>Edit uploads without changing link</li>
           <li>Download notifications</li>
         </ul>
         @if (!isPremium()) {
-          <button class="btn btn-tier primary" [disabled]="processing()" (click)="upgrade()">
+          <button class="btn btn-primary btn-tier" [disabled]="processing()" (click)="upgrade()">
             {{ processing() ? "Processing…" : "Upgrade to Premium" }}
           </button>
         }
@@ -70,7 +91,7 @@
     </div>
 
     <div class="actions">
-      <a routerLink="/dashboard" class="btn secondary">Back to Dashboard</a>
+      <a routerLink="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
     </div>
   }
 </div>

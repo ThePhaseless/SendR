@@ -4,18 +4,18 @@
     <p class="auth-subtitle">
       {{
         isRegister
-          ? "Create an account to unlock more features"
+          ? "Sign up for free — no password needed"
           : "Get a verification code sent to your email"
       }}
     </p>
 
     @if (isRegister) {
-      <div class="benefits-list">
-        <div class="benefit-item">📊 Dashboard to manage your uploads</div>
-        <div class="benefit-item">📁 Larger file size limits</div>
-        <div class="benefit-item">⏳ Longer file expiry options</div>
-        <div class="benefit-item">⭐ Upgrade to Premium for unlimited uploads</div>
-      </div>
+      <ul class="benefits-list">
+        <li class="benefit-item">Dashboard to manage and track your uploads</li>
+        <li class="benefit-item">Upload up to 5 files per week</li>
+        <li class="benefit-item">File expiry from 1 hour to 7 days</li>
+        <li class="benefit-item">Set custom download limits up to 1 000</li>
+      </ul>
     }
 
     @if (error(); as err) {

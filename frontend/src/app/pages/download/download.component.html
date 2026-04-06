@@ -7,14 +7,16 @@
   } @else {
     @if (error()) {
       <div class="card error-card">
-        <div class="error-icon">✕</div>
+        <div class="error-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
         <h2>Oops!</h2>
         <p>{{ error() }}</p>
       </div>
     }
     @if (fileInfo(); as file) {
       <div class="card file-card">
-        <div class="file-icon">📄</div>
+        <div class="file-icon">{{ getFileEmoji(file.original_filename) }}</div>
         <h2>{{ file.original_filename }}</h2>
         <div class="file-meta">
           <span>Size: {{ formatSize(file.file_size_bytes) }}</span>
@@ -46,7 +48,9 @@
         <div class="group-file-list">
           @for (file of group.files; track file.id) {
             <div class="group-file-item">
-              <span class="group-file-name">📄 {{ file.original_filename }}</span>
+              <span class="group-file-name"
+                >{{ getFileEmoji(file.original_filename) }} {{ file.original_filename }}</span
+              >
               <span class="group-file-size">{{ formatSize(file.file_size_bytes) }}</span>
               <button
                 class="btn btn-secondary btn-sm"

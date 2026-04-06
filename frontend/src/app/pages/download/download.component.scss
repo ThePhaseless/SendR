@@ -1,123 +1,81 @@
+@use "../../styles/mixins";
+@reference "tailwindcss";
+
 .download-page {
-  display: flex;
-  justify-content: center;
-  padding-top: 4rem;
+  @apply flex justify-center pt-16;
 }
 
 .loading-card,
 .error-card,
 .file-card {
-  text-align: center;
-  max-width: 560px;
-  width: 100%;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--spinner-track);
-  border-top-color: var(--spinner-head);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: 0 auto 1rem;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  @apply text-center max-w-[560px] w-full;
 }
 
 .loading-card p {
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
+}
+
+.loading-card .spinner {
+  @apply mb-4;
 }
 
 .error-icon {
-  width: 48px;
-  height: 48px;
-  background: var(--danger);
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin: 0 auto 1rem;
+  @include mixins.icon-circle(var(--color-danger));
+
+  @apply text-xl;
 }
 
 .error-card {
   h2 {
-    margin-bottom: 0.5rem;
+    @apply mb-2;
   }
 
   p {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
   }
 }
 
 .file-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+  @apply text-5xl mb-4;
 }
 
 .file-card {
   h2 {
-    font-size: 1.25rem;
-    margin-bottom: 1rem;
-    word-break: break-all;
+    @apply text-xl mb-4 break-all;
   }
 }
 
 .file-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  margin-bottom: 1.5rem;
-}
-
-.btn-lg {
-  padding: 0.75rem 2rem;
-  font-size: 1rem;
+  @apply flex flex-col gap-1 text-sm mb-6;
+  color: var(--color-text-secondary);
 }
 
 .zip-info {
-  margin: 1rem 0;
+  @apply my-4;
 }
 
 .group-file-list {
-  margin: 1rem 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  width: 100%;
+  @apply my-4 flex flex-col gap-2 w-full;
 }
 
 .group-file-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  @apply flex items-center gap-2 rounded-md text-sm;
   padding: 0.5rem 0.75rem;
-  background: var(--input-bg);
-  border-radius: 0.375rem;
-  font-size: 0.875rem;
+  background: var(--color-input-bg);
 
   .group-file-name {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    color: var(--text);
+    @include mixins.text-truncate;
+
+    @apply flex-1;
+    color: var(--color-text);
   }
 
   .group-file-size {
-    color: var(--text-secondary);
-    white-space: nowrap;
+    color: var(--color-text-secondary);
+    @apply whitespace-nowrap;
   }
 }
 
 .download-all-btn {
-  margin-top: 1rem;
+  @apply mt-4;
 }

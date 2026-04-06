@@ -1,8 +1,8 @@
 import { HttpErrorResponse } from "@angular/common/http";
 import { Component, inject, signal } from "@angular/core";
-import { AuthService } from "../../services/auth.service";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
+import { AuthService } from "../../services/auth.service";
 
 @Component({
   imports: [FormsModule],
@@ -68,7 +68,7 @@ export class AuthComponent {
     this.loading.set(true);
     this.error.set(null);
 
-    this.authService.verifyCode(this.email, this.code).subscribe({
+    this.authService.verifyCode(this.email, this.code, this.isRegister).subscribe({
       error: (err) => {
         this.error.set(this.getErrorDetail(err, "Invalid code."));
         this.loading.set(false);
