@@ -1,0 +1,167 @@
+@reference "tailwindcss";
+
+:host {
+  @apply block w-full;
+}
+
+.drop-zone {
+  @apply w-full flex items-center justify-center rounded-2xl cursor-pointer;
+  min-height: 300px;
+  border: 2px dashed var(--color-drop-border);
+  background: var(--color-card-bg);
+  transition: all 0.2s ease;
+
+  &.dragging {
+    border-color: var(--color-drop-active-border);
+    background: var(--color-drop-active-bg);
+  }
+
+  &.disabled {
+    @apply cursor-default opacity-60;
+  }
+}
+
+.drop-content {
+  @apply text-center p-8;
+}
+
+.drop-icon {
+  @apply text-5xl mb-4;
+}
+
+.drop-text {
+  @apply text-lg font-semibold;
+  color: var(--color-text);
+}
+
+.drop-folder-link {
+  @apply text-sm;
+  color: var(--color-text-secondary);
+  margin: 0.25rem 0;
+
+  a {
+    @apply font-semibold no-underline cursor-pointer;
+    color: var(--color-primary);
+
+    &:hover {
+      @apply underline;
+    }
+  }
+}
+
+.drop-hint {
+  @apply mt-3;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+}
+
+.compact-actions {
+  @apply flex gap-2 mb-3;
+}
+
+.staged-files {
+  @apply w-full;
+  padding: 1rem 1.5rem;
+  background: var(--color-staged-bg);
+  border-radius: 0.5rem;
+
+  h3 {
+    @apply font-semibold mb-3;
+    font-size: 0.9rem;
+    color: var(--color-text);
+  }
+}
+
+:host[compact] .staged-files,
+:host .staged-files:has(~ .compact-actions) {
+  padding: 0.75rem 1rem;
+}
+
+.staged-file-list {
+  @apply flex flex-col overflow-y-auto;
+  gap: 0.375rem;
+  max-height: 400px;
+}
+
+.staged-file-item {
+  @apply flex items-center text-sm;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  background: var(--color-card-bg);
+  border-radius: 0.375rem;
+
+  .staged-file-name {
+    @apply flex-1 overflow-hidden text-ellipsis whitespace-nowrap;
+    color: var(--color-text);
+  }
+
+  .staged-file-size {
+    @apply whitespace-nowrap;
+    color: var(--color-text-secondary);
+    font-size: 0.8rem;
+  }
+}
+
+.staged-folder {
+  @apply overflow-hidden;
+  border-radius: 0.375rem;
+}
+
+.staged-folder-header {
+  @apply flex items-center text-sm;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  background: var(--color-card-bg);
+  border-radius: 0.375rem;
+}
+
+.folder-toggle {
+  @apply flex-1 border-none cursor-pointer font-semibold text-sm p-0 text-left flex items-center overflow-hidden text-ellipsis whitespace-nowrap;
+  background: none;
+  color: var(--color-text);
+  gap: 0.375rem;
+}
+
+.folder-chevron {
+  @apply inline-block;
+  font-size: 0.625rem;
+  transition: transform 0.15s ease;
+
+  &.collapsed {
+    @apply -rotate-90;
+  }
+}
+
+.staged-folder-meta {
+  @apply whitespace-nowrap;
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+}
+
+.staged-folder-children {
+  @apply flex flex-col pl-4;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.staged-warning {
+  @apply mb-3;
+}
+
+.btn-remove {
+  @apply border-none cursor-pointer text-sm leading-none;
+  background: none;
+  color: var(--color-danger);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+
+  &:hover {
+    background: var(--color-primary-light);
+  }
+}
+
+.staged-total {
+  @apply text-right mt-2;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+}

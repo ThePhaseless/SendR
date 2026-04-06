@@ -1,0 +1,63 @@
+@reference "tailwindcss";
+
+:host {
+  @apply block w-full;
+  padding: 1rem 1.5rem;
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+}
+
+h3 {
+  @apply font-semibold mb-3;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.settings-row {
+  @apply flex items-center justify-between mb-2;
+  gap: 1rem;
+
+  label {
+    @apply text-sm font-medium;
+    color: var(--color-text);
+  }
+
+  select {
+    @apply text-sm outline-none;
+    padding: 0.375rem 0.75rem;
+    border: 1px solid var(--color-input-border);
+    border-radius: 0.5rem;
+    background: var(--color-input-bg);
+    color: var(--color-text);
+    min-width: 140px;
+
+    &:focus {
+      border-color: var(--color-input-focus);
+    }
+  }
+}
+
+.input-with-toggle {
+  @apply flex gap-2 items-center;
+
+  .btn.active {
+    background: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+  }
+
+  .btn-toggle-vis {
+    white-space: nowrap;
+    min-width: 3rem;
+  }
+
+  .form-input {
+    @apply text-sm rounded-md border px-3 py-1.5;
+    background: var(--color-input-bg, var(--color-card-bg));
+    border-color: var(--color-border);
+    color: var(--color-text);
+    width: 80px;
+    min-width: 0;
+  }
+}

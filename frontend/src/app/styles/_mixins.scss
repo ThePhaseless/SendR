@@ -1,0 +1,33 @@
+@reference "tailwindcss";
+
+/// Truncate text with ellipsis
+@mixin text-truncate {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+/// Circular icon badge (e.g. success/error indicators)
+/// @param {Color} $bg - background color
+/// @param {Length} $size [48px] - width & height
+@mixin icon-circle($bg, $size: 48px) {
+  @apply flex items-center justify-center rounded-full text-white font-bold;
+  width: $size;
+  height: $size;
+  margin: 0 auto 1rem;
+  background: $bg;
+}
+
+/// Page section header with display-font title
+@mixin page-header {
+  @apply flex items-center justify-between mb-6;
+
+  h1 {
+    font-family: "Comba", "Georgia", serif;
+    @apply text-2xl font-bold;
+  }
+}
+
+/// Small section heading (h3)
+@mixin section-heading {
+  @apply text-[0.9rem] font-semibold mb-3;
+  color: var(--color-text);
+}

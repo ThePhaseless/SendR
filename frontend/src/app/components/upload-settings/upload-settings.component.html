@@ -1,0 +1,72 @@
+@if (showHeading()) {
+  <h3>Upload Settings</h3>
+}
+
+<div class="settings-row">
+  <label for="expiry">Expires after</label>
+  <select id="expiry" [ngModel]="expiryHours()" (ngModelChange)="expiryHours.set($event)">
+    @for (opt of expiryOptions(); track opt.value) {
+      <option [ngValue]="opt.value">{{ opt.label }}</option>
+    }
+  </select>
+</div>
+
+<div class="settings-row">
+  <label for="max-downloads">Max downloads</label>
+  @if (useCustomDownloads()) {
+    <div class="input-with-toggle">
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm"
+        [class.active]="maxDownloads() === 0"
+        (click)="maxDownloads.set(0)"
+      >
+        Unlimited
+      </button>
+      <input
+        type="number"
+        class="form-input"
+        [ngModel]="maxDownloads() || null"
+        (ngModelChange)="onMaxDownloadsChange($event)"
+        placeholder="Custom"
+        [min]="1"
+        [max]="maxDownloadsLimit()"
+      />
+    </div>
+  } @else {
+    <select
+      id="max-downloads"
+      [ngModel]="maxDownloads()"
+      (ngModelChange)="maxDownloads.set($event)"
+    >
+      <option [ngValue]="0">Unlimited</option>
+      <option [ngValue]="1">1</option>
+      <option [ngValue]="5">5</option>
+      <option [ngValue]="10">10</option>
+    </select>
+  }
+</div>
+
+@if (showPassword()) {
+  <div class="settings-row">
+    <label for="password">Password</label>
+    <div class="input-with-toggle">
+      <input
+        [type]="passwordVisible ? 'text' : 'password'"
+        id="password"
+        class="form-input"
+        [ngModel]="password()"
+        (ngModelChange)="password.set($event)"
+        placeholder="Optional"
+        autocomplete="off"
+      />
+      <button
+        type="button"
+        class="btn btn-secondary btn-sm btn-toggle-vis"
+        (click)="passwordVisible = !passwordVisible"
+      >
+        {{ passwordVisible ? "Hide" : "Show" }}
+      </button>
+    </div>
+  </div>
+}
