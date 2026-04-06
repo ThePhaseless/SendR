@@ -33,12 +33,14 @@ export class AuthService {
     return this.api.requestCodeApiAuthRequestCodePost({ email });
   }
 
-  verifyCode(email: string, code: string): Observable<VerifyCodeResponse> {
-    return this.api.verifyCodeApiAuthVerifyCodePost({ code, email }).pipe(
-      tap((res) => {
-        this.storeToken(res);
-      }),
-    );
+  verifyCode(email: string, code: string, createAccount = false): Observable<VerifyCodeResponse> {
+    return this.api
+      .verifyCodeApiAuthVerifyCodePost({ code, create_account: createAccount, email })
+      .pipe(
+        tap((res) => {
+          this.storeToken(res);
+        }),
+      );
   }
 
   getMe(): Observable<MeResponse> {
