@@ -1,23 +1,25 @@
 import { HttpErrorResponse, HttpEventType } from "@angular/common/http";
 import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { Router } from "@angular/router";
+import { Router, RouterLink } from "@angular/router";
 import { AltchaService } from "../../api/endpoints/altcha/altcha.service";
 import {
   getLimitsApiAuthLimitsGetResource,
   getQuotaApiAuthQuotaGetResource,
 } from "../../api/endpoints/filename.resource";
+import type { UploadFileEntry } from "../../components/file-picker/file-picker.component";
+import { FilePickerComponent } from "../../components/file-picker/file-picker.component";
 import { JumpingTextComponent } from "../../components/jumping-text/jumping-text.component";
+import { UploadSettingsComponent } from "../../components/upload-settings/upload-settings.component";
 import { AuthService } from "../../services/auth.service";
 import type { FileUploadResponse, MultiFileUploadResponse } from "../../services/file.service";
 import { FileService } from "../../services/file.service";
-import { extractDownloadToken, formatFileSize, resolveAppUrl } from "../../utils/file.utils";
-
-interface UploadFileEntry {
-  file: File;
-  name: string;
-  size: number;
-}
+import {
+  extractDownloadToken,
+  filenameToEmoji,
+  formatFileSize,
+  resolveAppUrl,
+} from "../../utils/file.utils";
 
 interface AltchaStateChangeDetail {
   payload?: string;
@@ -25,7 +27,13 @@ interface AltchaStateChangeDetail {
 }
 
 @Component({
-  imports: [JumpingTextComponent, FormsModule],
+  imports: [
+    JumpingTextComponent,
+    FormsModule,
+    RouterLink,
+    FilePickerComponent,
+    UploadSettingsComponent,
+  ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   selector: "app-home",
   styleUrl: "./home.component.scss",
@@ -37,7 +45,6 @@ export class HomeComponent {
   private readonly altchaService = inject(AltchaService);
   private readonly router = inject(Router);
 
-  isDragging = signal(false);
   isUploading = signal(false);
   uploadProgress = signal(0);
   uploadSpeed = signal(0);
@@ -65,6 +72,8 @@ export class HomeComponent {
   expiryHours = signal(168);
   /** 0 = unlimited */
   maxDownloads = signal(0);
+  /** Upload password (empty = no password) */
+  uploadPassword = signal("");
 
   private uploadStartTime = 0;
   private lastProgressTime = 0;
@@ -98,38 +107,17 @@ export class HomeComponent {
     return 10;
   });
 
-  totalPendingSize = computed(() => this.pendingFiles().reduce((sum, file) => sum + file.size, 0));
-
-  onDragOver(event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isDragging.set(true);
-  }
-
-  onDragLeave(event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isDragging.set(false);
-  }
-
-  onDrop(event: DragEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.isDragging.set(false);
-    const files = event.dataTransfer?.files;
-    if (files && files.length > 0) {
-      this.stageFiles([...files]);
+  userTier = computed(() => {
+    const l = this.limitsData.value();
+    if (!l) return "temporary";
+    // QuotaResponse has min_expiry_hours, LimitsResponse doesn't
+    if ("min_expiry_hours" in l && l.min_expiry_hours !== undefined) {
+      // Authenticated user, determine tier from limits
+      if ((l as { max_expiry_hours?: number | null }).max_expiry_hours === 720) return "premium";
+      return "free";
     }
-  }
-
-  onFileSelected(event: Event): void {
-    const { target } = event;
-    if (!(target instanceof HTMLInputElement) || !target.files || target.files.length === 0) {
-      return;
-    }
-
-    this.stageFiles([...target.files]);
-  }
+    return "temporary";
+  });
 
   onAltchaStateChange(event: Event): void {
     const detail = this.getAltchaStateDetail(event);
@@ -144,42 +132,11 @@ export class HomeComponent {
     }
   }
 
-  removeFile(index: number): void {
-    this.pendingFiles.update((files) => files.filter((_, i) => i !== index));
-  }
-
-  private stageFiles(newFiles: File[]): void {
-    const maxBytes = this.maxFileSizeMb() * 1024 * 1024;
-    const maxPerUpload = this.maxFilesPerUpload();
-    const combined = [...this.pendingFiles()];
-
-    for (const file of newFiles) {
-      combined.push({ file, name: file.name, size: file.size });
-    }
-
-    if (maxPerUpload > 0 && combined.length > maxPerUpload) {
-      this.error.set(`Too many files. Maximum ${maxPerUpload} files per upload.`);
-      return;
-    }
-
-    const totalSize = combined.reduce((sum, file) => sum + file.size, 0);
-    if (totalSize > maxBytes) {
-      this.error.set(`Total file size exceeds the limit of ${this.maxFileSizeMb()} MB.`);
-      return;
-    }
-
-    this.pendingFiles.set(combined);
+  onFilesChanged(): void {
     this.error.set(null);
     this.uploadResult.set(null);
     this.singleUploadResult.set(null);
   }
-
-  canUpload = computed(() => {
-    const hasFiles = this.pendingFiles().length > 0;
-    const captchaOk = this.altchaVerified();
-    const authenticated = this.isAuthenticated();
-    return hasFiles && captchaOk && authenticated && !this.isUploading();
-  });
 
   startUpload(): void {
     if (this.pendingFiles().length === 0) {
@@ -288,6 +245,7 @@ export class HomeComponent {
         .upload(files[0], this.altchaPayload, {
           expiryHours: this.expiryHours(),
           maxDownloads: this.maxDownloads(),
+          password: this.uploadPassword() || undefined,
         })
         .subscribe({
           error: (err) => {
@@ -317,6 +275,7 @@ export class HomeComponent {
       .uploadMultiple(files, this.altchaPayload, {
         expiryHours: this.expiryHours(),
         maxDownloads: this.maxDownloads(),
+        password: this.uploadPassword() || undefined,
       })
       .subscribe({
         error: (err) => {
@@ -385,6 +344,11 @@ export class HomeComponent {
 
   formatSize(bytes: number): string {
     return formatFileSize(bytes);
+  }
+
+  /** Get emoji for a result file (by filename). */
+  getResultFileEmoji(filename: string): string {
+    return filenameToEmoji(filename);
   }
 
   formatSpeed(bytesPerSec: number): string {
