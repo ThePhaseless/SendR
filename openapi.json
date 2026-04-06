@@ -499,6 +499,62 @@
             }
           }
         }
+      },
+      "patch": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Edit Group",
+        "description": "Edit group settings without changing download links. Premium only.",
+        "operationId": "edit_group_api_files_group__upload_group__patch",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "upload_group",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Upload Group"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupEditRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MultiFileUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/files/group/{upload_group}/download": {
@@ -516,6 +572,22 @@
             "schema": {
               "type": "string",
               "title": "Upload Group"
+            }
+          },
+          {
+            "name": "password",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Password"
             }
           }
         ],
@@ -582,6 +654,22 @@
             "schema": {
               "type": "string",
               "title": "Download Token"
+            }
+          },
+          {
+            "name": "password",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Password"
             }
           }
         ],
@@ -819,6 +907,122 @@
         }
       }
     },
+    "/api/files/group/{upload_group}/add": {
+      "post": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Add Files To Group",
+        "description": "Add new files to an existing upload group. Requires ownership of the group.",
+        "operationId": "add_files_to_group_api_files_group__upload_group__add_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "upload_group",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Upload Group"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_add_files_to_group_api_files_group__upload_group__add_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MultiFileUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/group/{upload_group}/refresh": {
+      "post": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Refresh Group",
+        "description": "Refresh all files in a group: new download tokens, new expiry, reset download counts.",
+        "operationId": "refresh_group_api_files_group__upload_group__refresh_post",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "upload_group",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Upload Group"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupRefreshRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MultiFileUploadResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/subscription": {
       "get": {
         "tags": [
@@ -951,6 +1155,23 @@
         "type": "object",
         "title": "AdminUserUpdateRequest"
       },
+      "Body_add_files_to_group_api_files_group__upload_group__add_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "contentMediaType": "application/octet-stream"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_add_files_to_group_api_files_group__upload_group__add_post"
+      },
       "Body_upload_file_api_files_upload_post": {
         "properties": {
           "file": {
@@ -979,6 +1200,17 @@
               }
             ],
             "title": "Max Downloads"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
           },
           "altcha": {
             "type": "string",
@@ -1023,6 +1255,17 @@
               }
             ],
             "title": "Max Downloads"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
           },
           "altcha": {
             "type": "string",
@@ -1235,6 +1478,94 @@
           "is_active"
         ],
         "title": "FileUploadResponse"
+      },
+      "GroupEditRequest": {
+        "properties": {
+          "expiry_hours": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Hours"
+          },
+          "max_downloads": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Downloads"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "remove_password": {
+            "type": "boolean",
+            "title": "Remove Password",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "GroupEditRequest"
+      },
+      "GroupRefreshRequest": {
+        "properties": {
+          "expiry_hours": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiry Hours"
+          },
+          "max_downloads": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Downloads"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password"
+          },
+          "remove_password": {
+            "type": "boolean",
+            "title": "Remove Password",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "GroupRefreshRequest"
       },
       "HTTPValidationError": {
         "properties": {

@@ -5,11 +5,11 @@ repos:
       - id: ruff-check
         name: backend ruff check
         files: ^backend/.*\.py$
-        args:
-          - --fix
       - id: ruff-format
         name: backend ruff format
         files: ^backend/.*\.py$
+        args:
+          - --check
 
   - repo: local
     hooks:

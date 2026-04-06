@@ -6,10 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface BodyUploadMultipleFilesApiFilesUploadMultiplePost {
-  files: Blob[];
+export interface GroupEditRequest {
   expiry_hours?: number | null;
   max_downloads?: number | null;
   password?: string | null;
-  altcha?: string;
+  remove_password?: boolean;
 }

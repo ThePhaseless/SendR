@@ -26,12 +26,17 @@ import {
 } from 'rxjs';
 
 import type {
+  BodyAddFilesToGroupApiFilesGroupUploadGroupAddPost,
   BodyUploadFileApiFilesUploadPost,
   BodyUploadMultipleFilesApiFilesUploadMultiplePost,
   DeactivateFileApiFilesFileIdDelete200,
+  DownloadFileApiFilesDownloadTokenGetParams,
+  DownloadGroupApiFilesGroupUploadGroupDownloadGetParams,
   FileEditRequest,
   FileListResponse,
   FileUploadResponse,
+  GroupEditRequest,
+  GroupRefreshRequest,
   MultiFileUploadResponse,
   RefreshDownloadLinkApiFilesFileIdRefreshPostParams,
   UploadGroupInfoResponse
@@ -147,6 +152,9 @@ if(bodyUploadFileApiFilesUploadPost.expiry_hours !== undefined && bodyUploadFile
 if(bodyUploadFileApiFilesUploadPost.max_downloads !== undefined && bodyUploadFileApiFilesUploadPost.max_downloads !== null) {
  formData.append(`max_downloads`, bodyUploadFileApiFilesUploadPost.max_downloads.toString())
  }
+if(bodyUploadFileApiFilesUploadPost.password !== undefined && bodyUploadFileApiFilesUploadPost.password !== null) {
+ formData.append(`password`, bodyUploadFileApiFilesUploadPost.password);
+ }
 if(bodyUploadFileApiFilesUploadPost.altcha !== undefined) {
  formData.append(`altcha`, bodyUploadFileApiFilesUploadPost.altcha);
  }
@@ -193,6 +201,9 @@ if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.expiry_hours !== undefined 
  }
 if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.max_downloads !== undefined && bodyUploadMultipleFilesApiFilesUploadMultiplePost.max_downloads !== null) {
  formData.append(`max_downloads`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.max_downloads.toString())
+ }
+if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.password !== undefined && bodyUploadMultipleFilesApiFilesUploadMultiplePost.password !== null) {
+ formData.append(`password`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.password);
  }
 if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha !== undefined) {
  formData.append(`altcha`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha);
@@ -260,16 +271,22 @@ if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha !== undefined) {
     );
   }
 /**
- * @summary Download Group
+ * Edit group settings without changing download links. Premium only.
+ * @summary Edit Group
  */
- downloadGroupApiFilesGroupUploadGroupDownloadGet<TData = unknown>(uploadGroup: string, options?: HttpClientBodyOptions): Observable<TData>;
- downloadGroupApiFilesGroupUploadGroupDownloadGet<TData = unknown>(uploadGroup: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- downloadGroupApiFilesGroupUploadGroupDownloadGet<TData = unknown>(uploadGroup: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  downloadGroupApiFilesGroupUploadGroupDownloadGet<TData = unknown>(
-    uploadGroup: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+ editGroupApiFilesGroupUploadGroupPatch<TData = MultiFileUploadResponse>(uploadGroup: string,
+    groupEditRequest: GroupEditRequest, options?: HttpClientBodyOptions): Observable<TData>;
+ editGroupApiFilesGroupUploadGroupPatch<TData = MultiFileUploadResponse>(uploadGroup: string,
+    groupEditRequest: GroupEditRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ editGroupApiFilesGroupUploadGroupPatch<TData = MultiFileUploadResponse>(uploadGroup: string,
+    groupEditRequest: GroupEditRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  editGroupApiFilesGroupUploadGroupPatch<TData = MultiFileUploadResponse>(
+    uploadGroup: string,
+    groupEditRequest: GroupEditRequest, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
     if (options?.observe === 'events') {
-      return this.http.get<TData>(
-      `/api/files/group/${uploadGroup}/download`,{
+      return this.http.patch<TData>(
+      `/api/files/group/${uploadGroup}`,
+      groupEditRequest,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
       }
@@ -277,19 +294,60 @@ if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha !== undefined) {
     }
 
     if (options?.observe === 'response') {
-      return this.http.get<TData>(
-      `/api/files/group/${uploadGroup}/download`,{
+      return this.http.patch<TData>(
+      `/api/files/group/${uploadGroup}`,
+      groupEditRequest,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
       }
     );
     }
 
-    return this.http.get<TData>(
-      `/api/files/group/${uploadGroup}/download`,{
+    return this.http.patch<TData>(
+      `/api/files/group/${uploadGroup}`,
+      groupEditRequest,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }
+    );
+  }
+/**
+ * @summary Download Group
+ */
+ downloadGroupApiFilesGroupUploadGroupDownloadGet<TData = unknown>(uploadGroup: string,
+    params?: DownloadGroupApiFilesGroupUploadGroupDownloadGetParams, options?: HttpClientBodyOptions): Observable<TData>;
+ downloadGroupApiFilesGroupUploadGroupDownloadGet<TData = unknown>(uploadGroup: string,
+    params?: DownloadGroupApiFilesGroupUploadGroupDownloadGetParams, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ downloadGroupApiFilesGroupUploadGroupDownloadGet<TData = unknown>(uploadGroup: string,
+    params?: DownloadGroupApiFilesGroupUploadGroupDownloadGetParams, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  downloadGroupApiFilesGroupUploadGroupDownloadGet<TData = unknown>(
+    uploadGroup: string,
+    params?: DownloadGroupApiFilesGroupUploadGroupDownloadGetParams, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    const filteredParams = filterParams({...params, ...options?.params}, new Set<string>([]));
+
+    if (options?.observe === 'events') {
+      return this.http.get<TData>(
+      `/api/files/group/${uploadGroup}/download`,{
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+        params: filteredParams,}
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.get<TData>(
+      `/api/files/group/${uploadGroup}/download`,{
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+        params: filteredParams,}
+    );
+    }
+
+    return this.http.get<TData>(
+      `/api/files/group/${uploadGroup}/download`,{
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+        params: filteredParams,}
     );
   }
 /**
@@ -328,34 +386,40 @@ if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha !== undefined) {
 /**
  * @summary Download File
  */
- downloadFileApiFilesDownloadTokenGet<TData = unknown>(downloadToken: string, options?: HttpClientBodyOptions): Observable<TData>;
- downloadFileApiFilesDownloadTokenGet<TData = unknown>(downloadToken: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- downloadFileApiFilesDownloadTokenGet<TData = unknown>(downloadToken: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+ downloadFileApiFilesDownloadTokenGet<TData = unknown>(downloadToken: string,
+    params?: DownloadFileApiFilesDownloadTokenGetParams, options?: HttpClientBodyOptions): Observable<TData>;
+ downloadFileApiFilesDownloadTokenGet<TData = unknown>(downloadToken: string,
+    params?: DownloadFileApiFilesDownloadTokenGetParams, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ downloadFileApiFilesDownloadTokenGet<TData = unknown>(downloadToken: string,
+    params?: DownloadFileApiFilesDownloadTokenGetParams, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
   downloadFileApiFilesDownloadTokenGet<TData = unknown>(
-    downloadToken: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    downloadToken: string,
+    params?: DownloadFileApiFilesDownloadTokenGetParams, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    const filteredParams = filterParams({...params, ...options?.params}, new Set<string>([]));
+
     if (options?.observe === 'events') {
       return this.http.get<TData>(
       `/api/files/${downloadToken}`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
-      }
+        params: filteredParams,}
     );
     }
 
     if (options?.observe === 'response') {
       return this.http.get<TData>(
       `/api/files/${downloadToken}`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
-      }
+        params: filteredParams,}
     );
     }
 
     return this.http.get<TData>(
       `/api/files/${downloadToken}`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
-      }
+        params: filteredParams,}
     );
   }
 /**
@@ -499,6 +563,90 @@ if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha !== undefined) {
 
     return this.http.delete<TData>(
       `/api/files/${fileId}`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+/**
+ * Add new files to an existing upload group. Requires ownership of the group.
+ * @summary Add Files To Group
+ */
+ addFilesToGroupApiFilesGroupUploadGroupAddPost<TData = MultiFileUploadResponse>(uploadGroup: string,
+    bodyAddFilesToGroupApiFilesGroupUploadGroupAddPost: BodyAddFilesToGroupApiFilesGroupUploadGroupAddPost, options?: HttpClientBodyOptions): Observable<TData>;
+ addFilesToGroupApiFilesGroupUploadGroupAddPost<TData = MultiFileUploadResponse>(uploadGroup: string,
+    bodyAddFilesToGroupApiFilesGroupUploadGroupAddPost: BodyAddFilesToGroupApiFilesGroupUploadGroupAddPost, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ addFilesToGroupApiFilesGroupUploadGroupAddPost<TData = MultiFileUploadResponse>(uploadGroup: string,
+    bodyAddFilesToGroupApiFilesGroupUploadGroupAddPost: BodyAddFilesToGroupApiFilesGroupUploadGroupAddPost, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  addFilesToGroupApiFilesGroupUploadGroupAddPost<TData = MultiFileUploadResponse>(
+    uploadGroup: string,
+    bodyAddFilesToGroupApiFilesGroupUploadGroupAddPost: BodyAddFilesToGroupApiFilesGroupUploadGroupAddPost, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {const formData = new FormData();
+bodyAddFilesToGroupApiFilesGroupUploadGroupAddPost.files.forEach(value => formData.append(`files`, value));
+
+    if (options?.observe === 'events') {
+      return this.http.post<TData>(
+      `/api/files/group/${uploadGroup}/add`,
+      formData,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.post<TData>(
+      `/api/files/group/${uploadGroup}/add`,
+      formData,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.post<TData>(
+      `/api/files/group/${uploadGroup}/add`,
+      formData,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+/**
+ * Refresh all files in a group: new download tokens, new expiry, reset download counts.
+ * @summary Refresh Group
+ */
+ refreshGroupApiFilesGroupUploadGroupRefreshPost<TData = MultiFileUploadResponse>(uploadGroup: string,
+    groupRefreshRequest: GroupRefreshRequest, options?: HttpClientBodyOptions): Observable<TData>;
+ refreshGroupApiFilesGroupUploadGroupRefreshPost<TData = MultiFileUploadResponse>(uploadGroup: string,
+    groupRefreshRequest: GroupRefreshRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ refreshGroupApiFilesGroupUploadGroupRefreshPost<TData = MultiFileUploadResponse>(uploadGroup: string,
+    groupRefreshRequest: GroupRefreshRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  refreshGroupApiFilesGroupUploadGroupRefreshPost<TData = MultiFileUploadResponse>(
+    uploadGroup: string,
+    groupRefreshRequest: GroupRefreshRequest, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.post<TData>(
+      `/api/files/group/${uploadGroup}/refresh`,
+      groupRefreshRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.post<TData>(
+      `/api/files/group/${uploadGroup}/refresh`,
+      groupRefreshRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.post<TData>(
+      `/api/files/group/${uploadGroup}/refresh`,
+      groupRefreshRequest,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }

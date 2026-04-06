@@ -56,6 +56,7 @@ class FileUpload(SQLModel, table=True):
     download_count: int = Field(default=0)
     max_downloads: int | None = Field(default=None)
     upload_group: str | None = Field(default=None, index=True)
+    password_hash: str | None = Field(default=None)
     expires_at: datetime
     created_at: datetime = Field(default_factory=_utcnow)
     is_active: bool = Field(default=True)

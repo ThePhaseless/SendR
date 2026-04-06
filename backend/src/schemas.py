@@ -103,6 +103,20 @@ class FileEditRequest(SQLModel):
     max_downloads: int | None = None
 
 
+class GroupRefreshRequest(SQLModel):
+    expiry_hours: int | None = None
+    max_downloads: int | None = None
+    password: str | None = None
+    remove_password: bool = False
+
+
+class GroupEditRequest(SQLModel):
+    expiry_hours: int | None = None
+    max_downloads: int | None = None
+    password: str | None = None
+    remove_password: bool = False
+
+
 class AdminUserUpdateRequest(SQLModel):
     tier: str | None = None
     is_admin: bool | None = None
