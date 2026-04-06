@@ -7,32 +7,12 @@ hook_dir="$repo_root/.githooks"
 
 cd "$repo_root"
 
-run_pre_commit() {
-  if command -v pre-commit >/dev/null 2>&1; then
-    pre-commit hook-impl --config="$config_path" --hook-type=pre-commit --hook-dir "$hook_dir" -- "$@"
-  elif command -v uvx >/dev/null 2>&1; then
-    uvx pre-commit hook-impl --config="$config_path" --hook-type=pre-commit --hook-dir "$hook_dir" -- "$@"
-  else
-    echo "pre-commit is required to run repository hooks." 1>&2
-    echo "Install it with 'uv tool install pre-commit' or ensure 'uvx' is available." 1>&2
-    exit 1
-  fi
-}
-
-rc=0
-run_pre_commit "$@" || rc=$?
-
-# Re-stage files that were modified by hooks (e.g. formatters)
-if [ $rc -eq 1 ]; then
-  changed_files="$(git diff --name-only)"
-  if [ -n "$changed_files" ]; then
-    echo "$changed_files" | xargs git add
-    echo "Re-staged files modified by hooks, re-running checks..."
-    run_pre_commit "$@" || exit $?
-  else
-    exit 1
-  fi
+if command -v pre-commit >/dev/null 2>&1; then
+  exec pre-commit hook-impl --config="$config_path" --hook-type=pre-commit --hook-dir "$hook_dir" -- "$@"
+elif command -v uvx >/dev/null 2>&1; then
+  exec uvx pre-commit hook-impl --config="$config_path" --hook-type=pre-commit --hook-dir "$hook_dir" -- "$@"
 else
-  exit $rc
+  echo "pre-commit is required to run repository hooks." 1>&2
+  echo "Install it with 'uv tool install pre-commit' or ensure 'uvx' is available." 1>&2
+  exit 1
 fi
-    exit 1

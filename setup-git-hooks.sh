@@ -14,8 +14,8 @@ if ! command -v pre-commit >/dev/null 2>&1; then
   export PATH="$HOME/.local/bin:$PATH"
 fi
 
-git -C "$repo_root" config core.hooksPath .githooks
+git -C "$repo_root" config --unset core.hooksPath 2>/dev/null || true
+pre-commit install --config "$repo_root/.pre-commit-config.yaml"
 pre-commit install-hooks --config "$repo_root/.pre-commit-config.yaml"
 
 echo "Configured Git hooks for $repo_root"
-echo "Active hooks path: $(git -C "$repo_root" config --get core.hooksPath)"

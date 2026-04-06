@@ -4,6 +4,7 @@
     "ruff.format.backend": "uv",
     "oxc.configPath": "frontend/oxlintrc.json",
     "oxc.tsConfigPath": "frontend/tsconfig.json",
+    "oxc.path.tsgolint": "frontend/node_modules/.bin/tsgolint",
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff",
         "editor.formatOnSave": true,

@@ -15,4 +15,4 @@ for path in "$@"; do
 done
 
 cd "$frontend_dir"
-bunx --no-install oxfmt "${paths[@]}"
+bunx --no-install oxfmt --check "${paths[@]}"

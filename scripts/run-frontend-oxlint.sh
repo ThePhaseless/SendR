@@ -18,7 +18,6 @@ cd "$frontend_dir"
 bunx --no-install oxlint \
   --import-plugin \
   --promise-plugin \
-  --fix \
   --config oxlintrc.json \
   --ignore-pattern src/app/api \
   "${paths[@]}"
