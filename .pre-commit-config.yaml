@@ -5,11 +5,13 @@ repos:
       - id: ruff-check
         name: backend ruff check
         files: ^backend/.*\.py$
+        pass_filenames: false
+        args: [backend/]
       - id: ruff-format
         name: backend ruff format
         files: ^backend/.*\.py$
-        args:
-          - --check
+        pass_filenames: false
+        args: [--check, backend/]
 
   - repo: local
     hooks:
@@ -30,13 +32,14 @@ repos:
       - id: frontend-oxfmt
         name: frontend oxfmt
         language: system
-        entry: bash ./scripts/run-frontend-oxfmt.sh
+        entry: bash -c 'cd frontend && bun run format:check'
+        pass_filenames: false
         files: ^frontend/src/.*\.(ts|tsx|js|jsx|mjs|cjs|json|css|scss|html)$
         exclude: ^frontend/src/app/api/
 
       - id: frontend-oxlint
         name: frontend oxlint
         language: system
-        entry: bash ./scripts/run-frontend-oxlint.sh
+        entry: bash -c 'cd frontend && bun run lint'
+        pass_filenames: false
         files: ^frontend/src/.*\.(ts|tsx|js|jsx)$
-        exclude: ^frontend/src/app/api/
