@@ -1,14 +1,14 @@
+@reference "tailwindcss";
+
 :host {
-  display: inline-block;
+  @apply inline-block;
 }
 
 .jumping-text {
-  cursor: default;
-  display: inline-block;
-  white-space: nowrap;
+  @apply cursor-default inline-block whitespace-nowrap;
 
   .letter {
-    display: inline-block;
-    color: var(--primary);
+    @apply inline-block;
+    color: var(--color-primary);
   }
 }

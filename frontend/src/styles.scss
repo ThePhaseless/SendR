@@ -1,3 +1,5 @@
+@use "tailwindcss";
+
 @font-face {
   font-family: "Comba";
   src:
@@ -10,104 +12,89 @@
   descent-override: 10%;
 }
 
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Comba", "Georgia", serif;
+}
+
 // Light theme (default)
 :root {
-  --primary: #c0392b;
-  --primary-hover: #a93226;
-  --primary-light: #f9ebea;
-  --bg: #fdf6f3;
-  --card-bg: #ffffff;
-  --text: #2c1810;
-  --text-secondary: #7a6055;
-  --border: #e6d5ce;
-  --success: #27ae60;
-  --danger: #e74c3c;
-  --warning: #e67e22;
-  --header-bg: #ffffff;
-  --header-border: #e6d5ce;
-  --input-bg: #fdf6f3;
-  --input-border: #d5c0b5;
-  --input-focus: #c0392b;
-  --input-focus-shadow: rgba(192, 57, 43, 0.1);
-  --secondary-hover-bg: #fdf0ec;
-  --accent: #d35400;
-  --accent-light: #fdebd0;
-  --badge-bg: #f9ebea;
-  --badge-text: #c0392b;
-  --spinner-track: #e6d5ce;
-  --spinner-head: #c0392b;
-  --drop-border: #d5c0b5;
-  --drop-active-border: #c0392b;
-  --drop-active-bg: #f9ebea;
-  --staged-bg: #f9ebea;
+  --color-primary: #c0392b;
+  --color-primary-hover: #a93226;
+  --color-primary-light: #f9ebea;
+  --color-bg: #fdf6f3;
+  --color-card-bg: #ffffff;
+  --color-text: #2c1810;
+  --color-text-secondary: #7a6055;
+  --color-border: #e6d5ce;
+  --color-success: #27ae60;
+  --color-danger: #e74c3c;
+  --color-warning: #e67e22;
+  --color-header-bg: #ffffff;
+  --color-header-border: #e6d5ce;
+  --color-input-bg: #fdf6f3;
+  --color-input-border: #d5c0b5;
+  --color-input-focus: #c0392b;
+  --color-input-focus-shadow: rgba(192, 57, 43, 0.1);
+  --color-secondary-hover-bg: #fdf0ec;
+  --color-accent: #d35400;
+  --color-accent-light: #fdebd0;
+  --color-badge-bg: #f9ebea;
+  --color-badge-text: #c0392b;
+  --color-spinner-track: #e6d5ce;
+  --color-spinner-head: #c0392b;
+  --color-drop-border: #d5c0b5;
+  --color-drop-active-border: #c0392b;
+  --color-drop-active-bg: #f9ebea;
+  --color-staged-bg: #f9ebea;
 }
 
 // Dark theme
 @media (prefers-color-scheme: dark) {
   :root {
-    --primary: #e74c3c;
-    --primary-hover: #c0392b;
-    --primary-light: #3d1a15;
-    --bg: #1a1210;
-    --card-bg: #2a1f1b;
-    --text: #f0e6e0;
-    --text-secondary: #b8a69d;
-    --border: #4a3830;
-    --success: #2ecc71;
-    --danger: #e74c3c;
-    --warning: #f39c12;
-    --header-bg: #2a1f1b;
-    --header-border: #4a3830;
-    --input-bg: #332820;
-    --input-border: #5a4840;
-    --input-focus: #e74c3c;
-    --input-focus-shadow: rgba(231, 76, 60, 0.2);
-    --secondary-hover-bg: #332820;
-    --accent: #e67e22;
-    --accent-light: #3d2a10;
-    --badge-bg: #3d1a15;
-    --badge-text: #e74c3c;
-    --spinner-track: #4a3830;
-    --spinner-head: #e74c3c;
-    --drop-border: #5a4840;
-    --drop-active-border: #e74c3c;
-    --drop-active-bg: #3d1a15;
-    --staged-bg: #3d1a15;
+    --color-primary: #e74c3c;
+    --color-primary-hover: #c0392b;
+    --color-primary-light: #3d1a15;
+    --color-bg: #1a1210;
+    --color-card-bg: #2a1f1b;
+    --color-text: #f0e6e0;
+    --color-text-secondary: #b8a69d;
+    --color-border: #4a3830;
+    --color-success: #2ecc71;
+    --color-danger: #e74c3c;
+    --color-warning: #f39c12;
+    --color-header-bg: #2a1f1b;
+    --color-header-border: #4a3830;
+    --color-input-bg: #332820;
+    --color-input-border: #5a4840;
+    --color-input-focus: #e74c3c;
+    --color-input-focus-shadow: rgba(231, 76, 60, 0.2);
+    --color-secondary-hover-bg: #332820;
+    --color-accent: #e67e22;
+    --color-accent-light: #3d2a10;
+    --color-badge-bg: #3d1a15;
+    --color-badge-text: #e74c3c;
+    --color-spinner-track: #4a3830;
+    --color-spinner-head: #e74c3c;
+    --color-drop-border: #5a4840;
+    --color-drop-active-border: #e74c3c;
+    --color-drop-active-bg: #3d1a15;
+    --color-staged-bg: #3d1a15;
   }
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 html,
 body {
-  height: 100%;
-  font-family:
-    "Inter",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  background-color: var(--bg);
-  color: var(--text);
-  line-height: 1.6;
+  @apply h-full font-sans leading-relaxed;
+  background-color: var(--color-bg);
+  color: var(--color-text);
   transition:
     background-color 0.2s ease,
     color 0.2s ease;
 }
 
-.font-display {
-  font-family: "Comba", "Georgia", serif;
-}
-
 a {
-  color: var(--primary);
+  color: var(--color-primary);
   text-decoration: none;
 
   &:hover {
@@ -116,48 +103,40 @@ a {
 }
 
 button {
-  cursor: pointer;
-  font-family: inherit;
+  @apply cursor-pointer font-[inherit];
 }
 
+// ── Buttons ──────────────────────────────────────────────
 .btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
+  @apply inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold border-none;
   padding: 0.625rem 1.25rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  border: none;
   transition: all 0.15s ease;
 
   &-primary {
-    background-color: var(--primary);
+    background-color: var(--color-primary);
     color: white;
 
     &:hover {
-      background-color: var(--primary-hover);
+      background-color: var(--color-primary-hover);
     }
 
     &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
+      @apply opacity-50 cursor-not-allowed;
     }
   }
 
   &-secondary {
-    background-color: var(--card-bg);
-    color: var(--text);
-    border: 1px solid var(--border);
+    background-color: var(--color-card-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
 
     &:hover {
-      background-color: var(--secondary-hover-bg);
+      background-color: var(--color-secondary-hover-bg);
     }
   }
 
   &-danger {
-    background-color: var(--danger);
+    background-color: var(--color-danger);
     color: white;
 
     &:hover {
@@ -166,28 +145,31 @@ button {
   }
 
   &-sm {
+    @apply text-[0.8125rem];
     padding: 0.375rem 0.75rem;
-    font-size: 0.8125rem;
+  }
+
+  &-lg {
+    @apply text-base;
+    padding: 0.75rem 2rem;
   }
 }
 
+// ── Cards & Alerts ───────────────────────────────────────
 .card {
-  background: var(--card-bg);
-  border-radius: 0.75rem;
-  border: 1px solid var(--border);
-  padding: 1.5rem;
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  @apply rounded-xl p-6;
 }
 
 .alert {
+  @apply rounded-lg text-sm mb-4;
   padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  margin-bottom: 1rem;
 
   &-error {
-    background-color: var(--primary-light);
-    color: var(--danger);
-    border: 1px solid var(--primary);
+    background-color: var(--color-primary-light);
+    color: var(--color-danger);
+    border: 1px solid var(--color-primary);
   }
 
   &-success {
@@ -203,8 +185,124 @@ button {
   }
 
   &-info {
-    background-color: var(--accent-light);
-    color: var(--accent);
-    border: 1px solid var(--warning);
+    background-color: var(--color-accent-light);
+    color: var(--color-accent);
+    border: 1px solid var(--color-warning);
   }
+
+  &-sm {
+    @apply text-xs mb-2;
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+// ── Form controls (shared) ───────────────────────────────
+.form-group {
+  @apply mb-4;
+
+  label {
+    color: var(--color-text);
+    @apply block text-sm font-medium mb-1.5;
+  }
+}
+
+.form-input {
+  @apply w-full rounded-lg text-sm outline-none box-border;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-input-border);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  transition: border-color 0.15s ease;
+
+  &:focus {
+    border-color: var(--color-input-focus);
+    box-shadow: 0 0 0 3px var(--color-input-focus-shadow);
+  }
+
+  &::placeholder {
+    color: var(--color-text-secondary);
+  }
+}
+
+.form-select {
+  @apply rounded-md text-[0.8125rem] outline-none;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--color-input-border);
+  background: var(--color-input-bg);
+  color: var(--color-text);
+}
+
+// ── Loading & Spinner (shared) ───────────────────────────
+.loading {
+  @apply text-center py-12;
+
+  p {
+    color: var(--color-text-secondary);
+    @apply mt-4;
+  }
+}
+
+.spinner {
+  @apply w-10 h-10 rounded-full mx-auto;
+  border: 3px solid var(--color-spinner-track);
+  border-top-color: var(--color-spinner-head);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// ── Tier badge (shared) ──────────────────────────────────
+.tier-badge {
+  @apply inline-block rounded-full text-xs font-semibold capitalize;
+  padding: 0.125rem 0.5rem;
+
+  &.tier-temporary,
+  &.temporary {
+    background: var(--color-border);
+    color: var(--color-text-secondary);
+  }
+
+  &.tier-free,
+  &.free {
+    background: var(--color-badge-bg);
+    color: var(--color-badge-text);
+  }
+
+  &.tier-premium,
+  &.premium {
+    background: var(--color-accent-light);
+    color: var(--color-accent);
+  }
+}
+
+// ── Dev button (shared) ──────────────────────────────────
+.btn-dev {
+  @apply border-none text-xs cursor-pointer text-white;
+  background: #f39c12;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+
+  &:hover {
+    background: #e67e22;
+  }
+}
+
+// ── Altcha widget theming (uses CSS custom properties to style Shadow DOM) ──
+altcha-widget {
+  --altcha-color-base: var(--color-card-bg);
+  --altcha-color-base-content: var(--color-text);
+  --altcha-border-color: var(--color-border);
+  --altcha-color-neutral: var(--color-border);
+  --altcha-color-neutral-content: var(--color-text-secondary);
+  --altcha-color-border: var(--color-border);
+  --altcha-color-border-focus: var(--color-primary);
+  --altcha-color-text: var(--color-text);
+  --altcha-color-footer-bg: var(--color-card-bg);
+  --altcha-checkbox-border-color: var(--color-border);
+  --altcha-max-width: 100%;
+  color: var(--color-text);
 }

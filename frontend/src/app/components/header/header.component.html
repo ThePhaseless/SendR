@@ -2,14 +2,45 @@
   <div class="header-inner">
     <a routerLink="/" class="logo">SendR</a>
     <button class="menu-toggle" (click)="toggleMenu()" aria-label="Toggle menu">
-      {{ menuOpen() ? "✕" : "☰" }}
+      @if (menuOpen()) {
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      } @else {
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <line x1="3" y1="6" x2="21" y2="6" />
+          <line x1="3" y1="12" x2="21" y2="12" />
+          <line x1="3" y1="18" x2="21" y2="18" />
+        </svg>
+      }
     </button>
     <div class="header-content" [class.open]="menuOpen()">
       <nav class="nav">
         <a routerLink="/" class="nav-link" (click)="closeMenu()">Home</a>
         @if (auth.authenticated()) {
           <a routerLink="/dashboard" class="nav-link" (click)="closeMenu()">Dashboard</a>
-          <a routerLink="/premium" class="nav-link" (click)="closeMenu()">Premium</a>
+          <a routerLink="/premium" class="nav-link" (click)="closeMenu()">Account Tier</a>
         }
         @if (isAdmin()) {
           <a routerLink="/admin" class="nav-link" (click)="closeMenu()">Admin</a>
@@ -24,6 +55,13 @@
         @if (auth.authenticated()) {
           <button class="btn btn-secondary btn-sm" (click)="logout()">Logout</button>
         } @else {
+          <a
+            routerLink="/auth"
+            [queryParams]="{ mode: 'register' }"
+            class="btn btn-secondary btn-sm"
+            (click)="closeMenu()"
+            >Register</a
+          >
           <a routerLink="/auth" class="btn btn-primary btn-sm" (click)="closeMenu()">Login</a>
         }
       </div>
