@@ -1,119 +1,222 @@
+@use "../../styles/mixins";
+@reference "tailwindcss";
+
 .dashboard {
-  max-width: 800px;
-  margin: 0 auto;
+  @apply max-w-[800px] mx-auto;
 }
 
 .dashboard-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-
-  h1 {
-    font-family: "Comba", "Georgia", serif;
-    font-size: 1.5rem;
-    font-weight: 700;
-  }
-}
-
-.loading {
-  text-align: center;
-  padding: 3rem 0;
-
-  p {
-    color: var(--text-secondary);
-    margin-top: 1rem;
-  }
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--spinner-track);
-  border-top-color: var(--spinner-head);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: 0 auto;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  @include mixins.page-header;
 }
 
 .empty-state {
-  text-align: center;
-  padding: 3rem 1.5rem;
+  @apply text-center py-12 px-6;
 
   .empty-icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
+    @apply text-5xl mb-4;
   }
 
   h2 {
-    font-size: 1.125rem;
-    margin-bottom: 0.5rem;
+    @apply text-lg mb-2;
   }
 
   p {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    @apply text-sm;
   }
 }
 
 .file-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  @apply flex flex-col gap-3;
 }
 
-.file-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
+.file-card {
+  padding: 0;
+  overflow: hidden;
 
   &.expired {
-    opacity: 0.6;
+    @apply opacity-60;
   }
+}
+
+.file-row {
+  @apply flex items-center justify-between gap-4;
+  padding: 1rem 1.5rem;
 
   @media (max-width: 600px) {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
+    @apply flex-col items-start gap-2;
   }
 }
 
 .file-info {
-  flex: 1;
-  min-width: 0;
+  @apply flex-1 min-w-0;
 }
 
 .file-name {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-bottom: 0.25rem;
+  @include mixins.text-truncate;
+  @apply text-[0.9375rem] font-semibold mb-1 flex items-center gap-2;
 }
 
 .file-meta {
-  display: flex;
-  gap: 0.375rem;
-  color: var(--text-secondary);
-  font-size: 0.8125rem;
-  flex-wrap: wrap;
+  @apply flex gap-1.5 flex-wrap text-[0.8125rem];
+  color: var(--color-text-secondary);
 }
 
 .expired-text {
-  color: var(--danger);
+  color: var(--color-danger);
+}
+
+.badge {
+  @apply inline-flex items-center text-[0.6875rem] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded;
+}
+
+.badge-expired {
+  background: color-mix(in srgb, var(--color-danger) 15%, transparent);
+  color: var(--color-danger);
+}
+
+.badge-password {
+  color: var(--color-text-secondary);
+}
+
+.badge-new {
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
 }
 
 .file-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-shrink: 0;
+  @apply flex gap-1.5 shrink-0 items-center;
+}
+
+.btn-open {
+  @apply text-xs font-medium;
+  padding: 0.375rem 0.75rem;
+  text-decoration: none;
+
+  &.disabled {
+    @apply opacity-40 pointer-events-none;
+  }
+}
+
+.btn-icon {
+  @apply p-0 flex items-center justify-center;
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+
+  svg {
+    @apply shrink-0;
+  }
+
+  &.disabled {
+    @apply opacity-40 pointer-events-none;
+  }
+}
+
+.file-expanded {
+  border-top: 1px solid var(--color-border);
+  padding: 1rem 1.5rem;
+  background: var(--color-bg);
+}
+
+.expanded-section {
+  h4 {
+    @apply text-xs font-semibold uppercase tracking-wide mb-2;
+    color: var(--color-text-secondary);
+  }
+
+  & + .expanded-section {
+    @apply mt-4 pt-4;
+    border-top: 1px solid var(--color-border);
+  }
+
+  app-upload-settings {
+    @apply block;
+  }
+}
+
+.expanded-actions-row {
+  @apply flex gap-2 mt-3 pt-3;
+  border-top: 1px solid var(--color-border);
+}
+
+.group-file-list {
+  @apply flex flex-col gap-1;
+}
+
+.group-file-item {
+  @apply flex items-center gap-2 text-sm py-1 px-2 rounded;
+
+  &:hover {
+    background: var(--color-card-bg);
+  }
+
+  &.expired {
+    @apply opacity-50;
+  }
+
+  &.new-file {
+    border: 1px dashed color-mix(in srgb, var(--color-primary) 40%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+  }
+
+  .group-file-name {
+    @include mixins.text-truncate;
+    @apply flex-1 min-w-0;
+  }
+
+  .group-file-size {
+    @apply shrink-0 text-xs;
+    color: var(--color-text-secondary);
+  }
+}
+
+.btn-file-action {
+  @apply shrink-0 p-0 border-0 cursor-pointer text-xs leading-none flex items-center;
+  background: none;
+  color: var(--color-text-secondary);
+
+  &:hover {
+    color: var(--color-text);
+  }
+
+  &.btn-file-remove:hover {
+    color: var(--color-danger);
+  }
+}
+
+.btn-danger {
+  background-color: transparent;
+  color: var(--color-danger);
+  border: 1px solid var(--color-danger);
+
+  &:hover {
+    background: var(--color-danger);
+    color: white;
+  }
+}
+
+// Refresh warning popup
+.popup-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center;
+  background: rgb(0 0 0 / 50%);
+}
+
+.popup-card {
+  @apply flex flex-col gap-3 p-6;
+  max-width: 28rem;
+  width: 90%;
+
+  h2 {
+    @apply text-lg font-semibold;
+  }
+
+  .popup-message {
+    @apply text-sm;
+    color: var(--color-text-secondary);
+  }
+
+  .popup-actions {
+    @apply flex gap-2 mt-2;
+  }
 }

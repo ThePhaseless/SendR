@@ -1,6 +1,6 @@
 <div class="dashboard">
   <div class="dashboard-header">
-    <h1>My Files</h1>
+    <h1>My Uploads</h1>
   </div>
 
   @if (error(); as err) {
@@ -10,43 +10,197 @@
   @if (loading()) {
     <div class="loading">
       <div class="spinner"></div>
-      <p>Loading files...</p>
+      <p>Loading uploads...</p>
     </div>
-  } @else if (files().length === 0) {
+  } @else if (uploadGroups().length === 0) {
     <div class="card empty-state">
       <div class="empty-icon">📂</div>
-      <h2>No files yet</h2>
+      <h2>No uploads yet</h2>
       <p>Upload your first file from the home page.</p>
     </div>
   } @else {
     <div class="file-list">
-      @for (file of files(); track file.id) {
-        <div class="card file-item" [class.expired]="isExpired(file.expires_at) || !file.is_active">
-          <div class="file-info">
-            <h3 class="file-name">{{ file.original_filename }}</h3>
-            <div class="file-meta">
-              <span>{{ formatSize(file.file_size_bytes) }}</span>
-              <span>&middot;</span>
-              <span>{{ file.download_count }} downloads</span>
-              <span>&middot;</span>
-              <span [class.expired-text]="isExpired(file.expires_at)">
-                Expires: {{ file.expires_at | date: "short" }}
-              </span>
+      @for (group of uploadGroups(); track group.key) {
+        <div class="card file-card" [class.expired]="isGroupExpired(group)">
+          <div class="file-row">
+            <div class="file-info">
+              <h3 class="file-name">
+                @if (group.isGroup) {
+                  📁 {{ group.files.length }} files
+                } @else {
+                  {{ group.files[0].original_filename }}
+                }
+                @if (isGroupExpired(group)) {
+                  <span class="badge badge-expired">Expired</span>
+                }
+                @if (group.files[0]?.has_password) {
+                  <span class="badge badge-password">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  </span>
+                }
+              </h3>
+              <div class="file-meta">
+                <span>{{ formatSize(group.totalSize) }}</span>
+                <span>&middot;</span>
+                <span>{{ getGroupDownloads(group) }} downloads</span>
+                <span>&middot;</span>
+                <span [class.expired-text]="isGroupExpired(group)">
+                  {{ isGroupExpired(group) ? "Expired" : "Expires" }}:
+                  {{ getGroupExpiry(group) | date: "short" }}
+                </span>
+              </div>
+            </div>
+            <div class="file-actions">
+              <a
+                class="btn btn-secondary btn-sm btn-open"
+                [href]="getDownloadPageUrl(group)"
+                target="_blank"
+                [class.disabled]="!isAnyActive(group)"
+              >
+                Open
+              </a>
+              <button
+                class="btn btn-secondary btn-sm btn-icon"
+                (click)="copyLink(group)"
+                [disabled]="!isAnyActive(group)"
+                [title]="copiedGroupKey() === group.key ? 'Copied!' : 'Copy link'"
+              >
+                @if (copiedGroupKey() === group.key) {
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                } @else {
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                }
+              </button>
+              <button
+                class="btn btn-secondary btn-sm btn-icon"
+                (click)="toggleExpanded(group.key)"
+                title="Manage upload"
+                [class.active]="expandedGroupKey() === group.key"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  [style.transform]="expandedGroupKey() === group.key ? 'rotate(180deg)' : 'none'"
+                  style="transition: transform 0.2s ease"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
             </div>
           </div>
-          <div class="file-actions">
-            <button
-              class="btn btn-secondary btn-sm"
-              (click)="copyLink(file)"
-              [disabled]="!file.is_active"
-            >
-              {{ copiedId() === file.id ? "Copied!" : "Copy Link" }}
-            </button>
-            <button class="btn btn-secondary btn-sm" (click)="refreshFile(file)">Refresh</button>
-            <button class="btn btn-danger btn-sm" (click)="deleteFile(file)">Delete</button>
-          </div>
+
+          @if (expandedGroupKey() === group.key) {
+            <div class="file-expanded">
+              <!-- File list -->
+              <div class="expanded-section">
+                <h4>Files</h4>
+                <div class="group-file-list">
+                  @for (file of group.files; track file.id) {
+                    <div
+                      class="group-file-item"
+                      [class.expired]="isExpired(file.expires_at) || !file.is_active"
+                    >
+                      <span class="group-file-name">{{ file.original_filename }}</span>
+                      <span class="group-file-size">{{ formatSize(file.file_size_bytes) }}</span>
+                      <button
+                        class="btn-file-action btn-file-remove"
+                        (click)="removeFile(file, group)"
+                        title="Remove file"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </div>
+                  }
+                  <!-- Staged new files (unsaved) -->
+                  @for (entry of newFiles(); track entry.file.name) {
+                    <div class="group-file-item new-file">
+                      <span class="group-file-name">{{ entry.file.name }}</span>
+                      <span class="group-file-size">{{ formatSize(entry.file.size) }}</span>
+                      <span class="badge badge-new">new</span>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- Add files (compact picker, auto-stages) -->
+              @if (group.isGroup && group.uploadGroup) {
+                <div class="expanded-section">
+                  <h4>Add Files</h4>
+                  <app-file-picker
+                    [(pendingFiles)]="newFiles"
+                    [compact]="true"
+                    [disabled]="isSaving()"
+                  />
+                </div>
+              }
+
+              <!-- Upload settings panel -->
+              <div class="expanded-section">
+                <h4>Settings</h4>
+                <app-upload-settings
+                  [tier]="userTier()"
+                  [(expiryHours)]="panelExpiryHours"
+                  [(maxDownloads)]="panelMaxDownloads"
+                  [(password)]="panelPassword"
+                  [showHeading]="false"
+                />
+              </div>
+
+              <!-- Action buttons -->
+              <div class="expanded-actions-row">
+                @if (canSave()) {
+                  <button
+                    class="btn btn-primary btn-sm"
+                    (click)="saveGroup(group)"
+                    [disabled]="isSaving()"
+                  >
+                    Save
+                  </button>
+                }
+                @if (canRefresh(group)) {
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    (click)="confirmRefresh(group)"
+                    [disabled]="isSaving()"
+                  >
+                    Refresh
+                  </button>
+                }
+                <button
+                  class="btn btn-danger btn-sm"
+                  (click)="deleteGroup(group)"
+                  [disabled]="isSaving()"
+                >
+                  {{ group.isGroup ? "Delete All" : "Delete" }}
+                </button>
+              </div>
+            </div>
+          }
         </div>
       }
     </div>
   }
 </div>
+
+<!-- Refresh warning dialog -->
+@if (showRefreshWarning()) {
+  <div class="popup-overlay" (click)="cancelRefresh()">
+    <div class="popup-card card" (click)="$event.stopPropagation()">
+      <h2>Refresh Upload</h2>
+      <p class="popup-message">
+        Refreshing will generate new download links and expire the current ones. Continue?
+      </p>
+      <div class="popup-actions">
+        <button class="btn btn-primary btn-sm" (click)="executeRefresh()">Continue</button>
+        <button class="btn btn-secondary btn-sm" (click)="cancelRefresh()">Cancel</button>
+      </div>
+    </div>
+  </div>
+}
