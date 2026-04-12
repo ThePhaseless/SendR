@@ -38,7 +38,7 @@ export class HeaderComponent {
   devLogin(role: "admin" | "user" | "premium"): void {
     this.auth.devLogin(role).subscribe({
       error: () => {
-        alert(`Dev login failed. Is SENDR_DEV_MODE=true on the backend?`);
+        alert(`Dev login failed. Is SENDR_ENVIRONMENT=local on the backend?`);
       },
       next: () => {
         window.location.reload();

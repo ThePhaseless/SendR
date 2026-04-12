@@ -10,9 +10,7 @@
       "request": "launch",
       "module": "uvicorn",
       "cwd": "${workspaceFolder}/backend/src",
-      "env": {
-        "SENDR_DEV_MODE": "true"
-      },
+      "envFile": "${workspaceFolder}/backend/.env",
       "args": [
         "app:app",
         "--reload",

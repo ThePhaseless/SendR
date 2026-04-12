@@ -7,16 +7,16 @@ from config import settings
 
 @pytest.mark.asyncio
 async def test_dev_login_disabled_by_default():
-    """POST /api/dev/login/user should return 404 when DEV_MODE is False."""
-    original = settings.DEV_MODE
-    settings.DEV_MODE = False
+    """POST /api/dev/login/user should return 404 when ENVIRONMENT is not local."""
+    original = settings.ENVIRONMENT
+    settings.ENVIRONMENT = "production"
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post("/api/dev/login/user")
-        # When DEV_MODE is False, the router is not even registered (returns 404)
+        # When not local, the router is not even registered (returns 404)
         assert response.status_code == 404
     finally:
-        settings.DEV_MODE = original
+        settings.ENVIRONMENT = original
 
 
 @pytest.mark.asyncio

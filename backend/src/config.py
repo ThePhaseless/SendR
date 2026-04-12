@@ -2,7 +2,7 @@ import json
 import secrets
 from typing import Any
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -15,14 +15,14 @@ def _default_allowed_origins() -> list[str]:
 
 
 class Settings(BaseSettings):
-    ENVIRONMENT: str = "production"
+    ENVIRONMENT: str = "local"
     DATABASE_URL: str = "sqlite+aiosqlite:///./sendr.db"
     SECRET_KEY: str = "change-me-in-production"
     UPLOAD_DIR: str = "./uploads"
     # CORS
     ALLOWED_ORIGINS: list[str] = Field(default_factory=_default_allowed_origins)
     # Email settings
-    SMTP_HOST: str = "localhost"
+    SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
@@ -51,6 +51,14 @@ class Settings(BaseSettings):
     PREMIUM_MAX_DOWNLOADS_LIMIT: int = 1000
     # Max recipient emails per transfer
     MAX_RECIPIENT_EMAILS: int = 10
+    # Passwords per upload (0 = unlimited)
+    TEMPORARY_MAX_PASSWORDS_PER_UPLOAD: int = 1
+    FREE_MAX_PASSWORDS_PER_UPLOAD: int = 3
+    PREMIUM_MAX_PASSWORDS_PER_UPLOAD: int = 0
+    # Email invites per upload (0 = unlimited for premium, disabled for temp)
+    TEMPORARY_MAX_EMAILS_PER_UPLOAD: int = 0  # disabled
+    FREE_MAX_EMAILS_PER_UPLOAD: int = 5
+    PREMIUM_MAX_EMAILS_PER_UPLOAD: int = 0  # unlimited
     # File expiration (days) - default for backwards compatibility
     FILE_EXPIRY_DAYS: int = 7
     FILE_GRACE_PERIOD_DAYS: int = 7
@@ -63,8 +71,6 @@ class Settings(BaseSettings):
     ALTCHA_HMAC_KEY: str = Field(default_factory=_generate_hmac_key)
     ALTCHA_MAX_NUMBER: int = 100000
     ALTCHA_EXPIRE_MINUTES: int = 5
-    # Dev mode
-    DEV_MODE: bool = False
     # Group download zip threshold (file count above which will_zip is true)
     GROUP_ZIP_THRESHOLD: int = 3
 
@@ -89,8 +95,20 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in raw_value.split(",") if origin.strip()]
 
     @property
-    def is_local_env(self) -> bool:
+    def is_local(self) -> bool:
         return self.ENVIRONMENT.lower() == "local"
+
+    @property
+    def smtp_configured(self) -> bool:
+        return bool(self.SMTP_HOST)
+
+    @model_validator(mode="after")
+    def validate_smtp_for_production(self) -> "Settings":
+        if self.ENVIRONMENT.lower() == "production" and not self.smtp_configured:
+            raise ValueError(
+                "SENDR_SMTP_HOST must be set when SENDR_ENVIRONMENT is 'production'"
+            )
+        return self
 
 
 settings = Settings()

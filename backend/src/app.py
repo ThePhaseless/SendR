@@ -73,7 +73,7 @@ app.include_router(auth.router)
 app.include_router(files.router)
 app.include_router(subscription.router)
 
-if settings.DEV_MODE:
+if settings.is_local:
     app.include_router(dev.router)
 
 if STATIC_DIR.is_dir():

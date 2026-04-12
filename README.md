@@ -33,9 +33,8 @@ SENDR_ENVIRONMENT=production uv run uvicorn src.app:app --host 0.0.0.0 --port 80
 
 The backend now defaults to production-safe behavior:
 
-- `SENDR_ENVIRONMENT=production` keeps CAPTCHA enabled and sends verification codes using the configured SMTP settings
-- `SENDR_ENVIRONMENT=local` is an explicit local-dev opt-in that logs verification codes instead of sending email and relaxes CAPTCHA verification
-- `SENDR_DEV_MODE=true` is a separate explicit opt-in for dev-only backend routes
+- `SENDR_ENVIRONMENT=production` keeps CAPTCHA enabled, sends verification codes via the configured SMTP server, and disables dev-only routes
+- `SENDR_ENVIRONMENT=local` is an explicit local-dev opt-in that logs verification codes to the terminal instead of sending email, relaxes CAPTCHA verification, and enables dev-only routes
 
 **Frontend:**
 

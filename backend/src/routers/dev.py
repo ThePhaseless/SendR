@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/dev", tags=["dev"])
 
 @router.post("/login/{role}")
 async def dev_login(role: str, session: AsyncSession = Depends(get_session)) -> TokenResponse:
-    if not settings.DEV_MODE:
+    if not settings.is_local:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
     if role not in ("admin", "user", "premium"):
