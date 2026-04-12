@@ -168,13 +168,19 @@ async def get_quota(
     if user.tier == UserTier.temporary:
         quota.expiry_options_hours = settings.TEMPORARY_EXPIRY_OPTIONS_HOURS
         quota.max_downloads_options = settings.TEMPORARY_MAX_DOWNLOADS_OPTIONS
+        quota.max_passwords_per_upload = settings.TEMPORARY_MAX_PASSWORDS_PER_UPLOAD
+        quota.max_emails_per_upload = settings.TEMPORARY_MAX_EMAILS_PER_UPLOAD
     elif user.tier == UserTier.free:
         quota.min_expiry_hours = settings.FREE_MIN_EXPIRY_HOURS
         quota.max_expiry_hours = settings.FREE_MAX_EXPIRY_HOURS
         quota.max_downloads_limit = settings.FREE_MAX_DOWNLOADS_LIMIT
+        quota.max_passwords_per_upload = settings.FREE_MAX_PASSWORDS_PER_UPLOAD
+        quota.max_emails_per_upload = settings.FREE_MAX_EMAILS_PER_UPLOAD
     elif user.tier == UserTier.premium:
         quota.min_expiry_hours = settings.PREMIUM_MIN_EXPIRY_HOURS
         quota.max_expiry_hours = settings.PREMIUM_MAX_EXPIRY_HOURS
         quota.max_downloads_limit = settings.PREMIUM_MAX_DOWNLOADS_LIMIT
+        quota.max_passwords_per_upload = settings.PREMIUM_MAX_PASSWORDS_PER_UPLOAD
+        quota.max_emails_per_upload = settings.PREMIUM_MAX_EMAILS_PER_UPLOAD
 
     return quota

@@ -1,9 +1,13 @@
 import io
+import json
+import re
 import secrets
 import unicodedata
 import uuid
 import zipfile
 from datetime import timedelta
+from hashlib import sha256
+from hmac import compare_digest
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -11,19 +15,36 @@ import aiofiles
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
 from passlib.hash import pbkdf2_sha256
-from sqlmodel import or_, select
+from sqlmodel import func, or_, select
 
 from config import settings
 from database import get_session
-from models import FileUpload, User, UserTier, _utcnow
+from email_utils import send_file_invite_email
+from models import (
+    DownloadLog,
+    FileUpload,
+    UploadEmailRecipient,
+    UploadGroupSettings,
+    UploadPassword,
+    User,
+    UserTier,
+    _utcnow,
+)
 from routers.altcha import verify_altcha_payload
 from schemas import (
+    AccessInfoResponse,
+    DownloadStatEntry,
+    DownloadStatsResponse,
+    EmailRecipientInfo,
     FileEditRequest,
     FileListResponse,
     FileUploadResponse,
     GroupEditRequest,
     GroupRefreshRequest,
     MultiFileUploadResponse,
+    PasswordInfo,
+    RecipientDownloadEntry,
+    RecipientStatsResponse,
     UploadGroupInfoResponse,
 )
 from security import get_current_user
@@ -87,7 +108,7 @@ def _build_download_url(download_token: str) -> str:
     return f"/api/files/{download_token}"
 
 
-def _to_response(f: FileUpload) -> FileUploadResponse:
+def _to_response(f: FileUpload, group_settings: UploadGroupSettings | None = None, password_count: int = 0, email_count: int = 0) -> FileUploadResponse:
     return FileUploadResponse(
         id=f.id,
         original_filename=f.original_filename,
@@ -98,8 +119,164 @@ def _to_response(f: FileUpload) -> FileUploadResponse:
         max_downloads=f.max_downloads,
         is_active=f.is_active,
         upload_group=f.upload_group,
-        has_password=f.password_hash is not None,
+        is_public=group_settings.is_public if group_settings else True,
+        has_passwords=password_count > 0,
+        has_email_recipients=email_count > 0,
     )
+
+
+def _get_password_limit(tier: UserTier) -> int:
+    if tier == UserTier.premium:
+        return settings.PREMIUM_MAX_PASSWORDS_PER_UPLOAD
+    if tier == UserTier.free:
+        return settings.FREE_MAX_PASSWORDS_PER_UPLOAD
+    return settings.TEMPORARY_MAX_PASSWORDS_PER_UPLOAD
+
+
+def _get_email_limit(tier: UserTier) -> int:
+    if tier == UserTier.premium:
+        return settings.PREMIUM_MAX_EMAILS_PER_UPLOAD
+    if tier == UserTier.free:
+        return settings.FREE_MAX_EMAILS_PER_UPLOAD
+    return settings.TEMPORARY_MAX_EMAILS_PER_UPLOAD
+
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+async def _load_group_access(session, upload_group: str) -> tuple[UploadGroupSettings | None, list[UploadPassword], list[UploadEmailRecipient]]:
+    """Load group settings, passwords, and email recipients."""
+    gs_result = await session.execute(
+        select(UploadGroupSettings).where(UploadGroupSettings.upload_group == upload_group)
+    )
+    group_settings = gs_result.scalars().first()
+
+    pw_result = await session.execute(
+        select(UploadPassword).where(UploadPassword.upload_group == upload_group)
+    )
+    passwords = list(pw_result.scalars().all())
+
+    er_result = await session.execute(
+        select(UploadEmailRecipient).where(UploadEmailRecipient.upload_group == upload_group)
+    )
+    email_recipients = list(er_result.scalars().all())
+
+    return group_settings, passwords, email_recipients
+
+
+async def _verify_access(
+    session,
+    upload_group: str,
+    password: str | None,
+    owner_user_id: int | None,
+    current_user: User | None,
+) -> tuple[str, int | None, int | None]:
+    """Verify download access. Returns (access_type, password_id, email_recipient_id)."""
+    # Owner always has access
+    if current_user and owner_user_id and current_user.id == owner_user_id:
+        return "owner", None, None
+
+    group_settings, passwords, email_recipients = await _load_group_access(session, upload_group)
+
+    # If password provided, check against passwords and email tokens
+    if password:
+        for pw in passwords:
+            if pbkdf2_sha256.verify(password, pw.password_hash):
+                return "password", pw.id, None
+
+        # Check email recipient tokens (SHA256-based, constant-time)
+        pw_hash = sha256(password.encode()).hexdigest()
+        for er in email_recipients:
+            if compare_digest(pw_hash, er.token_hash):
+                return "email", None, er.id
+
+    # If public and no password required
+    if group_settings and group_settings.is_public:
+        return "public", None, None
+
+    # Not public, no valid password
+    if passwords or email_recipients:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid password")
+
+    # No access control configured (legacy public files) — allow
+    return "public", None, None
+
+
+async def _create_group_access(
+    session,
+    upload_group: str,
+    is_public: bool,
+    passwords_json: str | None,
+    emails_json: str | None,
+    show_email_stats: bool,
+    user: User,
+) -> tuple[UploadGroupSettings, int, int, list[tuple[str, str]]]:
+    """Create group settings, passwords, and email recipients. Returns (settings, pw_count, email_count, email_tokens)."""
+    # Create group settings
+    group_settings = UploadGroupSettings(
+        upload_group=upload_group,
+        is_public=is_public,
+        show_email_stats=show_email_stats,
+    )
+    session.add(group_settings)
+
+    # Process passwords
+    pw_count = 0
+    if passwords_json:
+        pw_list = json.loads(passwords_json)
+        pw_limit = _get_password_limit(user.tier)
+        if pw_limit > 0 and len(pw_list) > pw_limit:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Too many passwords. Max {pw_limit} for {user.tier.value} tier.",
+            )
+        for pw_entry in pw_list:
+            label = str(pw_entry.get("label", "Password")).strip()[:100] or "Password"
+            raw_pw = pw_entry.get("password", "")
+            if not raw_pw:
+                continue
+            session.add(UploadPassword(
+                upload_group=upload_group,
+                label=label,
+                password_hash=pbkdf2_sha256.hash(raw_pw),
+            ))
+            pw_count += 1
+
+    # Process email invites
+    email_count = 0
+    email_tokens: list[tuple[str, str]] = []  # (email, raw_token)
+    if emails_json:
+        email_list = json.loads(emails_json)
+        email_limit = _get_email_limit(user.tier)
+        # temp users can't use email invites
+        if user.tier == UserTier.temporary:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Create a free account to use email invites.",
+            )
+        if email_limit > 0 and len(email_list) > email_limit:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Too many email invites. Max {email_limit} for {user.tier.value} tier.",
+            )
+        for email_addr in email_list:
+            email_str = str(email_addr).strip().lower()
+            if not _EMAIL_RE.match(email_str):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid email address: {email_str}",
+                )
+            raw_token = secrets.token_urlsafe(32)
+            token_hash = sha256(raw_token.encode()).hexdigest()
+            session.add(UploadEmailRecipient(
+                upload_group=upload_group,
+                email=email_str,
+                token_hash=token_hash,
+            ))
+            email_tokens.append((email_str, raw_token))
+            email_count += 1
+
+    return group_settings, pw_count, email_count, email_tokens
 
 
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
@@ -110,7 +287,10 @@ async def upload_file(
     _altcha: None = Depends(verify_altcha_payload),
     expiry_hours: int | None = Form(None),
     max_downloads: int | None = Form(None),
-    password: str | None = Form(None),
+    is_public: bool = Form(True),
+    passwords: str | None = Form(None),
+    emails: str | None = Form(None),
+    show_email_stats: bool = Form(False),
 ) -> FileUploadResponse:
     # Get tier limits
     max_size_mb, _ = _get_limits(user.tier)
@@ -137,10 +317,9 @@ async def upload_file(
 
     # Create DB record
     download_token = secrets.token_urlsafe(32)
+    upload_group = secrets.token_urlsafe(32)
     expires_at = _utcnow() + _resolve_expiry(expiry_hours, user.tier)
     resolved_max_downloads = _resolve_max_downloads(max_downloads, user.tier)
-
-    password_hash = pbkdf2_sha256.hash(password) if password else None
 
     file_upload = FileUpload(
         user_id=user.id,
@@ -148,15 +327,47 @@ async def upload_file(
         stored_filename=stored_filename,
         file_size_bytes=file_size,
         download_token=download_token,
+        upload_group=upload_group,
         expires_at=expires_at,
         max_downloads=resolved_max_downloads,
-        password_hash=password_hash,
     )
     session.add(file_upload)
+
+    # Create access control
+    group_settings, pw_count, email_count, email_tokens = await _create_group_access(
+        session, upload_group, is_public, passwords, emails, show_email_stats, user,
+    )
+
     await session.commit()
     await session.refresh(file_upload)
 
-    return _to_response(file_upload)
+    # Send invite emails in background
+    if email_tokens:
+        group_url = f"/download/group/{upload_group}"
+        file_names = [file_upload.original_filename]
+        for email_addr, raw_token in email_tokens:
+            try:
+                await send_file_invite_email(
+                    recipient_email=email_addr,
+                    sender_email=user.email,
+                    download_url=f"{group_url}?password={raw_token}",
+                    file_names=file_names,
+                )
+                # Mark as notified
+                stmt = select(UploadEmailRecipient).where(
+                    UploadEmailRecipient.upload_group == upload_group,
+                    UploadEmailRecipient.email == email_addr,
+                )
+                er_result = await session.execute(stmt)
+                er = er_result.scalars().first()
+                if er:
+                    er.notified = True
+                    session.add(er)
+            except Exception:
+                pass  # Don't fail upload if email fails
+        await session.commit()
+
+    return _to_response(file_upload, group_settings, pw_count, email_count)
 
 
 @router.post("/upload-multiple", status_code=status.HTTP_201_CREATED)
@@ -167,7 +378,10 @@ async def upload_multiple_files(
     _altcha: None = Depends(verify_altcha_payload),
     expiry_hours: int | None = Form(None),
     max_downloads: int | None = Form(None),
-    password: str | None = Form(None),
+    is_public: bool = Form(True),
+    passwords: str | None = Form(None),
+    emails: str | None = Form(None),
+    show_email_stats: bool = Form(False),
 ) -> MultiFileUploadResponse:
     if not files:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No files provided")
@@ -207,7 +421,6 @@ async def upload_multiple_files(
     upload_group = secrets.token_urlsafe(32)
     expires_at = _utcnow() + _resolve_expiry(expiry_hours, user.tier)
     resolved_max_downloads = _resolve_max_downloads(max_downloads, user.tier)
-    password_hash = pbkdf2_sha256.hash(password) if password else None
     saved_uploads: list[FileUpload] = []
 
     for original_name, content in file_contents:
@@ -225,17 +438,46 @@ async def upload_multiple_files(
             upload_group=upload_group,
             expires_at=expires_at,
             max_downloads=resolved_max_downloads,
-            password_hash=password_hash,
         )
         session.add(file_upload)
         saved_uploads.append(file_upload)
+
+    # Create access control
+    group_settings, pw_count, email_count, email_tokens = await _create_group_access(
+        session, upload_group, is_public, passwords, emails, show_email_stats, user,
+    )
 
     await session.commit()
     for fu in saved_uploads:
         await session.refresh(fu)
 
+    # Send invite emails in background
+    if email_tokens:
+        group_url = f"/download/group/{upload_group}"
+        file_names = [fu.original_filename for fu in saved_uploads]
+        for email_addr, raw_token in email_tokens:
+            try:
+                await send_file_invite_email(
+                    recipient_email=email_addr,
+                    sender_email=user.email,
+                    download_url=f"{group_url}?password={raw_token}",
+                    file_names=file_names,
+                )
+                stmt = select(UploadEmailRecipient).where(
+                    UploadEmailRecipient.upload_group == upload_group,
+                    UploadEmailRecipient.email == email_addr,
+                )
+                er_result = await session.execute(stmt)
+                er = er_result.scalars().first()
+                if er:
+                    er.notified = True
+                    session.add(er)
+            except Exception:
+                pass
+        await session.commit()
+
     return MultiFileUploadResponse(
-        files=[_to_response(fu) for fu in saved_uploads],
+        files=[_to_response(fu, group_settings, pw_count, email_count) for fu in saved_uploads],
         upload_group=upload_group,
         total_size_bytes=total_size,
     )
@@ -256,13 +498,20 @@ async def get_group_info(
     if not files:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload group not found")
 
+    group_settings, passwords, email_recipients = await _load_group_access(session, upload_group)
+    pw_count = len(passwords)
+    email_count = len(email_recipients)
+
     total_size = sum(f.file_size_bytes for f in files)
     return UploadGroupInfoResponse(
-        files=[_to_response(f) for f in files],
+        files=[_to_response(f, group_settings, pw_count, email_count) for f in files],
         upload_group=upload_group,
         total_size_bytes=total_size,
         file_count=len(files),
         will_zip=len(files) > settings.GROUP_ZIP_THRESHOLD,
+        is_public=group_settings.is_public if group_settings else True,
+        has_passwords=pw_count > 0,
+        has_email_recipients=email_count > 0,
     )
 
 
@@ -282,9 +531,9 @@ async def download_group(
     if not files:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload group not found")
 
-    # Password verification (check first file's hash — all files in group share the same password)
-    if files[0].password_hash and (not password or not pbkdf2_sha256.verify(password, files[0].password_hash)):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid password")
+    # Access verification
+    owner_user_id = files[0].user_id
+    access_type, pw_id, er_id = await _verify_access(session, upload_group, password, owner_user_id, None)
 
     # Check expiration for all files
     now = _utcnow()
@@ -299,6 +548,11 @@ async def download_group(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk")
         files[0].download_count += 1
         session.add(files[0])
+        # Log download
+        session.add(DownloadLog(
+            upload_group=upload_group, file_upload_id=files[0].id,
+            access_type=access_type, upload_password_id=pw_id, email_recipient_id=er_id,
+        ))
         await session.commit()
         return FileResponse(
             path=str(file_path), filename=files[0].original_filename, media_type="application/octet-stream"
@@ -317,6 +571,10 @@ async def download_group(
             zf.write(file_path, f.original_filename)
             f.download_count += 1
             session.add(f)
+            session.add(DownloadLog(
+                upload_group=upload_group, file_upload_id=f.id,
+                access_type=access_type, upload_password_id=pw_id, email_recipient_id=er_id,
+            ))
 
     await session.commit()
     zip_buffer.seek(0)
@@ -350,10 +608,20 @@ async def list_files(
         .order_by(FileUpload.created_at.desc())
     )
     result = await session.execute(stmt)
-    files = result.scalars().all()
+    files = list(result.scalars().all())
+
+    # Load access info for each unique upload_group
+    group_access_cache: dict[str, tuple[UploadGroupSettings | None, int, int]] = {}
+    for f in files:
+        if f.upload_group not in group_access_cache:
+            gs, pws, ers = await _load_group_access(session, f.upload_group)
+            group_access_cache[f.upload_group] = (gs, len(pws), len(ers))
 
     return FileListResponse(
-        files=[_to_response(f) for f in files],
+        files=[
+            _to_response(f, *group_access_cache.get(f.upload_group, (None, 0, 0)))
+            for f in files
+        ],
     )
 
 
@@ -372,9 +640,10 @@ async def download_file(
     if not file_upload:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
 
-    # Password verification
-    if file_upload.password_hash and (not password or not pbkdf2_sha256.verify(password, file_upload.password_hash)):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid password")
+    # Access verification
+    access_type, pw_id, er_id = await _verify_access(
+        session, file_upload.upload_group, password, file_upload.user_id, None
+    )
 
     now = _utcnow()
     grace_end = file_upload.expires_at + timedelta(days=settings.FILE_GRACE_PERIOD_DAYS)
@@ -393,6 +662,15 @@ async def download_file(
     # Increment download count
     file_upload.download_count += 1
     session.add(file_upload)
+
+    # Log download
+    session.add(DownloadLog(
+        upload_group=file_upload.upload_group,
+        file_upload_id=file_upload.id,
+        access_type=access_type,
+        upload_password_id=pw_id,
+        email_recipient_id=er_id,
+    ))
     await session.commit()
 
     file_path = Path(settings.UPLOAD_DIR) / file_upload.stored_filename
@@ -418,7 +696,8 @@ async def get_file_info(
     if not file_upload:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
 
-    return _to_response(file_upload)
+    gs, pws, ers = await _load_group_access(session, file_upload.upload_group)
+    return _to_response(file_upload, gs, len(pws), len(ers))
 
 
 @router.post("/{file_id}/refresh")
@@ -471,7 +750,8 @@ async def refresh_download_link(
     await session.commit()
     await session.refresh(file_upload)
 
-    return _to_response(file_upload)
+    gs, pws, ers = await _load_group_access(session, file_upload.upload_group)
+    return _to_response(file_upload, gs, len(pws), len(ers))
 
 
 @router.patch("/{file_id}")
@@ -504,16 +784,13 @@ async def edit_file(
         file_upload.expires_at = _utcnow() + _resolve_expiry(body.expires_in_hours, user.tier)
     if body.max_downloads is not None:
         file_upload.max_downloads = _resolve_max_downloads(body.max_downloads, user.tier)
-    if body.remove_password:
-        file_upload.password_hash = None
-    elif body.password is not None:
-        file_upload.password_hash = pbkdf2_sha256.hash(body.password)
 
     session.add(file_upload)
     await session.commit()
     await session.refresh(file_upload)
 
-    return _to_response(file_upload)
+    gs, pws, ers = await _load_group_access(session, file_upload.upload_group)
+    return _to_response(file_upload, gs, len(pws), len(ers))
 
 
 @router.delete("/{file_id}", status_code=status.HTTP_200_OK)
@@ -619,9 +896,10 @@ async def add_files_to_group(
     for fu in saved_uploads:
         await session.refresh(fu)
 
+    gs, pws, ers = await _load_group_access(session, upload_group)
     new_total = sum(len(c) for _, c in file_contents)
     return MultiFileUploadResponse(
-        files=[_to_response(fu) for fu in saved_uploads],
+        files=[_to_response(fu, gs, len(pws), len(ers)) for fu in saved_uploads],
         upload_group=upload_group,
         total_size_bytes=new_total,
     )
@@ -676,13 +954,6 @@ async def refresh_group(
         else reference.max_downloads
     )
 
-    # Resolve password
-    new_password_hash = reference.password_hash
-    if body.remove_password:
-        new_password_hash = None
-    elif body.password is not None:
-        new_password_hash = pbkdf2_sha256.hash(body.password)
-
     for f in files:
         if not f.is_active:
             continue
@@ -690,7 +961,6 @@ async def refresh_group(
         f.download_count = 0
         f.expires_at = new_expiry
         f.max_downloads = resolved_max_downloads
-        f.password_hash = new_password_hash
         f.is_active = True
         session.add(f)
 
@@ -698,9 +968,10 @@ async def refresh_group(
     for f in files:
         await session.refresh(f)
 
+    gs, pws, ers = await _load_group_access(session, upload_group)
     active_files = [f for f in files if f.is_active]
     return MultiFileUploadResponse(
-        files=[_to_response(f) for f in active_files],
+        files=[_to_response(f, gs, len(pws), len(ers)) for f in active_files],
         upload_group=upload_group,
         total_size_bytes=sum(f.file_size_bytes for f in active_files),
     )
@@ -736,18 +1007,181 @@ async def edit_group(
             f.expires_at = _utcnow() + _resolve_expiry(body.expiry_hours, user.tier)
         if body.max_downloads is not None:
             f.max_downloads = _resolve_max_downloads(body.max_downloads, user.tier)
-        if body.remove_password:
-            f.password_hash = None
-        elif body.password is not None:
-            f.password_hash = pbkdf2_sha256.hash(body.password)
         session.add(f)
 
     await session.commit()
     for f in files:
         await session.refresh(f)
 
+    gs, pws, ers = await _load_group_access(session, upload_group)
     return MultiFileUploadResponse(
-        files=[_to_response(f) for f in files],
+        files=[_to_response(f, gs, len(pws), len(ers)) for f in files],
         upload_group=upload_group,
         total_size_bytes=sum(f.file_size_bytes for f in files),
     )
+
+
+@router.get("/group/{upload_group}/access-info")
+async def get_access_info(
+    upload_group: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> AccessInfoResponse:
+    """Get access configuration for an upload group. Owner only."""
+    stmt = select(FileUpload).where(
+        FileUpload.upload_group == upload_group,
+        FileUpload.user_id == user.id,
+    )
+    result = await session.execute(stmt)
+    if not result.scalars().first():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload group not found")
+
+    group_settings, passwords, email_recipients = await _load_group_access(session, upload_group)
+
+    return AccessInfoResponse(
+        is_public=group_settings.is_public if group_settings else True,
+        passwords=[PasswordInfo(id=pw.id, label=pw.label) for pw in passwords],
+        emails=[
+            EmailRecipientInfo(id=er.id, email=er.email, notified=er.notified)
+            for er in email_recipients
+        ],
+        show_email_stats=group_settings.show_email_stats if group_settings else False,
+    )
+
+
+@router.get("/group/{upload_group}/stats")
+async def get_group_stats(
+    upload_group: str,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> DownloadStatsResponse:
+    """Get download statistics for an upload group. Owner only."""
+    # Verify ownership
+    stmt = select(FileUpload).where(
+        FileUpload.upload_group == upload_group,
+        FileUpload.user_id == user.id,
+    )
+    result = await session.execute(stmt)
+    if not result.scalars().first():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload group not found")
+
+    # Get all download logs for this group
+    log_stmt = select(DownloadLog).where(DownloadLog.upload_group == upload_group)
+    log_result = await session.execute(log_stmt)
+    logs = list(log_result.scalars().all())
+
+    if not logs:
+        return DownloadStatsResponse(stats=[], total_downloads=0)
+
+    # Load passwords and email recipients for label/email lookup
+    _, passwords, email_recipients = await _load_group_access(session, upload_group)
+    pw_map = {pw.id: pw.label for pw in passwords}
+    er_map = {er.id: er.email for er in email_recipients}
+
+    # Aggregate by (access_type, identifier)
+    aggregated: dict[tuple[str, str | None], list] = {}
+    for log in logs:
+        identifier = None
+        if log.access_type == "password" and log.upload_password_id:
+            identifier = pw_map.get(log.upload_password_id, f"Password #{log.upload_password_id}")
+        elif log.access_type == "email" and log.email_recipient_id:
+            identifier = er_map.get(log.email_recipient_id, f"Recipient #{log.email_recipient_id}")
+
+        key = (log.access_type, identifier)
+        if key not in aggregated:
+            aggregated[key] = []
+        aggregated[key].append(log.downloaded_at)
+
+    stats = []
+    for (access_type, identifier), timestamps in aggregated.items():
+        stats.append(DownloadStatEntry(
+            access_type=access_type,
+            identifier=identifier,
+            download_count=len(timestamps),
+            last_download=max(timestamps) if timestamps else None,
+        ))
+
+    # Sort: public first, then password, email, owner
+    type_order = {"public": 0, "password": 1, "email": 2, "owner": 3}
+    stats.sort(key=lambda s: (type_order.get(s.access_type, 99), s.identifier or ""))
+
+    return DownloadStatsResponse(stats=stats, total_downloads=len(logs))
+
+
+@router.get("/group/{upload_group}/recipient-stats")
+async def get_recipient_stats(
+    upload_group: str,
+    session: AsyncSession = Depends(get_session),
+    password: str | None = Query(None),
+) -> RecipientStatsResponse:
+    """Get download stats visible to email recipients. Requires valid email token."""
+    if not password:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access token required")
+
+    # Verify the token belongs to an email recipient
+    token_hash = sha256(password.encode()).hexdigest()
+    er_stmt = select(UploadEmailRecipient).where(
+        UploadEmailRecipient.upload_group == upload_group,
+    )
+    er_result = await session.execute(er_stmt)
+    recipients = list(er_result.scalars().all())
+
+    matched_recipient = None
+    for er in recipients:
+        if compare_digest(token_hash, er.token_hash):
+            matched_recipient = er
+            break
+
+    if not matched_recipient:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid access token")
+
+    # Check if stats are enabled
+    gs_stmt = select(UploadGroupSettings).where(UploadGroupSettings.upload_group == upload_group)
+    gs_result = await session.execute(gs_stmt)
+    group_settings = gs_result.scalars().first()
+
+    if not group_settings or not group_settings.show_email_stats:
+        # Return only total count
+        log_count_stmt = select(func.count(DownloadLog.id)).where(
+            DownloadLog.upload_group == upload_group,
+        )
+        count_result = await session.execute(log_count_stmt)
+        total = count_result.scalar() or 0
+        return RecipientStatsResponse(downloads=[], total_downloads=total)
+
+    # Stats enabled: return per-email breakdown (only email downloads)
+    log_stmt = select(DownloadLog).where(
+        DownloadLog.upload_group == upload_group,
+        DownloadLog.access_type == "email",
+    )
+    log_result = await session.execute(log_stmt)
+    email_logs = list(log_result.scalars().all())
+
+    # Map recipient IDs to emails
+    er_map = {er.id: er.email for er in recipients}
+
+    # Aggregate by email
+    email_counts: dict[str, int] = {}
+    for log in email_logs:
+        if log.email_recipient_id:
+            email = er_map.get(log.email_recipient_id, "unknown")
+            email_counts[email] = email_counts.get(email, 0) + 1
+
+    # Include all recipients even if they have 0 downloads
+    for er in recipients:
+        if er.email not in email_counts:
+            email_counts[er.email] = 0
+
+    downloads = [
+        RecipientDownloadEntry(email=email, download_count=count)
+        for email, count in sorted(email_counts.items())
+    ]
+
+    # Total across all access types
+    total_stmt = select(func.count(DownloadLog.id)).where(
+        DownloadLog.upload_group == upload_group,
+    )
+    total_result = await session.execute(total_stmt)
+    total = total_result.scalar() or 0
+
+    return RecipientStatsResponse(downloads=downloads, total_downloads=total)

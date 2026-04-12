@@ -1023,6 +1023,161 @@
         }
       }
     },
+    "/api/files/group/{upload_group}/access-info": {
+      "get": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Get Access Info",
+        "description": "Get access configuration for an upload group. Owner only.",
+        "operationId": "get_access_info_api_files_group__upload_group__access_info_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "upload_group",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Upload Group"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessInfoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/group/{upload_group}/stats": {
+      "get": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Get Group Stats",
+        "description": "Get download statistics for an upload group. Owner only.",
+        "operationId": "get_group_stats_api_files_group__upload_group__stats_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "upload_group",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Upload Group"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadStatsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/group/{upload_group}/recipient-stats": {
+      "get": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Get Recipient Stats",
+        "description": "Get download stats visible to email recipients. Requires valid email token.",
+        "operationId": "get_recipient_stats_api_files_group__upload_group__recipient_stats_get",
+        "parameters": [
+          {
+            "name": "upload_group",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Upload Group"
+            }
+          },
+          {
+            "name": "password",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Password"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipientStatsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/subscription": {
       "get": {
         "tags": [
@@ -1106,6 +1261,40 @@
   },
   "components": {
     "schemas": {
+      "AccessInfoResponse": {
+        "properties": {
+          "is_public": {
+            "type": "boolean",
+            "title": "Is Public"
+          },
+          "passwords": {
+            "items": {
+              "$ref": "#/components/schemas/PasswordInfo"
+            },
+            "type": "array",
+            "title": "Passwords"
+          },
+          "emails": {
+            "items": {
+              "$ref": "#/components/schemas/EmailRecipientInfo"
+            },
+            "type": "array",
+            "title": "Emails"
+          },
+          "show_email_stats": {
+            "type": "boolean",
+            "title": "Show Email Stats"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_public",
+          "passwords",
+          "emails",
+          "show_email_stats"
+        ],
+        "title": "AccessInfoResponse"
+      },
       "AdminUserListResponse": {
         "properties": {
           "users": {
@@ -1201,7 +1390,12 @@
             ],
             "title": "Max Downloads"
           },
-          "password": {
+          "is_public": {
+            "type": "boolean",
+            "title": "Is Public",
+            "default": true
+          },
+          "passwords": {
             "anyOf": [
               {
                 "type": "string"
@@ -1210,7 +1404,23 @@
                 "type": "null"
               }
             ],
-            "title": "Password"
+            "title": "Passwords"
+          },
+          "emails": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emails"
+          },
+          "show_email_stats": {
+            "type": "boolean",
+            "title": "Show Email Stats",
+            "default": false
           },
           "altcha": {
             "type": "string",
@@ -1256,7 +1466,12 @@
             ],
             "title": "Max Downloads"
           },
-          "password": {
+          "is_public": {
+            "type": "boolean",
+            "title": "Is Public",
+            "default": true
+          },
+          "passwords": {
             "anyOf": [
               {
                 "type": "string"
@@ -1265,7 +1480,23 @@
                 "type": "null"
               }
             ],
-            "title": "Password"
+            "title": "Passwords"
+          },
+          "emails": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emails"
+          },
+          "show_email_stats": {
+            "type": "boolean",
+            "title": "Show Email Stats",
+            "default": false
           },
           "altcha": {
             "type": "string",
@@ -1301,6 +1532,91 @@
           "code"
         ],
         "title": "CodeVerificationRequest"
+      },
+      "DownloadStatEntry": {
+        "properties": {
+          "access_type": {
+            "type": "string",
+            "title": "Access Type"
+          },
+          "identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identifier"
+          },
+          "download_count": {
+            "type": "integer",
+            "title": "Download Count"
+          },
+          "last_download": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Download"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_type",
+          "download_count"
+        ],
+        "title": "DownloadStatEntry"
+      },
+      "DownloadStatsResponse": {
+        "properties": {
+          "stats": {
+            "items": {
+              "$ref": "#/components/schemas/DownloadStatEntry"
+            },
+            "type": "array",
+            "title": "Stats"
+          },
+          "total_downloads": {
+            "type": "integer",
+            "title": "Total Downloads"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stats",
+          "total_downloads"
+        ],
+        "title": "DownloadStatsResponse"
+      },
+      "EmailRecipientInfo": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "notified": {
+            "type": "boolean",
+            "title": "Notified"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "notified"
+        ],
+        "title": "EmailRecipientInfo"
       },
       "EmailVerificationRequest": {
         "properties": {
@@ -1338,22 +1654,6 @@
               }
             ],
             "title": "Message"
-          },
-          "password": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Password"
-          },
-          "remove_password": {
-            "type": "boolean",
-            "title": "Remove Password",
-            "default": false
           },
           "expires_in_hours": {
             "anyOf": [
@@ -1461,9 +1761,19 @@
             ],
             "title": "Message"
           },
-          "has_password": {
+          "is_public": {
             "type": "boolean",
-            "title": "Has Password",
+            "title": "Is Public",
+            "default": true
+          },
+          "has_passwords": {
+            "type": "boolean",
+            "title": "Has Passwords",
+            "default": false
+          },
+          "has_email_recipients": {
+            "type": "boolean",
+            "title": "Has Email Recipients",
             "default": false
           }
         },
@@ -1502,22 +1812,6 @@
               }
             ],
             "title": "Max Downloads"
-          },
-          "password": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Password"
-          },
-          "remove_password": {
-            "type": "boolean",
-            "title": "Remove Password",
-            "default": false
           }
         },
         "type": "object",
@@ -1546,22 +1840,6 @@
               }
             ],
             "title": "Max Downloads"
-          },
-          "password": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Password"
-          },
-          "remove_password": {
-            "type": "boolean",
-            "title": "Remove Password",
-            "default": false
           }
         },
         "type": "object",
@@ -1607,6 +1885,16 @@
             },
             "type": "array",
             "title": "Max Downloads Options"
+          },
+          "max_passwords_per_upload": {
+            "type": "integer",
+            "title": "Max Passwords Per Upload",
+            "default": 1
+          },
+          "max_emails_per_upload": {
+            "type": "integer",
+            "title": "Max Emails Per Upload",
+            "default": 0
           }
         },
         "type": "object",
@@ -1644,6 +1932,24 @@
           "total_size_bytes"
         ],
         "title": "MultiFileUploadResponse"
+      },
+      "PasswordInfo": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "PasswordInfo"
       },
       "QuotaResponse": {
         "properties": {
@@ -1727,6 +2033,16 @@
               }
             ],
             "title": "Max Downloads Limit"
+          },
+          "max_passwords_per_upload": {
+            "type": "integer",
+            "title": "Max Passwords Per Upload",
+            "default": 0
+          },
+          "max_emails_per_upload": {
+            "type": "integer",
+            "title": "Max Emails Per Upload",
+            "default": 0
           }
         },
         "type": "object",
@@ -1738,6 +2054,45 @@
           "weekly_uploads_remaining"
         ],
         "title": "QuotaResponse"
+      },
+      "RecipientDownloadEntry": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "download_count": {
+            "type": "integer",
+            "title": "Download Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "download_count"
+        ],
+        "title": "RecipientDownloadEntry"
+      },
+      "RecipientStatsResponse": {
+        "properties": {
+          "downloads": {
+            "items": {
+              "$ref": "#/components/schemas/RecipientDownloadEntry"
+            },
+            "type": "array",
+            "title": "Downloads"
+          },
+          "total_downloads": {
+            "type": "integer",
+            "title": "Total Downloads"
+          }
+        },
+        "type": "object",
+        "required": [
+          "downloads",
+          "total_downloads"
+        ],
+        "title": "RecipientStatsResponse"
       },
       "SubscriptionResponse": {
         "properties": {
@@ -1824,6 +2179,21 @@
           "will_zip": {
             "type": "boolean",
             "title": "Will Zip"
+          },
+          "is_public": {
+            "type": "boolean",
+            "title": "Is Public",
+            "default": true
+          },
+          "has_passwords": {
+            "type": "boolean",
+            "title": "Has Passwords",
+            "default": false
+          },
+          "has_email_recipients": {
+            "type": "boolean",
+            "title": "Has Email Recipients",
+            "default": false
           }
         },
         "type": "object",

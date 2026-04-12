@@ -36,7 +36,9 @@ class FileUploadResponse(SQLModel):
     is_active: bool
     upload_group: str | None = None
     message: str | None = None
-    has_password: bool = False
+    is_public: bool = True
+    has_passwords: bool = False
+    has_email_recipients: bool = False
 
 
 class FileListResponse(SQLModel):
@@ -56,6 +58,9 @@ class QuotaResponse(SQLModel):
     # Max download options
     max_downloads_options: list[int] | None = None  # Discrete choices (temporary)
     max_downloads_limit: int | None = None  # Upper bound for freeform (free/premium)
+    # Access control limits
+    max_passwords_per_upload: int = 0
+    max_emails_per_upload: int = 0
 
 
 class MultiFileUploadResponse(SQLModel):
@@ -70,6 +75,9 @@ class UploadGroupInfoResponse(SQLModel):
     total_size_bytes: int
     file_count: int
     will_zip: bool
+    is_public: bool = True
+    has_passwords: bool = False
+    has_email_recipients: bool = False
 
 
 class TransferInfoResponse(SQLModel):
@@ -92,13 +100,14 @@ class LimitsResponse(SQLModel):
     expiry_options_hours: list[int]
     # Max download options for temporary tier
     max_downloads_options: list[int]
+    # Access control limits
+    max_passwords_per_upload: int = 1
+    max_emails_per_upload: int = 0
 
 
 class FileEditRequest(SQLModel):
     original_filename: str | None = None
     message: str | None = None
-    password: str | None = None
-    remove_password: bool = False
     expires_in_hours: int | None = None
     max_downloads: int | None = None
 
@@ -106,15 +115,11 @@ class FileEditRequest(SQLModel):
 class GroupRefreshRequest(SQLModel):
     expiry_hours: int | None = None
     max_downloads: int | None = None
-    password: str | None = None
-    remove_password: bool = False
 
 
 class GroupEditRequest(SQLModel):
     expiry_hours: int | None = None
     max_downloads: int | None = None
-    password: str | None = None
-    remove_password: bool = False
 
 
 class AdminUserUpdateRequest(SQLModel):
@@ -125,6 +130,46 @@ class AdminUserUpdateRequest(SQLModel):
 class AdminUserListResponse(SQLModel):
     users: list[UserResponse]
     total: int
+
+
+class DownloadStatEntry(SQLModel):
+    access_type: str
+    identifier: str | None = None  # password label or email address
+    download_count: int
+    last_download: datetime | None = None
+
+
+class DownloadStatsResponse(SQLModel):
+    stats: list[DownloadStatEntry]
+    total_downloads: int
+
+
+class PasswordInfo(SQLModel):
+    id: int
+    label: str
+
+
+class EmailRecipientInfo(SQLModel):
+    id: int
+    email: str
+    notified: bool
+
+
+class AccessInfoResponse(SQLModel):
+    is_public: bool
+    passwords: list[PasswordInfo]
+    emails: list[EmailRecipientInfo]
+    show_email_stats: bool
+
+
+class RecipientDownloadEntry(SQLModel):
+    email: str
+    download_count: int
+
+
+class RecipientStatsResponse(SQLModel):
+    downloads: list[RecipientDownloadEntry]
+    total_downloads: int
 
 
 class SubscriptionResponse(SQLModel):

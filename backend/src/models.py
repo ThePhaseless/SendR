@@ -55,11 +55,43 @@ class FileUpload(SQLModel, table=True):
     download_token: str = Field(unique=True, index=True)
     download_count: int = Field(default=0)
     max_downloads: int | None = Field(default=None)
-    upload_group: str | None = Field(default=None, index=True)
-    password_hash: str | None = Field(default=None)
+    upload_group: str = Field(default_factory=lambda: str(uuid4()), index=True)
     expires_at: datetime
     created_at: datetime = Field(default_factory=_utcnow)
     is_active: bool = Field(default=True)
+
+
+class UploadGroupSettings(SQLModel, table=True):
+    upload_group: str = Field(primary_key=True, index=True)
+    is_public: bool = Field(default=True)
+    show_email_stats: bool = Field(default=False)
+
+
+class UploadPassword(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    upload_group: str = Field(index=True)
+    label: str
+    password_hash: str
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
+class UploadEmailRecipient(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    upload_group: str = Field(index=True)
+    email: str
+    token_hash: str = Field(index=True)
+    notified: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
+class DownloadLog(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    upload_group: str = Field(index=True)
+    file_upload_id: int | None = Field(default=None, foreign_key="fileupload.id")
+    access_type: str  # "public" | "password" | "email" | "owner"
+    upload_password_id: int | None = Field(default=None, foreign_key="uploadpassword.id")
+    email_recipient_id: int | None = Field(default=None, foreign_key="uploademailrecipient.id")
+    downloaded_at: datetime = Field(default_factory=_utcnow)
 
 
 class Transfer(SQLModel, table=True):
