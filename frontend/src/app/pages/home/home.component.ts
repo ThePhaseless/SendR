@@ -10,6 +10,7 @@ import {
 import type { UploadFileEntry } from "../../components/file-picker/file-picker.component";
 import { FilePickerComponent } from "../../components/file-picker/file-picker.component";
 import { JumpingTextComponent } from "../../components/jumping-text/jumping-text.component";
+import type { PasswordEntry } from "../../components/upload-settings/upload-settings.component";
 import { UploadSettingsComponent } from "../../components/upload-settings/upload-settings.component";
 import { AuthService } from "../../services/auth.service";
 import type { FileUploadResponse, MultiFileUploadResponse } from "../../services/file.service";
@@ -25,6 +26,8 @@ interface AltchaStateChangeDetail {
   payload?: string;
   state?: string;
 }
+
+type AltchaState = 'unverified' | 'verifying' | 'verified' | 'expired' | 'error' | 'code';
 
 @Component({
   imports: [
@@ -54,6 +57,7 @@ export class HomeComponent {
   error = signal<string | null>(null);
   copied = signal(false);
   altchaVerified = signal(false);
+  altchaState = signal<AltchaState>('unverified');
   altchaChallenge = signal<string | null>(null);
   pendingFiles = signal<UploadFileEntry[]>([]);
   private altchaPayload = "";
@@ -72,8 +76,24 @@ export class HomeComponent {
   expiryHours = signal(168);
   /** 0 = unlimited */
   maxDownloads = signal(0);
-  /** Upload password (empty = no password) */
-  uploadPassword = signal("");
+  /** Whether the upload is publicly accessible. */
+  isPublic = signal(true);
+  /** Password entries for the upload. */
+  passwords = signal<PasswordEntry[]>([]);
+  /** Email recipients for the upload. */
+  emails = signal<string[]>([]);
+  /** Whether email recipients can see download stats. */
+  showEmailStats = signal(false);
+
+  altchaHintText = computed(() => {
+    switch (this.altchaState()) {
+      case 'verifying': return 'Verifying…';
+      case 'expired': return 'CAPTCHA expired — fetching a new challenge…';
+      case 'error': return 'Verification failed. Please try again.';
+      case 'code': return 'Please complete the code challenge.';
+      default: return 'Please complete the CAPTCHA to upload.';
+    }
+  });
 
   private uploadStartTime = 0;
   private lastProgressTime = 0;
@@ -123,16 +143,49 @@ export class HomeComponent {
     return "temporary";
   });
 
+  maxPasswordsPerUpload = computed(() => {
+    const l = this.limitsData.value();
+    if (l && "max_passwords_per_upload" in l) {
+      return (l as { max_passwords_per_upload?: number }).max_passwords_per_upload ?? 0;
+    }
+    return 1;
+  });
+
+  maxEmailsPerUpload = computed(() => {
+    const l = this.limitsData.value();
+    if (l && "max_emails_per_upload" in l) {
+      return (l as { max_emails_per_upload?: number }).max_emails_per_upload ?? 0;
+    }
+    return 0;
+  });
+
   onAltchaStateChange(event: Event): void {
     const detail = this.getAltchaStateDetail(event);
-    if (detail?.state === "verified" && detail.payload) {
-      this.altchaPayload = detail.payload;
-      this.altchaVerified.set(true);
-    } else if (detail?.state === "error") {
-      this.error.set("CAPTCHA verification failed. Please try again.");
-      this.altchaVerified.set(false);
-      this.altchaPayload = "";
-      this.loadAltchaChallenge();
+    const state = (detail?.state ?? 'unverified') as AltchaState;
+    this.altchaState.set(state);
+    switch (state) {
+      case 'verified':
+        if (detail?.payload) {
+          this.altchaPayload = detail.payload;
+          this.altchaVerified.set(true);
+        }
+        break;
+      case 'expired':
+        this.altchaVerified.set(false);
+        this.altchaPayload = '';
+        this.altchaChallenge.set(null);
+        this.loadAltchaChallenge();
+        break;
+      case 'error':
+        this.altchaVerified.set(false);
+        this.altchaPayload = '';
+        this.altchaChallenge.set(null);
+        this.loadAltchaChallenge();
+        break;
+      case 'unverified':
+        this.altchaVerified.set(false);
+        this.altchaPayload = '';
+        break;
     }
   }
 
@@ -249,7 +302,10 @@ export class HomeComponent {
         .upload(files[0], this.altchaPayload, {
           expiryHours: this.expiryHours(),
           maxDownloads: this.maxDownloads(),
-          password: this.uploadPassword() || undefined,
+          isPublic: this.isPublic(),
+          passwords: this.passwords().filter((p) => p.password),
+          emails: this.emails().filter((e) => e.trim()),
+          showEmailStats: this.showEmailStats(),
         })
         .subscribe({
           error: (err) => {
@@ -279,7 +335,10 @@ export class HomeComponent {
       .uploadMultiple(files, this.altchaPayload, {
         expiryHours: this.expiryHours(),
         maxDownloads: this.maxDownloads(),
-        password: this.uploadPassword() || undefined,
+        isPublic: this.isPublic(),
+        passwords: this.passwords().filter((p) => p.password),
+        emails: this.emails().filter((e) => e.trim()),
+        showEmailStats: this.showEmailStats(),
       })
       .subscribe({
         error: (err) => {
@@ -406,7 +465,9 @@ export class HomeComponent {
 
   private resetAltcha(): void {
     this.altchaVerified.set(false);
-    this.altchaPayload = "";
+    this.altchaState.set('unverified');
+    this.altchaPayload = '';
+    this.altchaChallenge.set(null);
     this.loadAltchaChallenge();
   }
 

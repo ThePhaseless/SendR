@@ -9,14 +9,14 @@
     (dragover)="onDragOver($event)"
     (dragleave)="onDragLeave($event)"
     (drop)="disabled() ? null : onDrop($event)"
-    (click)="disabled() ? null : fileInput.click()"
+    (click)="disabled() ? null : interceptClick() ? addClicked.emit() : fileInput.click()"
   >
     <div class="drop-content">
       <div class="drop-icon">📁</div>
       <p class="drop-text">Click to select files or drag & drop</p>
       <p class="drop-folder-link">
         or
-        <a (click)="$event.stopPropagation(); folderInput.click()">select a folder</a>
+        <a (click)="$event.stopPropagation(); interceptClick() ? addClicked.emit() : folderInput.click()">select a folder</a>
       </p>
       <p class="drop-hint">
         Supports files and folders &middot; Up to
@@ -31,7 +31,7 @@
       type="button"
       class="btn btn-secondary btn-sm"
       [disabled]="disabled()"
-      (click)="fileInput.click()"
+      (click)="interceptClick() ? addClicked.emit() : fileInput.click()"
     >
       + Add files
     </button>
@@ -39,7 +39,7 @@
       type="button"
       class="btn btn-secondary btn-sm"
       [disabled]="disabled()"
-      (click)="folderInput.click()"
+      (click)="interceptClick() ? addClicked.emit() : folderInput.click()"
     >
       + Add folder
     </button>

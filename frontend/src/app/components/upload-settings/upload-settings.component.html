@@ -47,26 +47,140 @@
   }
 </div>
 
-@if (showPassword()) {
-  <div class="settings-row">
-    <label for="password">Password</label>
-    <div class="input-with-toggle">
+@if (showAccessControl()) {
+  <div class="access-section">
+    <h4 class="section-label">Access Control</h4>
+
+    <div class="settings-row">
+      <label for="is-public">Public link</label>
       <input
-        [type]="passwordVisible ? 'text' : 'password'"
-        id="password"
-        class="form-input"
-        [ngModel]="password()"
-        (ngModelChange)="password.set($event)"
-        placeholder="Optional"
-        autocomplete="off"
+        type="checkbox"
+        id="is-public"
+        class="toggle-checkbox"
+        [ngModel]="isPublic()"
+        (ngModelChange)="isPublic.set($event)"
       />
+    </div>
+
+    <!-- Passwords accordion -->
+    <div class="accordion">
       <button
         type="button"
-        class="btn btn-secondary btn-sm btn-toggle-vis"
-        (click)="passwordVisible = !passwordVisible"
+        class="accordion-header"
+        (click)="togglePasswordsExpanded()"
       >
-        {{ passwordVisible ? "Hide" : "Show" }}
+        <span>
+          Passwords
+          @if (passwordCount() > 0) {
+            <span class="badge-count">{{ passwordCount() }}</span>
+          }
+        </span>
+        <span class="accordion-arrow" [class.open]="passwordsExpanded">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </span>
       </button>
+      @if (passwordsExpanded) {
+        <div class="accordion-body">
+          @for (entry of passwords(); track $index; let i = $index) {
+            <div class="pw-entry">
+              <input
+                type="text"
+                class="form-input pw-label"
+                [ngModel]="entry.label"
+                (ngModelChange)="updatePasswordLabel(i, $event)"
+                placeholder="Label"
+                [attr.aria-label]="'Password label ' + (i + 1)"
+              />
+              <div class="pw-value-wrapper">
+                <input
+                  [type]="passwordVisibility[i] ? 'text' : 'password'"
+                  class="form-input pw-value"
+                  [ngModel]="entry.password"
+                  (ngModelChange)="updatePasswordValue(i, $event)"
+                  placeholder="Password"
+                  autocomplete="off"
+                  [attr.aria-label]="'Password ' + (i + 1)"
+                />
+                <button
+                  type="button"
+                  class="btn-toggle-vis"
+                  (click)="togglePasswordVisibility(i)"
+                  [attr.aria-label]="passwordVisibility[i] ? 'Hide password' : 'Show password'"
+                >
+                  <span class="material-symbols-outlined">
+                    {{ passwordVisibility[i] ? 'visibility_off' : 'visibility' }}
+                  </span>
+                </button>
+              </div>
+              <button
+                type="button"
+                class="btn-remove"
+                (click)="removePassword(i)"
+                aria-label="Remove password"
+                [style.visibility]="entry.password === '' && entry.label === '' && i === passwords().length - 1 ? 'hidden' : 'visible'"
+              >
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+          }
+        </div>
+      }
     </div>
+
+    <!-- Email invites accordion -->
+    @if (canUseEmails()) {
+      <div class="accordion">
+        <button
+          type="button"
+          class="accordion-header"
+          (click)="toggleEmailsExpanded()"
+        >
+          <span>
+            Email invites
+            @if (emailCount() > 0) {
+              <span class="badge-count">{{ emailCount() }}</span>
+            }
+          </span>
+          <span class="accordion-arrow" [class.open]="emailsExpanded">
+            <span class="material-symbols-outlined">chevron_right</span>
+          </span>
+        </button>
+        @if (emailsExpanded) {
+          <div class="accordion-body">
+            @for (email of emails(); track $index; let i = $index) {
+              <div class="email-entry">
+                <input
+                  type="email"
+                  class="form-input"
+                  [ngModel]="email"
+                  (ngModelChange)="updateEmail(i, $event)"
+                  placeholder="email@example.com"
+                  [attr.aria-label]="'Email ' + (i + 1)"
+                />
+                <button
+                  type="button"
+                  class="btn-remove"
+                  (click)="removeEmail(i)"
+                  aria-label="Remove email"
+                  [style.visibility]="email === '' && i === emails().length - 1 ? 'hidden' : 'visible'"
+                >
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
+            }
+            <div class="settings-row email-stats-toggle">
+              <label for="show-email-stats">Let recipients see download activity</label>
+              <input
+                type="checkbox"
+                id="show-email-stats"
+                class="toggle-checkbox"
+                [ngModel]="showEmailStats()"
+                (ngModelChange)="showEmailStats.set($event)"
+              />
+            </div>
+          </div>
+        }
+      </div>
+    }
   </div>
 }

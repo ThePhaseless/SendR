@@ -73,6 +73,8 @@
             [maxFileSizeMb]="maxFileSizeMb()"
             [maxFilesPerUpload]="maxFilesPerUpload()"
             [disabled]="isUploading()"
+            [interceptClick]="!isAuthenticated()"
+            (addClicked)="openAuthPopup()"
             (filesChanged)="onFilesChanged()"
           />
         }
@@ -84,7 +86,12 @@
             [tier]="userTier()"
             [(expiryHours)]="expiryHours"
             [(maxDownloads)]="maxDownloads"
-            [(password)]="uploadPassword"
+            [(isPublic)]="isPublic"
+            [(passwords)]="passwords"
+            [(emails)]="emails"
+            [(showEmailStats)]="showEmailStats"
+            [maxPasswordsPerUpload]="maxPasswordsPerUpload()"
+            [maxEmailsPerUpload]="maxEmailsPerUpload()"
           />
 
           <div class="altcha-container">
@@ -106,7 +113,7 @@
               Upload {{ pendingFiles().length === 1 ? "File" : "Files" }}
             </button>
             @if (!altchaVerified()) {
-              <p class="upload-action-hint">Waiting for CAPTCHA verification…</p>
+              <p class="upload-action-hint" [class.hint-error]="altchaState() === 'error'" [class.hint-loading]="altchaState() === 'expired'">{{ altchaHintText() }}</p>
             }
           </div>
         </div>

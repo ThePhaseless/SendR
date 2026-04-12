@@ -41,11 +41,17 @@ export class FilePickerComponent {
   /** Whether to show a compact version (for dashboard). */
   compact = input(false);
 
+  /** When true, clicking to add files emits addClicked instead of opening the file picker. */
+  interceptClick = input(false);
+
   /** Staged files ready for upload. */
   pendingFiles = model<UploadFileEntry[]>([]);
 
   /** Emitted when files list changes. */
   filesChanged = output<UploadFileEntry[]>();
+
+  /** Emitted when the user clicks to add files but interceptClick is true. */
+  addClicked = output<void>();
 
   isDragging = signal(false);
   collapsedFolders = signal(new Set<string>());

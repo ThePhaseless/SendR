@@ -6,6 +6,11 @@ export interface ExpiryOption {
   label: string;
 }
 
+export interface PasswordEntry {
+  label: string;
+  password: string;
+}
+
 @Component({
   imports: [FormsModule],
   selector: "app-upload-settings",
@@ -22,17 +27,38 @@ export class UploadSettingsComponent {
   /** Selected max downloads (0 = unlimited). */
   maxDownloads = model(0);
 
-  /** Upload password (empty = no password). */
-  password = model("");
+  /** Whether the upload is publicly accessible. */
+  isPublic = model(true);
+
+  /** Password entries for the upload. */
+  passwords = model<PasswordEntry[]>([]);
+
+  /** Email recipients for the upload. */
+  emails = model<string[]>([]);
+
+  /** Whether email recipients can see download stats. */
+  showEmailStats = model(false);
 
   /** Whether to show the heading. */
   showHeading = input(true);
 
-  /** Whether to show password field. */
-  showPassword = input(true);
+  /** Whether to show the access control section. */
+  showAccessControl = input(true);
 
-  /** Whether password is currently being shown in the input. */
-  passwordVisible = false;
+  /** Max passwords per upload for current tier. */
+  maxPasswordsPerUpload = input(0);
+
+  /** Max emails per upload for current tier. */
+  maxEmailsPerUpload = input(0);
+
+  /** Whether password section is expanded. */
+  passwordsExpanded = false;
+
+  /** Whether email section is expanded. */
+  emailsExpanded = false;
+
+  /** Track password visibility per entry. */
+  passwordVisibility: boolean[] = [];
 
   /** Available expiry duration options, based on tier. */
   expiryOptions = computed<ExpiryOption[]>(() => {
@@ -80,6 +106,29 @@ export class UploadSettingsComponent {
     return t === "free" || t === "premium";
   });
 
+  /** Whether user can add more passwords. */
+  canAddPassword = computed(() => {
+    const limit = this.maxPasswordsPerUpload();
+    return limit === 0 || this.passwords().length < limit;
+  });
+
+  /** Whether user can use email invites (not temp). */
+  canUseEmails = computed(() => {
+    return this.tier() !== "temporary";
+  });
+
+  /** Whether user can add more emails. */
+  canAddEmail = computed(() => {
+    const limit = this.maxEmailsPerUpload();
+    return limit === 0 || this.emails().length < limit;
+  });
+
+  /** Count of non-empty password entries (for badge). */
+  passwordCount = computed(() => this.passwords().filter((p) => p.password).length);
+
+  /** Count of non-empty email entries (for badge). */
+  emailCount = computed(() => this.emails().filter((e) => e.trim()).length);
+
   onMaxDownloadsChange(value: number | null): void {
     if (value === null || value <= 0) {
       this.maxDownloads.set(0);
@@ -87,5 +136,74 @@ export class UploadSettingsComponent {
     }
     const limit = this.maxDownloadsLimit();
     this.maxDownloads.set(Math.min(value, limit));
+  }
+
+  togglePasswordsExpanded(): void {
+    this.passwordsExpanded = !this.passwordsExpanded;
+    if (this.passwordsExpanded) {
+      this.ensureTrailingPasswordEntry();
+    }
+  }
+
+  toggleEmailsExpanded(): void {
+    this.emailsExpanded = !this.emailsExpanded;
+    if (this.emailsExpanded) {
+      this.ensureTrailingEmailEntry();
+    }
+  }
+
+  private ensureTrailingPasswordEntry(): void {
+    const list = this.passwords();
+    if ((list.length === 0 || list[list.length - 1].password !== "") && this.canAddPassword()) {
+      this.passwords.update((l) => [...l, { label: "", password: "" }]);
+      this.passwordVisibility.push(false);
+    }
+  }
+
+  private ensureTrailingEmailEntry(): void {
+    const list = this.emails();
+    if ((list.length === 0 || list[list.length - 1] !== "") && this.canAddEmail()) {
+      this.emails.update((l) => [...l, ""]);
+    }
+  }
+
+  removePassword(index: number): void {
+    this.passwords.update((list) => list.filter((_, i) => i !== index));
+    this.passwordVisibility.splice(index, 1);
+    this.ensureTrailingPasswordEntry();
+  }
+
+  updatePasswordLabel(index: number, label: string): void {
+    this.passwords.update((list) =>
+      list.map((entry, i) => (i === index ? { ...entry, label } : entry)),
+    );
+  }
+
+  updatePasswordValue(index: number, password: string): void {
+    const isLast = index === this.passwords().length - 1;
+    this.passwords.update((list) =>
+      list.map((entry, i) => (i === index ? { ...entry, password } : entry)),
+    );
+    if (isLast && password && this.canAddPassword()) {
+      this.passwords.update((l) => [...l, { label: "", password: "" }]);
+      this.passwordVisibility.push(false);
+    }
+  }
+
+  togglePasswordVisibility(index: number): void {
+    this.passwordVisibility[index] = !this.passwordVisibility[index];
+  }
+
+  removeEmail(index: number): void {
+    this.emails.update((list) => list.filter((_, i) => i !== index));
+    this.ensureTrailingEmailEntry();
+  }
+
+  updateEmail(index: number, email: string): void {
+    const isLast = index === this.emails().length - 1;
+    this.emails.update((list) => list.map((e, i) => (i === index ? email : e)));
+    if (isLast && email.trim() && this.canAddEmail()) {
+      this.emails.update((l) => [...l, ""]);
+    }
   }
 }

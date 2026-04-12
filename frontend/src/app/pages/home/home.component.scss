@@ -332,4 +332,13 @@ app-upload-settings {
 .upload-action-hint {
   @apply text-sm mt-2;
   color: var(--color-text-secondary);
+
+  &.hint-error {
+    color: var(--color-danger);
+  }
+
+  &.hint-loading {
+    color: var(--color-text-secondary);
+    font-style: italic;
+  }
 }

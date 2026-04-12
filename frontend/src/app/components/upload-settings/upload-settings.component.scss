@@ -47,17 +47,162 @@ h3 {
     border-color: var(--color-primary);
   }
 
-  .btn-toggle-vis {
-    white-space: nowrap;
-    min-width: 3rem;
-  }
-
   .form-input {
     @apply text-sm rounded-md border px-3 py-1.5;
     background: var(--color-input-bg, var(--color-card-bg));
-    border-color: var(--color-border);
+    border-color: var(--color-input-border);
     color: var(--color-text);
-    width: 80px;
+    width: 110px;
     min-width: 0;
   }
+}
+
+.toggle-checkbox {
+  @apply w-4 h-4 cursor-pointer;
+  accent-color: var(--color-primary);
+}
+
+.access-section {
+  @apply mt-3 pt-3;
+  border-top: 1px solid var(--color-border);
+}
+
+.section-label {
+  @apply text-xs font-semibold uppercase tracking-wide mb-2;
+  color: var(--color-text-secondary);
+}
+
+.accordion {
+  @apply mb-1;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.accordion-header {
+  @apply flex items-center justify-between w-full text-sm font-medium cursor-pointer;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-input-bg);
+  color: var(--color-text);
+  border: none;
+
+  &:hover {
+    background: var(--color-card-bg);
+  }
+}
+
+.accordion-arrow {
+  @apply flex items-center transition-transform;
+
+  .material-symbols-outlined {
+    font-size: 1.1rem;
+  }
+
+  &.open {
+    transform: rotate(90deg);
+  }
+}
+
+.accordion-body {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.badge-count {
+  @apply inline-flex items-center justify-center text-xs font-semibold rounded-full ml-1;
+  background: var(--color-primary);
+  color: white;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+}
+
+.pw-entry,
+.email-entry {
+  @apply flex gap-2 items-center mb-2;
+}
+
+.pw-label {
+  @apply text-sm rounded-md border px-3 py-1.5;
+  background: var(--color-input-bg);
+  border-color: var(--color-input-border);
+  color: var(--color-text);
+  width: 90px;
+  min-width: 0;
+}
+
+.pw-value-wrapper {
+  @apply flex-1 relative flex items-center min-w-0;
+
+  .pw-value {
+    @apply text-sm rounded-md border flex-1;
+    padding: 0.375rem 2rem 0.375rem 0.75rem;
+    background: var(--color-input-bg);
+    border-color: var(--color-input-border);
+    color: var(--color-text);
+    min-width: 0;
+    width: 100%;
+  }
+
+  .btn-toggle-vis {
+    @apply absolute right-0 top-1/2 -translate-y-1/2 flex items-center justify-center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    padding: 0 0.35rem;
+    height: 100%;
+
+    &:hover {
+      color: var(--color-text);
+    }
+
+    .material-symbols-outlined {
+      font-size: 1rem;
+    }
+  }
+}
+
+.email-entry .form-input {
+  @apply text-sm rounded-md border px-3 py-1.5 flex-1;
+  background: var(--color-input-bg);
+  border-color: var(--color-input-border);
+  color: var(--color-text);
+  min-width: 0;
+}
+
+.btn-remove {
+  @apply shrink-0 flex items-center justify-center border-0 cursor-pointer;
+  background: none;
+  color: var(--color-text-secondary);
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+
+  .material-symbols-outlined {
+    font-size: 1rem;
+  }
+
+  &:hover {
+    color: var(--color-danger);
+  }
+}
+
+.btn-add {
+  @apply text-xs mt-1;
+}
+
+.limit-hint {
+  @apply text-xs ml-1;
+  color: var(--color-text-secondary);
+}
+
+.limit-reached {
+  @apply text-xs;
+  color: var(--color-text-secondary);
+}
+
+.email-stats-toggle {
+  @apply mt-2 pt-2;
+  border-top: 1px solid var(--color-border);
 }
