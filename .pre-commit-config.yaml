@@ -43,3 +43,10 @@ repos:
         entry: bash -c 'unset NODE_OPTIONS; cd frontend && bun run lint:fix'
         pass_filenames: false
         files: ^frontend/src/.*\.(ts|tsx|js|jsx)$
+
+      - id: backend-test
+        name: backend pytest
+        language: system
+        entry: bash -c 'cd backend && uv run --no-project pytest'
+        pass_filenames: false
+        files: ^backend/.*\.py$
