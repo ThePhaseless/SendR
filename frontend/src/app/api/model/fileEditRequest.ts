@@ -9,8 +9,6 @@
 export interface FileEditRequest {
   original_filename?: string | null;
   message?: string | null;
-  password?: string | null;
-  remove_password?: boolean;
   expires_in_hours?: number | null;
   max_downloads?: number | null;
 }

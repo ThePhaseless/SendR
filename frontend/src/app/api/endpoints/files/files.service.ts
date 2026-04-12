@@ -26,18 +26,22 @@ import {
 } from 'rxjs';
 
 import type {
+  AccessInfoResponse,
   BodyAddFilesToGroupApiFilesGroupUploadGroupAddPost,
   BodyUploadFileApiFilesUploadPost,
   BodyUploadMultipleFilesApiFilesUploadMultiplePost,
   DeactivateFileApiFilesFileIdDelete200,
   DownloadFileApiFilesDownloadTokenGetParams,
   DownloadGroupApiFilesGroupUploadGroupDownloadGetParams,
+  DownloadStatsResponse,
   FileEditRequest,
   FileListResponse,
   FileUploadResponse,
+  GetRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetParams,
   GroupEditRequest,
   GroupRefreshRequest,
   MultiFileUploadResponse,
+  RecipientStatsResponse,
   RefreshDownloadLinkApiFilesFileIdRefreshPostParams,
   UploadGroupInfoResponse
 } from '../../model';
@@ -152,8 +156,17 @@ if(bodyUploadFileApiFilesUploadPost.expiry_hours !== undefined && bodyUploadFile
 if(bodyUploadFileApiFilesUploadPost.max_downloads !== undefined && bodyUploadFileApiFilesUploadPost.max_downloads !== null) {
  formData.append(`max_downloads`, bodyUploadFileApiFilesUploadPost.max_downloads.toString())
  }
-if(bodyUploadFileApiFilesUploadPost.password !== undefined && bodyUploadFileApiFilesUploadPost.password !== null) {
- formData.append(`password`, bodyUploadFileApiFilesUploadPost.password);
+if(bodyUploadFileApiFilesUploadPost.is_public !== undefined) {
+ formData.append(`is_public`, bodyUploadFileApiFilesUploadPost.is_public.toString())
+ }
+if(bodyUploadFileApiFilesUploadPost.passwords !== undefined && bodyUploadFileApiFilesUploadPost.passwords !== null) {
+ formData.append(`passwords`, bodyUploadFileApiFilesUploadPost.passwords);
+ }
+if(bodyUploadFileApiFilesUploadPost.emails !== undefined && bodyUploadFileApiFilesUploadPost.emails !== null) {
+ formData.append(`emails`, bodyUploadFileApiFilesUploadPost.emails);
+ }
+if(bodyUploadFileApiFilesUploadPost.show_email_stats !== undefined) {
+ formData.append(`show_email_stats`, bodyUploadFileApiFilesUploadPost.show_email_stats.toString())
  }
 if(bodyUploadFileApiFilesUploadPost.altcha !== undefined) {
  formData.append(`altcha`, bodyUploadFileApiFilesUploadPost.altcha);
@@ -202,8 +215,17 @@ if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.expiry_hours !== undefined 
 if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.max_downloads !== undefined && bodyUploadMultipleFilesApiFilesUploadMultiplePost.max_downloads !== null) {
  formData.append(`max_downloads`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.max_downloads.toString())
  }
-if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.password !== undefined && bodyUploadMultipleFilesApiFilesUploadMultiplePost.password !== null) {
- formData.append(`password`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.password);
+if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.is_public !== undefined) {
+ formData.append(`is_public`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.is_public.toString())
+ }
+if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.passwords !== undefined && bodyUploadMultipleFilesApiFilesUploadMultiplePost.passwords !== null) {
+ formData.append(`passwords`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.passwords);
+ }
+if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.emails !== undefined && bodyUploadMultipleFilesApiFilesUploadMultiplePost.emails !== null) {
+ formData.append(`emails`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.emails);
+ }
+if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.show_email_stats !== undefined) {
+ formData.append(`show_email_stats`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.show_email_stats.toString())
  }
 if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha !== undefined) {
  formData.append(`altcha`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha);
@@ -650,6 +672,114 @@ bodyAddFilesToGroupApiFilesGroupUploadGroupAddPost.files.forEach(value => formDa
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }
+    );
+  }
+/**
+ * Get access configuration for an upload group. Owner only.
+ * @summary Get Access Info
+ */
+ getAccessInfoApiFilesGroupUploadGroupAccessInfoGet<TData = AccessInfoResponse>(uploadGroup: string, options?: HttpClientBodyOptions): Observable<TData>;
+ getAccessInfoApiFilesGroupUploadGroupAccessInfoGet<TData = AccessInfoResponse>(uploadGroup: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ getAccessInfoApiFilesGroupUploadGroupAccessInfoGet<TData = AccessInfoResponse>(uploadGroup: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  getAccessInfoApiFilesGroupUploadGroupAccessInfoGet<TData = AccessInfoResponse>(
+    uploadGroup: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.get<TData>(
+      `/api/files/group/${uploadGroup}/access-info`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.get<TData>(
+      `/api/files/group/${uploadGroup}/access-info`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.get<TData>(
+      `/api/files/group/${uploadGroup}/access-info`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+/**
+ * Get download statistics for an upload group. Owner only.
+ * @summary Get Group Stats
+ */
+ getGroupStatsApiFilesGroupUploadGroupStatsGet<TData = DownloadStatsResponse>(uploadGroup: string, options?: HttpClientBodyOptions): Observable<TData>;
+ getGroupStatsApiFilesGroupUploadGroupStatsGet<TData = DownloadStatsResponse>(uploadGroup: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ getGroupStatsApiFilesGroupUploadGroupStatsGet<TData = DownloadStatsResponse>(uploadGroup: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  getGroupStatsApiFilesGroupUploadGroupStatsGet<TData = DownloadStatsResponse>(
+    uploadGroup: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.get<TData>(
+      `/api/files/group/${uploadGroup}/stats`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.get<TData>(
+      `/api/files/group/${uploadGroup}/stats`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.get<TData>(
+      `/api/files/group/${uploadGroup}/stats`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+/**
+ * Get download stats visible to email recipients. Requires valid email token.
+ * @summary Get Recipient Stats
+ */
+ getRecipientStatsApiFilesGroupUploadGroupRecipientStatsGet<TData = RecipientStatsResponse>(uploadGroup: string,
+    params?: GetRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetParams, options?: HttpClientBodyOptions): Observable<TData>;
+ getRecipientStatsApiFilesGroupUploadGroupRecipientStatsGet<TData = RecipientStatsResponse>(uploadGroup: string,
+    params?: GetRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetParams, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ getRecipientStatsApiFilesGroupUploadGroupRecipientStatsGet<TData = RecipientStatsResponse>(uploadGroup: string,
+    params?: GetRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetParams, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  getRecipientStatsApiFilesGroupUploadGroupRecipientStatsGet<TData = RecipientStatsResponse>(
+    uploadGroup: string,
+    params?: GetRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetParams, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    const filteredParams = filterParams({...params, ...options?.params}, new Set<string>([]));
+
+    if (options?.observe === 'events') {
+      return this.http.get<TData>(
+      `/api/files/group/${uploadGroup}/recipient-stats`,{
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+        params: filteredParams,}
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.get<TData>(
+      `/api/files/group/${uploadGroup}/recipient-stats`,{
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+        params: filteredParams,}
+    );
+    }
+
+    return this.http.get<TData>(
+      `/api/files/group/${uploadGroup}/recipient-stats`,{
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+        params: filteredParams,}
     );
   }
 };

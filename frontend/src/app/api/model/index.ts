@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './accessInfoResponse';
 export * from './adminUserListResponse';
 export * from './adminUserUpdateRequest';
 export * from './bodyAddFilesToGroupApiFilesGroupUploadGroupAddPost';
@@ -16,18 +17,25 @@ export * from './deactivateFileApiFilesFileIdDelete200';
 export * from './deleteUserApiAdminUsersUserIdDelete200';
 export * from './downloadFileApiFilesDownloadTokenGetParams';
 export * from './downloadGroupApiFilesGroupUploadGroupDownloadGetParams';
+export * from './downloadStatEntry';
+export * from './downloadStatsResponse';
+export * from './emailRecipientInfo';
 export * from './emailVerificationRequest';
 export * from './fileEditRequest';
 export * from './fileListResponse';
 export * from './fileUploadResponse';
 export * from './getChallengeApiAltchaChallengeGet200';
+export * from './getRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetParams';
 export * from './groupEditRequest';
 export * from './groupRefreshRequest';
 export * from './hTTPValidationError';
 export * from './limitsResponse';
 export * from './listUsersApiAdminUsersGetParams';
 export * from './multiFileUploadResponse';
+export * from './passwordInfo';
 export * from './quotaResponse';
+export * from './recipientDownloadEntry';
+export * from './recipientStatsResponse';
 export * from './refreshDownloadLinkApiFilesFileIdRefreshPostParams';
 export * from './requestCodeApiAuthRequestCodePost200';
 export * from './subscriptionResponse';

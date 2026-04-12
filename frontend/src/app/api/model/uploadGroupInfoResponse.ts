@@ -13,4 +13,7 @@ export interface UploadGroupInfoResponse {
   total_size_bytes: number;
   file_count: number;
   will_zip: boolean;
+  is_public?: boolean;
+  has_passwords?: boolean;
+  has_email_recipients?: boolean;
 }

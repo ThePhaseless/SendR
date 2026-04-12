@@ -6,15 +6,19 @@
  * OpenAPI spec version: 0.1.0
  */
 import type {
+  AccessInfoResponse,
   AdminUserListResponse,
   DownloadFileApiFilesDownloadTokenGetParams,
   DownloadGroupApiFilesGroupUploadGroupDownloadGetParams,
+  DownloadStatsResponse,
   FileListResponse,
   FileUploadResponse,
   GetChallengeApiAltchaChallengeGet200,
+  GetRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetParams,
   LimitsResponse,
   ListUsersApiAdminUsersGetParams,
   QuotaResponse,
+  RecipientStatsResponse,
   SubscriptionResponse,
   UploadGroupInfoResponse,
   UserResponse
@@ -221,6 +225,52 @@ export function getFileInfoApiFilesDownloadTokenInfoGetResource(downloadToken: S
 /**
  * @experimental httpResource is experimental (Angular v19.2+)
  */
+export function getAccessInfoApiFilesGroupUploadGroupAccessInfoGetResource(uploadGroup: Signal<string>,
+  options: OrvalHttpResourceOptions<AccessInfoResponse, unknown> & { defaultValue: NoInfer<AccessInfoResponse> }): HttpResourceRef<AccessInfoResponse>;
+export function getAccessInfoApiFilesGroupUploadGroupAccessInfoGetResource(uploadGroup: Signal<string>,
+  options?: OrvalHttpResourceOptions<AccessInfoResponse, unknown>): HttpResourceRef<AccessInfoResponse | undefined>;
+export function getAccessInfoApiFilesGroupUploadGroupAccessInfoGetResource(uploadGroup: Signal<string>,
+  options?: OrvalHttpResourceOptions<AccessInfoResponse, unknown>): HttpResourceRef<AccessInfoResponse | undefined> {
+  return httpResource<AccessInfoResponse>(() => `/api/files/group/${uploadGroup()}/access-info`, options);
+}
+
+/**
+ * @experimental httpResource is experimental (Angular v19.2+)
+ */
+export function getGroupStatsApiFilesGroupUploadGroupStatsGetResource(uploadGroup: Signal<string>,
+  options: OrvalHttpResourceOptions<DownloadStatsResponse, unknown> & { defaultValue: NoInfer<DownloadStatsResponse> }): HttpResourceRef<DownloadStatsResponse>;
+export function getGroupStatsApiFilesGroupUploadGroupStatsGetResource(uploadGroup: Signal<string>,
+  options?: OrvalHttpResourceOptions<DownloadStatsResponse, unknown>): HttpResourceRef<DownloadStatsResponse | undefined>;
+export function getGroupStatsApiFilesGroupUploadGroupStatsGetResource(uploadGroup: Signal<string>,
+  options?: OrvalHttpResourceOptions<DownloadStatsResponse, unknown>): HttpResourceRef<DownloadStatsResponse | undefined> {
+  return httpResource<DownloadStatsResponse>(() => `/api/files/group/${uploadGroup()}/stats`, options);
+}
+
+/**
+ * @experimental httpResource is experimental (Angular v19.2+)
+ */
+export function getRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetResource(uploadGroup: Signal<string>,
+    params: Signal<GetRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetParams> | undefined,
+  options: OrvalHttpResourceOptions<RecipientStatsResponse, unknown> & { defaultValue: NoInfer<RecipientStatsResponse> }): HttpResourceRef<RecipientStatsResponse>;
+export function getRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetResource(uploadGroup: Signal<string>,
+    params?: Signal<GetRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetParams>,
+  options?: OrvalHttpResourceOptions<RecipientStatsResponse, unknown>): HttpResourceRef<RecipientStatsResponse | undefined>;
+export function getRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetResource(uploadGroup: Signal<string>,
+    params?: Signal<GetRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetParams>,
+  options?: OrvalHttpResourceOptions<RecipientStatsResponse, unknown>): HttpResourceRef<RecipientStatsResponse | undefined> {
+  return httpResource<RecipientStatsResponse>(() => {
+    
+    const request = ({
+      url: `/api/files/group/${uploadGroup()}/recipient-stats`,
+      params: filterParams(params?.() ?? {}, new Set<string>([]))
+    });
+    return request;
+  }, options);
+}
+
+/**
+ * @experimental httpResource is experimental (Angular v19.2+)
+ */
 export function getSubscriptionApiSubscriptionGetResource(options: OrvalHttpResourceOptions<SubscriptionResponse, unknown> & { defaultValue: NoInfer<SubscriptionResponse> }): HttpResourceRef<SubscriptionResponse>;
 export function getSubscriptionApiSubscriptionGetResource(options?: OrvalHttpResourceOptions<SubscriptionResponse, unknown>): HttpResourceRef<SubscriptionResponse | undefined>;
 export function getSubscriptionApiSubscriptionGetResource(options?: OrvalHttpResourceOptions<SubscriptionResponse, unknown>): HttpResourceRef<SubscriptionResponse | undefined> {
@@ -237,6 +287,9 @@ export type DownloadGroupApiFilesGroupUploadGroupDownloadGetResourceResult = Non
 export type ListFilesApiFilesGetResourceResult = NonNullable<FileListResponse>
 export type DownloadFileApiFilesDownloadTokenGetResourceResult = NonNullable<unknown>
 export type GetFileInfoApiFilesDownloadTokenInfoGetResourceResult = NonNullable<FileUploadResponse>
+export type GetAccessInfoApiFilesGroupUploadGroupAccessInfoGetResourceResult = NonNullable<AccessInfoResponse>
+export type GetGroupStatsApiFilesGroupUploadGroupStatsGetResourceResult = NonNullable<DownloadStatsResponse>
+export type GetRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetResourceResult = NonNullable<RecipientStatsResponse>
 export type GetSubscriptionApiSubscriptionGetResourceResult = NonNullable<SubscriptionResponse>
 
 /**

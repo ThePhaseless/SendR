@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface GroupRefreshRequest {
-  expiry_hours?: number | null;
-  max_downloads?: number | null;
+export interface RecipientDownloadEntry {
+  email: string;
+  download_count: number;
 }

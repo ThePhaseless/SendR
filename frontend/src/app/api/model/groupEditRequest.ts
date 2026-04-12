@@ -9,6 +9,4 @@
 export interface GroupEditRequest {
   expiry_hours?: number | null;
   max_downloads?: number | null;
-  password?: string | null;
-  remove_password?: boolean;
 }

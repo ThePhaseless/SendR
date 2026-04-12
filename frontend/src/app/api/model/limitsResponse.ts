@@ -12,4 +12,6 @@ export interface LimitsResponse {
   weekly_uploads_limit: number;
   expiry_options_hours: number[];
   max_downloads_options: number[];
+  max_passwords_per_upload?: number;
+  max_emails_per_upload?: number;
 }

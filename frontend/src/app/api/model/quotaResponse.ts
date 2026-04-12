@@ -17,4 +17,6 @@ export interface QuotaResponse {
   max_expiry_hours?: number | null;
   max_downloads_options?: number[] | null;
   max_downloads_limit?: number | null;
+  max_passwords_per_upload?: number;
+  max_emails_per_upload?: number;
 }

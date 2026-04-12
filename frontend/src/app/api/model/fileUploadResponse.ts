@@ -17,5 +17,7 @@ export interface FileUploadResponse {
   is_active: boolean;
   upload_group?: string | null;
   message?: string | null;
-  has_password?: boolean;
+  is_public?: boolean;
+  has_passwords?: boolean;
+  has_email_recipients?: boolean;
 }

@@ -10,6 +10,9 @@ export interface BodyUploadFileApiFilesUploadPost {
   file: Blob;
   expiry_hours?: number | null;
   max_downloads?: number | null;
-  password?: string | null;
+  is_public?: boolean;
+  passwords?: string | null;
+  emails?: string | null;
+  show_email_stats?: boolean;
   altcha?: string;
 }
