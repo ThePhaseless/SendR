@@ -87,10 +87,10 @@
 }
 
 .password-form {
-  @apply flex gap-2 w-full max-w-[20rem];
+  @apply flex gap-2 w-full max-w-[20rem] mx-auto justify-center;
 
   .input {
-    @apply flex-1;
+    @apply flex-1 min-w-0;
   }
 }
 
