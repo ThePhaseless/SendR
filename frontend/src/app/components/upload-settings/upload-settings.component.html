@@ -128,57 +128,70 @@
     </div>
 
     <!-- Email invites accordion -->
-    @if (canUseEmails()) {
-      <div class="accordion">
-        <button type="button" class="accordion-header" (click)="toggleEmailsExpanded()">
-          <span>
-            Email invites
-            @if (emailCount() > 0) {
-              <span class="badge-count">{{ emailCount() }}</span>
-            }
-          </span>
-          <span class="accordion-arrow" [class.open]="emailsExpanded">
-            <span class="material-symbols-outlined">chevron_right</span>
-          </span>
-        </button>
-        @if (emailsExpanded) {
-          <div class="accordion-body">
-            @for (email of emails(); track $index; let i = $index) {
-              <div class="email-entry">
-                <input
-                  type="email"
-                  class="form-input"
-                  [ngModel]="email"
-                  (ngModelChange)="updateEmail(i, $event)"
-                  placeholder="email@example.com"
-                  [attr.aria-label]="'Email ' + (i + 1)"
-                />
-                <button
-                  type="button"
-                  class="btn-remove"
-                  (click)="removeEmail(i)"
-                  aria-label="Remove email"
-                  [style.visibility]="
-                    email === '' && i === emails().length - 1 ? 'hidden' : 'visible'
-                  "
-                >
-                  <span class="material-symbols-outlined">close</span>
-                </button>
-              </div>
-            }
-            <div class="settings-row email-stats-toggle">
-              <label for="show-email-stats">Let recipients see download activity</label>
-              <input
-                type="checkbox"
-                id="show-email-stats"
-                class="toggle-checkbox"
-                [ngModel]="showEmailStats()"
-                (ngModelChange)="showEmailStats.set($event)"
-              />
-            </div>
+    <div class="accordion" [class.disabled]="!canUseEmails()">
+      <button
+        type="button"
+        class="accordion-header"
+        (click)="canUseEmails() && toggleEmailsExpanded()"
+      >
+        <span>
+          Email invites
+          @if (emailCount() > 0) {
+            <span class="badge-count">{{ emailCount() }}</span>
+          }
+        </span>
+        <span class="accordion-arrow" [class.open]="!canUseEmails() || emailsExpanded">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </span>
+      </button>
+      @if (!canUseEmails()) {
+        <div class="accordion-body">
+          <div class="email-entry">
+            <input
+              type="email"
+              class="form-input"
+              disabled
+              placeholder="Create a free account to use email invites"
+            />
           </div>
-        }
-      </div>
-    }
+        </div>
+      } @else if (emailsExpanded) {
+        <div class="accordion-body">
+          @for (email of emails(); track $index; let i = $index) {
+            <div class="email-entry">
+              <input
+                type="email"
+                class="form-input"
+                [ngModel]="email"
+                (ngModelChange)="updateEmail(i, $event)"
+                placeholder="email@example.com"
+                [attr.aria-label]="'Email ' + (i + 1)"
+              />
+              <button
+                type="button"
+                class="btn-remove"
+                (click)="removeEmail(i)"
+                aria-label="Remove email"
+                [style.visibility]="
+                  email === '' && i === emails().length - 1 ? 'hidden' : 'visible'
+                "
+              >
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+          }
+          <div class="settings-row email-stats-toggle">
+            <label for="show-email-stats">Let recipients see download activity</label>
+            <input
+              type="checkbox"
+              id="show-email-stats"
+              class="toggle-checkbox"
+              [ngModel]="showEmailStats()"
+              (ngModelChange)="showEmailStats.set($event)"
+            />
+          </div>
+        </div>
+      }
+    </div>
   </div>
 }

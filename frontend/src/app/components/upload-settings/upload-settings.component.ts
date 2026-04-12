@@ -1,4 +1,4 @@
-import { Component, computed, input, model } from "@angular/core";
+import { Component, computed, effect, input, model } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 
 export interface ExpiryOption {
@@ -59,6 +59,16 @@ export class UploadSettingsComponent {
 
   /** Track password visibility per entry. */
   passwordVisibility: boolean[] = [];
+
+  constructor() {
+    effect(() => {
+      const options = this.expiryOptions();
+      const current = this.expiryHours();
+      if (options.length > 0 && !options.some((o) => o.value === current)) {
+        this.expiryHours.set(options[options.length - 1].value);
+      }
+    });
+  }
 
   /** Available expiry duration options, based on tier. */
   expiryOptions = computed<ExpiryOption[]>(() => {
