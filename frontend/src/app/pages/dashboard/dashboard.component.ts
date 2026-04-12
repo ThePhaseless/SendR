@@ -6,7 +6,7 @@ import type { UploadFileEntry } from "../../components/file-picker/file-picker.c
 import { FilePickerComponent } from "../../components/file-picker/file-picker.component";
 import { UploadSettingsComponent } from "../../components/upload-settings/upload-settings.component";
 import { AuthService } from "../../services/auth.service";
-import type { FileUploadResponse } from "../../services/file.service";
+import type { DownloadStatsResponse, FileUploadResponse } from "../../services/file.service";
 import { FileService } from "../../services/file.service";
 import { extractDownloadToken, formatFileSize, isExpired } from "../../utils/file.utils";
 import { resolveAppUrl } from "../../utils/url.utils";
@@ -39,7 +39,10 @@ export class DashboardComponent implements OnInit {
   // Unified panel settings (bound to upload-settings component)
   panelExpiryHours = signal(168);
   panelMaxDownloads = signal(0);
-  panelPassword = signal("");
+
+  // Download stats for the expanded group
+  groupStats = signal<DownloadStatsResponse | null>(null);
+  statsLoading = signal(false);
 
   // Staged new files for the expanded group
   newFiles = signal<UploadFileEntry[]>([]);
@@ -200,9 +203,11 @@ export class DashboardComponent implements OnInit {
     if (this.expandedGroupKey() === groupKey) {
       this.expandedGroupKey.set(null);
       this.newFiles.set([]);
+      this.groupStats.set(null);
     } else {
       this.expandedGroupKey.set(groupKey);
       this.newFiles.set([]);
+      this.groupStats.set(null);
       // Pre-populate panel settings from the group
       const group = this.uploadGroups().find((g) => g.key === groupKey);
       if (group) {
@@ -213,7 +218,10 @@ export class DashboardComponent implements OnInit {
         );
         this.panelExpiryHours.set(hoursLeft > 0 ? hoursLeft : 168);
         this.panelMaxDownloads.set(ref.max_downloads ?? 0);
-        this.panelPassword.set("");
+        // Load download stats if group has an upload_group
+        if (group.uploadGroup) {
+          this.loadGroupStats(group.uploadGroup);
+        }
       }
     }
   }
@@ -238,7 +246,6 @@ export class DashboardComponent implements OnInit {
           .editGroup(group.uploadGroup, {
             expiry_hours: this.panelExpiryHours(),
             max_downloads: this.panelMaxDownloads() || undefined,
-            password: this.panelPassword() || undefined,
           })
           .subscribe({
             error: () => {
@@ -261,7 +268,6 @@ export class DashboardComponent implements OnInit {
           .editFile(file.id, {
             expires_in_hours: this.panelExpiryHours(),
             max_downloads: this.panelMaxDownloads() || undefined,
-            password: this.panelPassword() || undefined,
           })
           .subscribe({
             error: () => {
@@ -329,7 +335,6 @@ export class DashboardComponent implements OnInit {
           .refreshGroup(group.uploadGroup, {
             expiry_hours: this.panelExpiryHours(),
             max_downloads: this.panelMaxDownloads() || undefined,
-            password: this.panelPassword() || undefined,
           })
           .subscribe({
             error: () => {
@@ -406,6 +411,17 @@ export class DashboardComponent implements OnInit {
         },
       });
     }
+  }
+
+  private loadGroupStats(uploadGroup: string): void {
+    this.statsLoading.set(true);
+    this.fileService.getGroupStats(uploadGroup).subscribe({
+      error: () => this.statsLoading.set(false),
+      next: (stats) => {
+        this.groupStats.set(stats);
+        this.statsLoading.set(false);
+      },
+    });
   }
 
   formatSize(bytes: number): string {

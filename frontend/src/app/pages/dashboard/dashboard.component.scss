@@ -79,6 +79,10 @@
   color: var(--color-text-secondary);
 }
 
+.badge-access {
+  @apply text-sm leading-none;
+}
+
 .badge-new {
   background: color-mix(in srgb, var(--color-primary) 15%, transparent);
   color: var(--color-primary);
@@ -196,7 +200,53 @@
   }
 }
 
-// Refresh warning popup
+// Download stats
+.stats-loading,
+.stats-empty {
+  @apply text-sm;
+  color: var(--color-text-secondary);
+}
+
+.stats-table {
+  @apply flex flex-col gap-0 text-sm rounded-md overflow-hidden;
+  border: 1px solid var(--color-border);
+}
+
+.stats-row {
+  @apply grid items-center px-3 py-1.5;
+  grid-template-columns: 5rem 1fr 5rem 6rem;
+
+  &.stats-header {
+    @apply text-xs font-semibold uppercase tracking-wide;
+    color: var(--color-text-secondary);
+    background: var(--color-card-bg);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  & + .stats-row:not(.stats-header) {
+    border-top: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+  }
+}
+
+.stats-type {
+  @apply capitalize;
+}
+
+.stats-id {
+  @include mixins.text-truncate;
+  color: var(--color-text-secondary);
+}
+
+.stats-date {
+  @apply text-xs;
+  color: var(--color-text-secondary);
+}
+
+.stats-total {
+  @apply text-xs mt-2 text-right;
+  color: var(--color-text-secondary);
+}
+
 .popup-overlay {
   @apply fixed inset-0 z-50 flex items-center justify-center;
   background: rgb(0 0 0 / 50%);

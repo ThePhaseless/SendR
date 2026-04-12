@@ -33,23 +33,14 @@
                 @if (isGroupExpired(group)) {
                   <span class="badge badge-expired">Expired</span>
                 }
-                @if (group.files[0]?.has_password) {
-                  <span class="badge badge-password">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    >
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                    </svg>
-                  </span>
+                @if (group.files[0]?.is_public) {
+                  <span class="badge badge-access" title="Public">🌐</span>
+                }
+                @if (group.files[0]?.has_passwords) {
+                  <span class="badge badge-access" title="Password protected">🔑</span>
+                }
+                @if (group.files[0]?.has_email_recipients) {
+                  <span class="badge badge-access" title="Email invites">📧</span>
                 }
               </h3>
               <div class="file-meta">
@@ -199,10 +190,44 @@
                   [tier]="userTier()"
                   [(expiryHours)]="panelExpiryHours"
                   [(maxDownloads)]="panelMaxDownloads"
-                  [(password)]="panelPassword"
                   [showHeading]="false"
+                  [showAccessControl]="false"
                 />
               </div>
+
+              <!-- Download Activity -->
+              @if (group.uploadGroup) {
+                <div class="expanded-section">
+                  <h4>Download Activity</h4>
+                  @if (statsLoading()) {
+                    <p class="stats-loading">Loading stats...</p>
+                  } @else if (groupStats(); as stats) {
+                    @if (stats.stats.length === 0) {
+                      <p class="stats-empty">No downloads yet.</p>
+                    } @else {
+                      <div class="stats-table">
+                        <div class="stats-row stats-header">
+                          <span>Access</span>
+                          <span>Identifier</span>
+                          <span>Downloads</span>
+                          <span>Last</span>
+                        </div>
+                        @for (entry of stats.stats; track entry.access_type + entry.identifier) {
+                          <div class="stats-row">
+                            <span class="stats-type">{{ entry.access_type }}</span>
+                            <span class="stats-id">{{ entry.identifier || "—" }}</span>
+                            <span>{{ entry.download_count }}</span>
+                            <span class="stats-date">{{
+                              entry.last_download ? (entry.last_download | date: "short") : "—"
+                            }}</span>
+                          </div>
+                        }
+                      </div>
+                      <p class="stats-total">Total: {{ stats.total_downloads }} downloads</p>
+                    }
+                  }
+                </div>
+              }
 
               <!-- Action buttons -->
               <div class="expanded-actions-row">

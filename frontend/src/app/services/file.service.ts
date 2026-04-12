@@ -5,23 +5,38 @@ import type { Observable } from "rxjs";
 import { environment } from "../../environments/environment";
 import { FilesService as ApiFilesService } from "../api/endpoints/files/files.service";
 import type {
+  AccessInfoResponse,
+  DownloadStatsResponse,
   FileEditRequest,
   FileListResponse,
   FileUploadResponse,
   GroupEditRequest,
   GroupRefreshRequest,
   MultiFileUploadResponse,
+  RecipientStatsResponse,
   UploadGroupInfoResponse,
 } from "../api/model";
 
 export type {
+  AccessInfoResponse,
+  DownloadStatsResponse,
   FileEditRequest,
   FileUploadResponse,
   GroupEditRequest,
   GroupRefreshRequest,
   MultiFileUploadResponse,
+  RecipientStatsResponse,
   UploadGroupInfoResponse,
 };
+
+export interface UploadAccessOptions {
+  expiryHours?: number;
+  maxDownloads?: number;
+  isPublic?: boolean;
+  passwords?: { label: string; password: string }[];
+  emails?: string[];
+  showEmailStats?: boolean;
+}
 
 @Injectable({
   providedIn: "root",
@@ -34,7 +49,7 @@ export class FileService {
   upload(
     file: File,
     altchaPayload: string,
-    options?: { expiryHours?: number; maxDownloads?: number; password?: string },
+    options?: UploadAccessOptions,
   ): Observable<HttpEvent<FileUploadResponse>> {
     return this.api.uploadFileApiFilesUploadPost(
       {
@@ -43,7 +58,16 @@ export class FileService {
         file,
         max_downloads:
           options?.maxDownloads && options.maxDownloads > 0 ? options.maxDownloads : undefined,
-        password: options?.password ?? undefined,
+        is_public: options?.isPublic ?? true,
+        passwords:
+          options?.passwords && options.passwords.length > 0
+            ? JSON.stringify(options.passwords)
+            : undefined,
+        emails:
+          options?.emails && options.emails.length > 0
+            ? JSON.stringify(options.emails)
+            : undefined,
+        show_email_stats: options?.showEmailStats ?? false,
       },
       { observe: "events", reportProgress: true },
     );
@@ -78,7 +102,7 @@ export class FileService {
   uploadMultiple(
     files: File[],
     altchaPayload: string,
-    options?: { expiryHours?: number; maxDownloads?: number; password?: string },
+    options?: UploadAccessOptions,
   ): Observable<HttpEvent<MultiFileUploadResponse>> {
     return this.api.uploadMultipleFilesApiFilesUploadMultiplePost(
       {
@@ -87,7 +111,16 @@ export class FileService {
         files,
         max_downloads:
           options?.maxDownloads && options.maxDownloads > 0 ? options.maxDownloads : undefined,
-        password: options?.password ?? undefined,
+        is_public: options?.isPublic ?? true,
+        passwords:
+          options?.passwords && options.passwords.length > 0
+            ? JSON.stringify(options.passwords)
+            : undefined,
+        emails:
+          options?.emails && options.emails.length > 0
+            ? JSON.stringify(options.emails)
+            : undefined,
+        show_email_stats: options?.showEmailStats ?? false,
       },
       { observe: "events", reportProgress: true },
     );
@@ -121,5 +154,35 @@ export class FileService {
 
   editGroup(uploadGroup: string, body: GroupEditRequest): Observable<MultiFileUploadResponse> {
     return this.api.editGroupApiFilesGroupUploadGroupPatch(uploadGroup, body);
+  }
+
+  getAccessInfo(uploadGroup: string): Observable<AccessInfoResponse> {
+    return this.api.getAccessInfoApiFilesGroupUploadGroupAccessInfoGet(uploadGroup);
+  }
+
+  getGroupStats(uploadGroup: string): Observable<DownloadStatsResponse> {
+    return this.api.getGroupStatsApiFilesGroupUploadGroupStatsGet(uploadGroup);
+  }
+
+  getRecipientStats(uploadGroup: string, token: string): Observable<RecipientStatsResponse> {
+    return this.api.getRecipientStatsApiFilesGroupUploadGroupRecipientStatsGet(uploadGroup, {
+      password: token,
+    });
+  }
+
+  getDownloadUrlWithPassword(downloadToken: string, password?: string): string {
+    const base = `${this.apiUrl}/api/files/${downloadToken}`;
+    if (password) {
+      return `${base}?password=${encodeURIComponent(password)}`;
+    }
+    return base;
+  }
+
+  getGroupDownloadUrlWithPassword(uploadGroup: string, password?: string): string {
+    const base = `${this.apiUrl}/api/files/group/${uploadGroup}/download`;
+    if (password) {
+      return `${base}?password=${encodeURIComponent(password)}`;
+    }
+    return base;
   }
 }

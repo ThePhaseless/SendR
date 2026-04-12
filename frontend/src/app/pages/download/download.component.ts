@@ -1,15 +1,17 @@
 import { DatePipe } from "@angular/common";
 import { Component, computed, inject, signal } from "@angular/core";
+import { FormsModule } from "@angular/forms";
 import { ActivatedRoute } from "@angular/router";
 import {
   getFileInfoApiFilesDownloadTokenInfoGetResource,
   getGroupInfoApiFilesGroupUploadGroupGetResource,
 } from "../../api/endpoints/filename.resource";
+import type { RecipientStatsResponse } from "../../services/file.service";
 import { FileService } from "../../services/file.service";
 import { filenameToEmoji, formatFileSize, isExpired } from "../../utils/file.utils";
 
 @Component({
-  imports: [DatePipe],
+  imports: [DatePipe, FormsModule],
   selector: "app-download",
   styleUrl: "./download.component.scss",
   templateUrl: "./download.component.html",
@@ -55,16 +57,86 @@ export class DownloadComponent {
     return false;
   });
 
+  /** Whether a password is required to download. */
+  needsPassword = computed(() => {
+    const file = this.fileInfo();
+    const group = this.groupInfo();
+    if (file) {
+      return file.has_passwords && !this.passwordToken();
+    }
+    if (group) {
+      return group.has_passwords && !this.passwordToken();
+    }
+    return false;
+  });
+
+  /** Password input by user. */
+  enteredPassword = signal("");
+
+  /** Password token from query param (for email invite links). */
+  passwordToken = signal(this.route.snapshot.queryParamMap.get("password") ?? "");
+
+  /** Password verification error. */
+  passwordError = signal("");
+
+  /** Recipient download stats (for email recipients). */
+  recipientStats = signal<RecipientStatsResponse | null>(null);
+  recipientStatsLoading = signal(false);
+
+  constructor() {
+    // If a password token is present (email invite link), try to load recipient stats
+    const pwToken = this.passwordToken();
+    if (pwToken && this.group) {
+      this.loadRecipientStats(pwToken);
+    }
+  }
+
+  submitPassword(): void {
+    const pw = this.enteredPassword().trim();
+    if (!pw) {
+      return;
+    }
+    // Set the password token (it will be used in download URLs)
+    this.passwordToken.set(pw);
+    this.passwordError.set("");
+  }
+
+  private loadRecipientStats(token: string): void {
+    if (!this.group) {
+      return;
+    }
+    this.recipientStatsLoading.set(true);
+    this.fileService.getRecipientStats(this.group, token).subscribe({
+      error: () => this.recipientStatsLoading.set(false),
+      next: (stats) => {
+        this.recipientStats.set(stats);
+        this.recipientStatsLoading.set(false);
+      },
+    });
+  }
+
   download(): void {
-    window.location.href = this.fileService.getDownloadUrl(this.token);
+    window.location.href = this.fileService.getDownloadUrlWithPassword(
+      this.token,
+      this.passwordToken() || undefined,
+    );
   }
 
   downloadGroup(): void {
-    window.location.href = this.fileService.getGroupDownloadUrl(this.group);
+    window.location.href = this.fileService.getGroupDownloadUrlWithPassword(
+      this.group,
+      this.passwordToken() || undefined,
+    );
   }
 
   downloadSingleFile(downloadUrl: string): void {
-    window.location.href = downloadUrl;
+    const pw = this.passwordToken();
+    if (pw) {
+      const separator = downloadUrl.includes("?") ? "&" : "?";
+      window.location.href = `${downloadUrl}${separator}password=${encodeURIComponent(pw)}`;
+    } else {
+      window.location.href = downloadUrl;
+    }
   }
 
   formatSize(bytes: number): string {
