@@ -27,7 +27,7 @@ interface AltchaStateChangeDetail {
   state?: string;
 }
 
-type AltchaState = 'unverified' | 'verifying' | 'verified' | 'expired' | 'error' | 'code';
+type AltchaState = "unverified" | "verifying" | "verified" | "expired" | "error" | "code";
 
 @Component({
   imports: [
@@ -57,7 +57,7 @@ export class HomeComponent {
   error = signal<string | null>(null);
   copied = signal(false);
   altchaVerified = signal(false);
-  altchaState = signal<AltchaState>('unverified');
+  altchaState = signal<AltchaState>("unverified");
   altchaChallenge = signal<string | null>(null);
   pendingFiles = signal<UploadFileEntry[]>([]);
   private altchaPayload = "";
@@ -87,11 +87,16 @@ export class HomeComponent {
 
   altchaHintText = computed(() => {
     switch (this.altchaState()) {
-      case 'verifying': return 'Verifying…';
-      case 'expired': return 'CAPTCHA expired — fetching a new challenge…';
-      case 'error': return 'Verification failed. Please try again.';
-      case 'code': return 'Please complete the code challenge.';
-      default: return 'Please complete the CAPTCHA to upload.';
+      case "verifying":
+        return "Verifying…";
+      case "expired":
+        return "CAPTCHA expired — fetching a new challenge…";
+      case "error":
+        return "Verification failed. Please try again.";
+      case "code":
+        return "Please complete the code challenge.";
+      default:
+        return "Please complete the CAPTCHA to upload.";
     }
   });
 
@@ -161,30 +166,30 @@ export class HomeComponent {
 
   onAltchaStateChange(event: Event): void {
     const detail = this.getAltchaStateDetail(event);
-    const state = (detail?.state ?? 'unverified') as AltchaState;
+    const state = (detail?.state ?? "unverified") as AltchaState;
     this.altchaState.set(state);
     switch (state) {
-      case 'verified':
+      case "verified":
         if (detail?.payload) {
           this.altchaPayload = detail.payload;
           this.altchaVerified.set(true);
         }
         break;
-      case 'expired':
+      case "expired":
         this.altchaVerified.set(false);
-        this.altchaPayload = '';
+        this.altchaPayload = "";
         this.altchaChallenge.set(null);
         this.loadAltchaChallenge();
         break;
-      case 'error':
+      case "error":
         this.altchaVerified.set(false);
-        this.altchaPayload = '';
+        this.altchaPayload = "";
         this.altchaChallenge.set(null);
         this.loadAltchaChallenge();
         break;
-      case 'unverified':
+      case "unverified":
         this.altchaVerified.set(false);
-        this.altchaPayload = '';
+        this.altchaPayload = "";
         break;
     }
   }
@@ -465,8 +470,8 @@ export class HomeComponent {
 
   private resetAltcha(): void {
     this.altchaVerified.set(false);
-    this.altchaState.set('unverified');
-    this.altchaPayload = '';
+    this.altchaState.set("unverified");
+    this.altchaPayload = "";
     this.altchaChallenge.set(null);
     this.loadAltchaChallenge();
   }

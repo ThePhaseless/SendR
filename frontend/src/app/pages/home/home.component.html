@@ -113,7 +113,13 @@
               Upload {{ pendingFiles().length === 1 ? "File" : "Files" }}
             </button>
             @if (!altchaVerified()) {
-              <p class="upload-action-hint" [class.hint-error]="altchaState() === 'error'" [class.hint-loading]="altchaState() === 'expired'">{{ altchaHintText() }}</p>
+              <p
+                class="upload-action-hint"
+                [class.hint-error]="altchaState() === 'error'"
+                [class.hint-loading]="altchaState() === 'expired'"
+              >
+                {{ altchaHintText() }}
+              </p>
             }
           </div>
         </div>

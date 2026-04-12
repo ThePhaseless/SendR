@@ -16,7 +16,12 @@
       <p class="drop-text">Click to select files or drag & drop</p>
       <p class="drop-folder-link">
         or
-        <a (click)="$event.stopPropagation(); interceptClick() ? addClicked.emit() : folderInput.click()">select a folder</a>
+        <a
+          (click)="
+            $event.stopPropagation(); interceptClick() ? addClicked.emit() : folderInput.click()
+          "
+          >select a folder</a
+        >
       </p>
       <p class="drop-hint">
         Supports files and folders &middot; Up to

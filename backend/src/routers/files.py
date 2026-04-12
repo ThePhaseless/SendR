@@ -1,5 +1,6 @@
 import io
 import json
+import logging
 import re
 import secrets
 import unicodedata
@@ -53,6 +54,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/files", tags=["files"])
+logger = logging.getLogger(__name__)
 
 
 def _sanitize_filename(filename: str) -> str:
@@ -108,7 +110,12 @@ def _build_download_url(download_token: str) -> str:
     return f"/api/files/{download_token}"
 
 
-def _to_response(f: FileUpload, group_settings: UploadGroupSettings | None = None, password_count: int = 0, email_count: int = 0) -> FileUploadResponse:
+def _to_response(
+    f: FileUpload,
+    group_settings: UploadGroupSettings | None = None,
+    password_count: int = 0,
+    email_count: int = 0,
+) -> FileUploadResponse:
     return FileUploadResponse(
         id=f.id,
         original_filename=f.original_filename,
@@ -144,16 +151,17 @@ def _get_email_limit(tier: UserTier) -> int:
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
-async def _load_group_access(session, upload_group: str) -> tuple[UploadGroupSettings | None, list[UploadPassword], list[UploadEmailRecipient]]:
+async def _load_group_access(
+    session,
+    upload_group: str,
+) -> tuple[UploadGroupSettings | None, list[UploadPassword], list[UploadEmailRecipient]]:
     """Load group settings, passwords, and email recipients."""
     gs_result = await session.execute(
         select(UploadGroupSettings).where(UploadGroupSettings.upload_group == upload_group)
     )
     group_settings = gs_result.scalars().first()
 
-    pw_result = await session.execute(
-        select(UploadPassword).where(UploadPassword.upload_group == upload_group)
-    )
+    pw_result = await session.execute(select(UploadPassword).where(UploadPassword.upload_group == upload_group))
     passwords = list(pw_result.scalars().all())
 
     er_result = await session.execute(
@@ -211,7 +219,10 @@ async def _create_group_access(
     show_email_stats: bool,
     user: User,
 ) -> tuple[UploadGroupSettings, int, int, list[tuple[str, str]]]:
-    """Create group settings, passwords, and email recipients. Returns (settings, pw_count, email_count, email_tokens)."""
+    """Create group settings, passwords, and email recipients.
+
+    Returns (settings, pw_count, email_count, email_tokens).
+    """
     # Create group settings
     group_settings = UploadGroupSettings(
         upload_group=upload_group,
@@ -235,11 +246,13 @@ async def _create_group_access(
             raw_pw = pw_entry.get("password", "")
             if not raw_pw:
                 continue
-            session.add(UploadPassword(
-                upload_group=upload_group,
-                label=label,
-                password_hash=pbkdf2_sha256.hash(raw_pw),
-            ))
+            session.add(
+                UploadPassword(
+                    upload_group=upload_group,
+                    label=label,
+                    password_hash=pbkdf2_sha256.hash(raw_pw),
+                )
+            )
             pw_count += 1
 
     # Process email invites
@@ -268,11 +281,13 @@ async def _create_group_access(
                 )
             raw_token = secrets.token_urlsafe(32)
             token_hash = sha256(raw_token.encode()).hexdigest()
-            session.add(UploadEmailRecipient(
-                upload_group=upload_group,
-                email=email_str,
-                token_hash=token_hash,
-            ))
+            session.add(
+                UploadEmailRecipient(
+                    upload_group=upload_group,
+                    email=email_str,
+                    token_hash=token_hash,
+                )
+            )
             email_tokens.append((email_str, raw_token))
             email_count += 1
 
@@ -335,7 +350,13 @@ async def upload_file(
 
     # Create access control
     group_settings, pw_count, email_count, email_tokens = await _create_group_access(
-        session, upload_group, is_public, passwords, emails, show_email_stats, user,
+        session,
+        upload_group,
+        is_public,
+        passwords,
+        emails,
+        show_email_stats,
+        user,
     )
 
     await session.commit()
@@ -364,7 +385,7 @@ async def upload_file(
                     er.notified = True
                     session.add(er)
             except Exception:
-                pass  # Don't fail upload if email fails
+                logger.warning("Failed to send invite email", exc_info=True)
         await session.commit()
 
     return _to_response(file_upload, group_settings, pw_count, email_count)
@@ -444,7 +465,13 @@ async def upload_multiple_files(
 
     # Create access control
     group_settings, pw_count, email_count, email_tokens = await _create_group_access(
-        session, upload_group, is_public, passwords, emails, show_email_stats, user,
+        session,
+        upload_group,
+        is_public,
+        passwords,
+        emails,
+        show_email_stats,
+        user,
     )
 
     await session.commit()
@@ -473,7 +500,7 @@ async def upload_multiple_files(
                     er.notified = True
                     session.add(er)
             except Exception:
-                pass
+                logger.warning("Failed to send invite email", exc_info=True)
         await session.commit()
 
     return MultiFileUploadResponse(
@@ -549,10 +576,15 @@ async def download_group(
         files[0].download_count += 1
         session.add(files[0])
         # Log download
-        session.add(DownloadLog(
-            upload_group=upload_group, file_upload_id=files[0].id,
-            access_type=access_type, upload_password_id=pw_id, email_recipient_id=er_id,
-        ))
+        session.add(
+            DownloadLog(
+                upload_group=upload_group,
+                file_upload_id=files[0].id,
+                access_type=access_type,
+                upload_password_id=pw_id,
+                email_recipient_id=er_id,
+            )
+        )
         await session.commit()
         return FileResponse(
             path=str(file_path), filename=files[0].original_filename, media_type="application/octet-stream"
@@ -571,10 +603,15 @@ async def download_group(
             zf.write(file_path, f.original_filename)
             f.download_count += 1
             session.add(f)
-            session.add(DownloadLog(
-                upload_group=upload_group, file_upload_id=f.id,
-                access_type=access_type, upload_password_id=pw_id, email_recipient_id=er_id,
-            ))
+            session.add(
+                DownloadLog(
+                    upload_group=upload_group,
+                    file_upload_id=f.id,
+                    access_type=access_type,
+                    upload_password_id=pw_id,
+                    email_recipient_id=er_id,
+                )
+            )
 
     await session.commit()
     zip_buffer.seek(0)
@@ -618,10 +655,7 @@ async def list_files(
             group_access_cache[f.upload_group] = (gs, len(pws), len(ers))
 
     return FileListResponse(
-        files=[
-            _to_response(f, *group_access_cache.get(f.upload_group, (None, 0, 0)))
-            for f in files
-        ],
+        files=[_to_response(f, *group_access_cache.get(f.upload_group, (None, 0, 0))) for f in files],
     )
 
 
@@ -664,13 +698,15 @@ async def download_file(
     session.add(file_upload)
 
     # Log download
-    session.add(DownloadLog(
-        upload_group=file_upload.upload_group,
-        file_upload_id=file_upload.id,
-        access_type=access_type,
-        upload_password_id=pw_id,
-        email_recipient_id=er_id,
-    ))
+    session.add(
+        DownloadLog(
+            upload_group=file_upload.upload_group,
+            file_upload_id=file_upload.id,
+            access_type=access_type,
+            upload_password_id=pw_id,
+            email_recipient_id=er_id,
+        )
+    )
     await session.commit()
 
     file_path = Path(settings.UPLOAD_DIR) / file_upload.stored_filename
@@ -1041,10 +1077,7 @@ async def get_access_info(
     return AccessInfoResponse(
         is_public=group_settings.is_public if group_settings else True,
         passwords=[PasswordInfo(id=pw.id, label=pw.label) for pw in passwords],
-        emails=[
-            EmailRecipientInfo(id=er.id, email=er.email, notified=er.notified)
-            for er in email_recipients
-        ],
+        emails=[EmailRecipientInfo(id=er.id, email=er.email, notified=er.notified) for er in email_recipients],
         show_email_stats=group_settings.show_email_stats if group_settings else False,
     )
 
@@ -1094,12 +1127,14 @@ async def get_group_stats(
 
     stats = []
     for (access_type, identifier), timestamps in aggregated.items():
-        stats.append(DownloadStatEntry(
-            access_type=access_type,
-            identifier=identifier,
-            download_count=len(timestamps),
-            last_download=max(timestamps) if timestamps else None,
-        ))
+        stats.append(
+            DownloadStatEntry(
+                access_type=access_type,
+                identifier=identifier,
+                download_count=len(timestamps),
+                last_download=max(timestamps) if timestamps else None,
+            )
+        )
 
     # Sort: public first, then password, email, owner
     type_order = {"public": 0, "password": 1, "email": 2, "owner": 3}
@@ -1173,8 +1208,7 @@ async def get_recipient_stats(
             email_counts[er.email] = 0
 
     downloads = [
-        RecipientDownloadEntry(email=email, download_count=count)
-        for email, count in sorted(email_counts.items())
+        RecipientDownloadEntry(email=email, download_count=count) for email, count in sorted(email_counts.items())
     ]
 
     # Total across all access types

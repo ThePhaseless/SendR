@@ -4,11 +4,9 @@ import json
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import async_sessionmaker
-from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app import app
 import database
+from app import app
 from models import AuthToken, User, UserTier
 from routers.altcha import verify_altcha_payload
 from security import create_access_token, hash_token
@@ -33,9 +31,7 @@ async def _create_user(tier: UserTier = UserTier.free) -> dict[str, str]:
         session.add(user)
         await session.flush()
         raw_token, expires_at = create_access_token(user.id)
-        auth_token = AuthToken(
-            user_id=user.id, token=hash_token(raw_token), expires_at=expires_at
-        )
+        auth_token = AuthToken(user_id=user.id, token=hash_token(raw_token), expires_at=expires_at)
         session.add(auth_token)
         await session.commit()
     return {"Authorization": f"Bearer {raw_token}"}
@@ -62,9 +58,7 @@ async def temp_headers():
 @pytest.mark.asyncio
 async def test_upload_public(free_headers):
     """Upload a public file (default)."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post(
             "/api/files/upload",
             files=[("file", ("test.txt", b"hello", "text/plain"))],
@@ -85,9 +79,7 @@ async def test_upload_with_passwords(free_headers):
         {"label": "Team A", "password": "secret1"},
         {"label": "Team B", "password": "secret2"},
     ]
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post(
             "/api/files/upload",
             files=[("file", ("test.txt", b"hello", "text/plain"))],
@@ -108,9 +100,7 @@ async def test_upload_with_passwords(free_headers):
 async def test_upload_with_emails(free_headers):
     """Upload a file with email recipients."""
     emails = ["alice@example.com", "bob@example.com"]
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post(
             "/api/files/upload",
             files=[("file", ("test.txt", b"hello", "text/plain"))],
@@ -129,12 +119,8 @@ async def test_upload_with_emails(free_headers):
 @pytest.mark.asyncio
 async def test_upload_exceeds_password_limit(free_headers):
     """Free tier: max 3 passwords. Uploading 4 should fail."""
-    passwords = [
-        {"label": f"pw{i}", "password": f"pass{i}"} for i in range(4)
-    ]
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    passwords = [{"label": f"pw{i}", "password": f"pass{i}"} for i in range(4)]
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post(
             "/api/files/upload",
             files=[("file", ("test.txt", b"hello", "text/plain"))],
@@ -151,9 +137,7 @@ async def test_upload_exceeds_password_limit(free_headers):
 async def test_temporary_user_cannot_use_emails(temp_headers):
     """Temporary users have 0 email limit."""
     emails = ["alice@example.com"]
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post(
             "/api/files/upload",
             files=[("file", ("test.txt", b"hello", "text/plain"))],
@@ -174,9 +158,7 @@ async def test_temporary_user_cannot_use_emails(temp_headers):
 async def test_password_protected_download(free_headers):
     """Non-public file with password: must provide correct password to download."""
     passwords = [{"label": "Main", "password": "mypass"}]
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         # Upload
         upload_resp = await client.post(
             "/api/files/upload",
@@ -208,9 +190,7 @@ async def test_password_protected_download(free_headers):
 async def test_public_download_no_password_needed(free_headers):
     """Public file can be downloaded without password even if passwords exist."""
     passwords = [{"label": "Extra", "password": "bonus"}]
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         upload_resp = await client.post(
             "/api/files/upload",
             files=[("file", ("public.txt", b"public data", "text/plain"))],
@@ -236,9 +216,7 @@ async def test_public_download_no_password_needed(free_headers):
 async def test_group_password_protected_download(free_headers):
     """Group download with password protection."""
     passwords = [{"label": "Team", "password": "teampass"}]
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         upload_resp = await client.post(
             "/api/files/upload-multiple",
             files=[
@@ -260,9 +238,7 @@ async def test_group_password_protected_download(free_headers):
         assert dl_resp.status_code == 403
 
         # With correct password
-        dl_resp = await client.get(
-            f"/api/files/group/{group}/download?password=teampass"
-        )
+        dl_resp = await client.get(f"/api/files/group/{group}/download?password=teampass")
         assert dl_resp.status_code == 200
 
 
@@ -274,9 +250,7 @@ async def test_access_info(free_headers):
     """Owner can view access info for their upload."""
     passwords = [{"label": "A", "password": "pw1"}]
     emails = ["viewer@example.com"]
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         upload_resp = await client.post(
             "/api/files/upload",
             files=[("file", ("info.txt", b"data", "text/plain"))],
@@ -293,9 +267,7 @@ async def test_access_info(free_headers):
         group = upload_resp.json()["upload_group"]
 
         # Get access info
-        info_resp = await client.get(
-            f"/api/files/group/{group}/access-info", headers=free_headers
-        )
+        info_resp = await client.get(f"/api/files/group/{group}/access-info", headers=free_headers)
         assert info_resp.status_code == 200
         data = info_resp.json()
         assert data["is_public"] is True
@@ -309,9 +281,7 @@ async def test_access_info(free_headers):
 @pytest.mark.asyncio
 async def test_access_info_unauthorized(free_headers, temp_headers):
     """Non-owner cannot view access info."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         upload_resp = await client.post(
             "/api/files/upload",
             files=[("file", ("x.txt", b"x", "text/plain"))],
@@ -322,9 +292,7 @@ async def test_access_info_unauthorized(free_headers, temp_headers):
         group = upload_resp.json()["upload_group"]
 
         # Another user should get 404 (don't leak existence)
-        info_resp = await client.get(
-            f"/api/files/group/{group}/access-info", headers=temp_headers
-        )
+        info_resp = await client.get(f"/api/files/group/{group}/access-info", headers=temp_headers)
         assert info_resp.status_code == 404
 
 
@@ -334,9 +302,7 @@ async def test_access_info_unauthorized(free_headers, temp_headers):
 @pytest.mark.asyncio
 async def test_download_stats(free_headers):
     """Owner can view download stats after downloads."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         # Upload public file
         upload_resp = await client.post(
             "/api/files/upload",
@@ -353,9 +319,7 @@ async def test_download_stats(free_headers):
         assert dl_resp.status_code == 200
 
         # Check stats
-        stats_resp = await client.get(
-            f"/api/files/group/{group}/stats", headers=free_headers
-        )
+        stats_resp = await client.get(f"/api/files/group/{group}/stats", headers=free_headers)
         assert stats_resp.status_code == 200
         data = stats_resp.json()
         assert data["total_downloads"] >= 1
@@ -364,9 +328,7 @@ async def test_download_stats(free_headers):
 @pytest.mark.asyncio
 async def test_download_stats_unauthorized(free_headers, temp_headers):
     """Non-owner cannot view download stats."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         upload_resp = await client.post(
             "/api/files/upload",
             files=[("file", ("x.txt", b"x", "text/plain"))],
@@ -375,9 +337,7 @@ async def test_download_stats_unauthorized(free_headers, temp_headers):
         )
         group = upload_resp.json()["upload_group"]
 
-        stats_resp = await client.get(
-            f"/api/files/group/{group}/stats", headers=temp_headers
-        )
+        stats_resp = await client.get(f"/api/files/group/{group}/stats", headers=temp_headers)
         assert stats_resp.status_code == 404
 
 
@@ -388,9 +348,7 @@ async def test_download_stats_unauthorized(free_headers, temp_headers):
 async def test_multi_upload_with_passwords(free_headers):
     """Multi-file upload with password access."""
     passwords = [{"label": "Dev", "password": "devpass"}]
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.post(
             "/api/files/upload-multiple",
             files=[
@@ -417,9 +375,7 @@ async def test_multi_upload_with_passwords(free_headers):
 @pytest.mark.asyncio
 async def test_quota_includes_access_limits(free_headers):
     """Quota endpoint should return password/email limits."""
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         resp = await client.get("/api/auth/quota", headers=free_headers)
     assert resp.status_code == 200
     data = resp.json()

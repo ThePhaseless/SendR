@@ -64,9 +64,7 @@ export class FileService {
             ? JSON.stringify(options.passwords)
             : undefined,
         emails:
-          options?.emails && options.emails.length > 0
-            ? JSON.stringify(options.emails)
-            : undefined,
+          options?.emails && options.emails.length > 0 ? JSON.stringify(options.emails) : undefined,
         show_email_stats: options?.showEmailStats ?? false,
       },
       { observe: "events", reportProgress: true },
@@ -117,9 +115,7 @@ export class FileService {
             ? JSON.stringify(options.passwords)
             : undefined,
         emails:
-          options?.emails && options.emails.length > 0
-            ? JSON.stringify(options.emails)
-            : undefined,
+          options?.emails && options.emails.length > 0 ? JSON.stringify(options.emails) : undefined,
         show_email_stats: options?.showEmailStats ?? false,
       },
       { observe: "events", reportProgress: true },

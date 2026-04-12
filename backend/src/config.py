@@ -103,11 +103,9 @@ class Settings(BaseSettings):
         return bool(self.SMTP_HOST)
 
     @model_validator(mode="after")
-    def validate_smtp_for_production(self) -> "Settings":
+    def validate_smtp_for_production(self) -> Settings:
         if self.ENVIRONMENT.lower() == "production" and not self.smtp_configured:
-            raise ValueError(
-                "SENDR_SMTP_HOST must be set when SENDR_ENVIRONMENT is 'production'"
-            )
+            raise ValueError("SENDR_SMTP_HOST must be set when SENDR_ENVIRONMENT is 'production'")
         return self
 
 

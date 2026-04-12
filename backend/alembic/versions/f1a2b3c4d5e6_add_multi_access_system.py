@@ -66,9 +66,7 @@ def upgrade() -> None:
 
     # 2. Backfill NULL upload_group values with UUIDs
     conn = op.get_bind()
-    rows = conn.execute(
-        sa.text("SELECT id FROM fileupload WHERE upload_group IS NULL")
-    ).fetchall()
+    rows = conn.execute(sa.text("SELECT id FROM fileupload WHERE upload_group IS NULL")).fetchall()
     for row in rows:
         conn.execute(
             sa.text("UPDATE fileupload SET upload_group = :group WHERE id = :id"),

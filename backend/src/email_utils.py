@@ -56,11 +56,7 @@ def _build_invite_message(
     msg["Subject"] = f"{sender_email} shared files with you on SendR"
 
     file_list = "\n".join(f"  - {name}" for name in file_names)
-    body = (
-        f"{sender_email} has shared files with you:\n\n"
-        f"{file_list}\n\n"
-        f"Download here:\n{download_url}\n"
-    )
+    body = f"{sender_email} has shared files with you:\n\n{file_list}\n\nDownload here:\n{download_url}\n"
     if message:
         body += f"\nMessage from sender:\n{message}\n"
 
@@ -99,6 +95,4 @@ async def send_file_invite_email(
         logger.info("=" * 50)
         return
 
-    await asyncio.to_thread(
-        _send_invite_email_sync, recipient_email, sender_email, download_url, file_names, message
-    )
+    await asyncio.to_thread(_send_invite_email_sync, recipient_email, sender_email, download_url, file_names, message)
