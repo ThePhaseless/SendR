@@ -8,6 +8,16 @@
   @apply text-center mb-8;
 }
 
+.plans-title {
+  @apply text-3xl font-extrabold mb-2;
+  color: var(--color-text);
+}
+
+.plans-subtitle {
+  @apply text-base;
+  color: var(--color-text-secondary);
+}
+
 .current-tier-banner {
   @apply flex flex-col items-center gap-1 rounded-xl mx-auto;
   padding: 1rem 2rem;

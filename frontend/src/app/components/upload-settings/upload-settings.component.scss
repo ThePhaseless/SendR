@@ -80,6 +80,76 @@ h3 {
   accent-color: var(--color-primary);
 }
 
+.public-link-row {
+  @apply flex items-center justify-between rounded-lg p-3 mb-2;
+  background: var(--color-input-bg);
+  border: 1px solid var(--color-border);
+  gap: 1rem;
+
+  &.disabled {
+    opacity: 0.6;
+  }
+}
+
+.public-link-info {
+  @apply flex items-center gap-3 min-w-0;
+}
+
+.public-link-icon {
+  font-size: 1.25rem;
+  color: var(--color-primary);
+}
+
+.public-link-label {
+  @apply text-sm font-medium block;
+  color: var(--color-text);
+}
+
+.public-link-hint {
+  @apply text-xs block;
+  color: var(--color-text-secondary);
+}
+
+.switch {
+  @apply relative inline-block flex-shrink-0;
+  width: 40px;
+  height: 22px;
+
+  input {
+    @apply opacity-0 w-0 h-0;
+  }
+}
+
+.switch-slider {
+  @apply absolute inset-0 cursor-pointer rounded-full;
+  background: var(--color-border);
+  transition: 0.2s;
+
+  &::before {
+    @apply absolute rounded-full;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    transition: 0.2s;
+  }
+
+  input:checked + & {
+    background: var(--color-primary);
+  }
+
+  input:checked + &::before {
+    transform: translateX(18px);
+  }
+
+  input:disabled + & {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
 .access-section {
   @apply mt-3 pt-3;
   border-top: 1px solid var(--color-border);

@@ -3,7 +3,10 @@
     <p class="loading">Loading subscription info…</p>
   } @else {
     <div class="page-header-section">
-      @if (subscription(); as sub) {
+      @if (!isAuthenticated) {
+        <h1 class="plans-title">Plans</h1>
+        <p class="plans-subtitle">Choose the plan that fits your needs</p>
+      } @else if (subscription(); as sub) {
         <div class="current-tier-banner" [class]="'tier-' + (user()?.tier ?? 'temporary')">
           <span class="current-tier-label">Your current tier</span>
           <span class="current-tier-name">{{ tierDisplayName() }}</span>
@@ -33,6 +36,8 @@
         </ul>
         @if (user()?.tier === "temporary") {
           <p class="tier-note">Create a free account for more features</p>
+        } @else if (!isAuthenticated) {
+          <p class="tier-note">Available without an account</p>
         }
       </div>
 
@@ -50,7 +55,7 @@
           <li>Dashboard &amp; file management</li>
           <li>Refresh uploads before expiry</li>
         </ul>
-        @if (user()?.tier === "temporary") {
+        @if (!isAuthenticated || user()?.tier === "temporary") {
           <a
             routerLink="/auth"
             [queryParams]="{ mode: 'register' }"
@@ -83,9 +88,18 @@
           <li>Download notifications</li>
         </ul>
         @if (!isPremium()) {
-          <button class="btn btn-primary btn-tier" [disabled]="processing()" (click)="upgrade()">
-            {{ processing() ? "Processing…" : "Upgrade to Premium" }}
-          </button>
+          @if (isAuthenticated) {
+            <button class="btn btn-primary btn-tier" [disabled]="processing()" (click)="upgrade()">
+              {{ processing() ? "Processing…" : "Upgrade to Premium" }}
+            </button>
+          } @else {
+            <a
+              routerLink="/auth"
+              [queryParams]="{ mode: 'register' }"
+              class="btn btn-primary btn-tier"
+              >Create Account to Upgrade</a
+            >
+          }
         }
       </div>
     </div>

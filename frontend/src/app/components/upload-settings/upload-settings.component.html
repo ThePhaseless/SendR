@@ -76,15 +76,31 @@
   <div class="access-section">
     <h4 class="section-label">Access Control</h4>
 
-    <div class="settings-row">
-      <label for="is-public">Public link</label>
-      <input
-        type="checkbox"
-        id="is-public"
-        class="toggle-checkbox"
-        [ngModel]="isPublic()"
-        (ngModelChange)="isPublic.set($event)"
-      />
+    <div class="public-link-row" [class.disabled]="!canDisablePublic()">
+      <div class="public-link-info">
+        <span class="material-symbols-outlined public-link-icon">link</span>
+        <div>
+          <span class="public-link-label">Public link</span>
+          <span class="public-link-hint">
+            @if (!canDisablePublic()) {
+              Add a password or email to restrict access
+            } @else if (isPublic()) {
+              Anyone with the link can download
+            } @else {
+              Only people with a password or email invite can download
+            }
+          </span>
+        </div>
+      </div>
+      <label class="switch">
+        <input
+          type="checkbox"
+          [ngModel]="isPublic()"
+          (ngModelChange)="isPublic.set($event)"
+          [disabled]="!canDisablePublic()"
+        />
+        <span class="switch-slider"></span>
+      </label>
     </div>
 
     <!-- Passwords accordion -->

@@ -85,9 +85,7 @@
           <div class="file-meta">
             <span>Total size: {{ formatSize(group.total_size_bytes) }}</span>
             @if (group.title) {
-              <span
-                >{{ group.file_count }} {{ group.file_count === 1 ? "file" : "files" }}</span
-              >
+              <span>{{ group.file_count }} {{ group.file_count === 1 ? "file" : "files" }}</span>
             }
           </div>
           @if (group.will_zip) {

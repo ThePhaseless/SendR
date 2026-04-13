@@ -74,6 +74,11 @@ export class UploadSettingsComponent {
         this.expiryHours.set(options[options.length - 1].value);
       }
     });
+    effect(() => {
+      if (!this.canDisablePublic()) {
+        this.isPublic.set(true);
+      }
+    });
   }
 
   /** Available expiry duration options, based on tier. */
@@ -152,6 +157,11 @@ export class UploadSettingsComponent {
 
   /** Count of non-empty email entries (for badge). */
   emailCount = computed(() => this.emails().filter((e) => e.trim()).length);
+
+  /** Whether the user can disable public link (needs at least one password or email). */
+  canDisablePublic = computed(() => {
+    return this.passwordCount() > 0 || this.emailCount() > 0;
+  });
 
   onMaxDownloadsChange(value: number | null): void {
     if (value === null || value <= 0) {

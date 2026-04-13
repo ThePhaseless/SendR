@@ -168,14 +168,14 @@ if(bodyUploadFileApiFilesUploadPost.emails !== undefined && bodyUploadFileApiFil
 if(bodyUploadFileApiFilesUploadPost.show_email_stats !== undefined) {
  formData.append(`show_email_stats`, bodyUploadFileApiFilesUploadPost.show_email_stats.toString())
  }
-if(bodyUploadFileApiFilesUploadPost.altcha !== undefined) {
- formData.append(`altcha`, bodyUploadFileApiFilesUploadPost.altcha);
- }
 if(bodyUploadFileApiFilesUploadPost.title !== undefined && bodyUploadFileApiFilesUploadPost.title !== null) {
  formData.append(`title`, bodyUploadFileApiFilesUploadPost.title);
  }
 if(bodyUploadFileApiFilesUploadPost.description !== undefined && bodyUploadFileApiFilesUploadPost.description !== null) {
  formData.append(`description`, bodyUploadFileApiFilesUploadPost.description);
+ }
+if(bodyUploadFileApiFilesUploadPost.altcha !== undefined) {
+ formData.append(`altcha`, bodyUploadFileApiFilesUploadPost.altcha);
  }
 
     if (options?.observe === 'events') {
@@ -233,14 +233,14 @@ if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.emails !== undefined && bod
 if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.show_email_stats !== undefined) {
  formData.append(`show_email_stats`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.show_email_stats.toString())
  }
-if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha !== undefined) {
- formData.append(`altcha`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha);
- }
 if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.title !== undefined && bodyUploadMultipleFilesApiFilesUploadMultiplePost.title !== null) {
  formData.append(`title`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.title);
  }
 if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.description !== undefined && bodyUploadMultipleFilesApiFilesUploadMultiplePost.description !== null) {
  formData.append(`description`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.description);
+ }
+if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha !== undefined) {
+ formData.append(`altcha`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha);
  }
 
     if (options?.observe === 'events') {
