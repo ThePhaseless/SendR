@@ -216,7 +216,12 @@ export class DashboardComponent implements OnInit {
           1,
           Math.ceil((new Date(ref.expires_at).getTime() - Date.now()) / (1000 * 60 * 60)),
         );
-        this.panelExpiryHours.set(hoursLeft > 0 ? hoursLeft : 168);
+        // Snap to the closest available expiry option so the dropdown shows a valid selection
+        const options = [1, 24, 72, 168, 336, 720];
+        const closest = options.reduce((prev, curr) =>
+          Math.abs(curr - hoursLeft) < Math.abs(prev - hoursLeft) ? curr : prev,
+        );
+        this.panelExpiryHours.set(closest);
         this.panelMaxDownloads.set(ref.max_downloads ?? 0);
         // Load download stats if group has an upload_group
         if (group.uploadGroup) {

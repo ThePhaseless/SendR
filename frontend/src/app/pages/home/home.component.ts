@@ -72,8 +72,8 @@ export class HomeComponent {
   popupAuthError = signal<string | null>(null);
 
   // Upload settings
-  /** Default 7 days */
-  expiryHours = signal(168);
+  /** Default 3 days (valid across all tiers) */
+  expiryHours = signal(72);
   /** 0 = unlimited */
   maxDownloads = signal(0);
   /** Whether the upload is publicly accessible. */
