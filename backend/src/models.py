@@ -65,6 +65,8 @@ class UploadGroupSettings(SQLModel, table=True):
     upload_group: str = Field(primary_key=True, index=True)
     is_public: bool = Field(default=True)
     show_email_stats: bool = Field(default=False)
+    title: str | None = Field(default=None)
+    description: str | None = Field(default=None)
 
 
 class UploadPassword(SQLModel, table=True):

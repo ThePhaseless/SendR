@@ -39,6 +39,12 @@ export class UploadSettingsComponent {
   /** Whether email recipients can see download stats. */
   showEmailStats = model(false);
 
+  /** Transfer title. */
+  title = model("");
+
+  /** Transfer description. */
+  description = model("");
+
   /** Whether to show the heading. */
   showHeading = input(true);
 

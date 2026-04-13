@@ -36,6 +36,8 @@ export interface UploadAccessOptions {
   passwords?: { label: string; password: string }[];
   emails?: string[];
   showEmailStats?: boolean;
+  title?: string;
+  description?: string;
 }
 
 @Injectable({
@@ -66,6 +68,8 @@ export class FileService {
         emails:
           options?.emails && options.emails.length > 0 ? JSON.stringify(options.emails) : undefined,
         show_email_stats: options?.showEmailStats ?? false,
+        title: options?.title || undefined,
+        description: options?.description || undefined,
       },
       { observe: "events", reportProgress: true },
     );
@@ -117,6 +121,8 @@ export class FileService {
         emails:
           options?.emails && options.emails.length > 0 ? JSON.stringify(options.emails) : undefined,
         show_email_stats: options?.showEmailStats ?? false,
+        title: options?.title || undefined,
+        description: options?.description || undefined,
       },
       { observe: "events", reportProgress: true },
     );

@@ -11,4 +11,6 @@ export interface MultiFileUploadResponse {
   files: FileUploadResponse[];
   upload_group: string;
   total_size_bytes: number;
+  title?: string | null;
+  description?: string | null;
 }

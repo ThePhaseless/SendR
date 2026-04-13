@@ -45,6 +45,11 @@
   }
 }
 
+.transfer-description {
+  @apply text-sm mb-4 whitespace-pre-line;
+  color: var(--color-text-secondary);
+}
+
 .file-meta {
   @apply flex flex-col gap-1 text-sm mb-6;
   color: var(--color-text-secondary);

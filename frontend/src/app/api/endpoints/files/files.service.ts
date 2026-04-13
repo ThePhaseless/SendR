@@ -171,6 +171,12 @@ if(bodyUploadFileApiFilesUploadPost.show_email_stats !== undefined) {
 if(bodyUploadFileApiFilesUploadPost.altcha !== undefined) {
  formData.append(`altcha`, bodyUploadFileApiFilesUploadPost.altcha);
  }
+if(bodyUploadFileApiFilesUploadPost.title !== undefined && bodyUploadFileApiFilesUploadPost.title !== null) {
+ formData.append(`title`, bodyUploadFileApiFilesUploadPost.title);
+ }
+if(bodyUploadFileApiFilesUploadPost.description !== undefined && bodyUploadFileApiFilesUploadPost.description !== null) {
+ formData.append(`description`, bodyUploadFileApiFilesUploadPost.description);
+ }
 
     if (options?.observe === 'events') {
       return this.http.post<TData>(
@@ -229,6 +235,12 @@ if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.show_email_stats !== undefi
  }
 if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha !== undefined) {
  formData.append(`altcha`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha);
+ }
+if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.title !== undefined && bodyUploadMultipleFilesApiFilesUploadMultiplePost.title !== null) {
+ formData.append(`title`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.title);
+ }
+if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.description !== undefined && bodyUploadMultipleFilesApiFilesUploadMultiplePost.description !== null) {
+ formData.append(`description`, bodyUploadMultipleFilesApiFilesUploadMultiplePost.description);
  }
 
     if (options?.observe === 'events') {

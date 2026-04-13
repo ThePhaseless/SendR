@@ -218,6 +218,8 @@ async def _create_group_access(
     emails_json: str | None,
     show_email_stats: bool,
     user: User,
+    title: str | None = None,
+    description: str | None = None,
 ) -> tuple[UploadGroupSettings, int, int, list[tuple[str, str]]]:
     """Create group settings, passwords, and email recipients.
 
@@ -228,6 +230,8 @@ async def _create_group_access(
         upload_group=upload_group,
         is_public=is_public,
         show_email_stats=show_email_stats,
+        title=title[:200] if title else None,
+        description=description[:2000] if description else None,
     )
     session.add(group_settings)
 
@@ -306,6 +310,8 @@ async def upload_file(
     passwords: str | None = Form(None),
     emails: str | None = Form(None),
     show_email_stats: bool = Form(False),
+    title: str | None = Form(None),
+    description: str | None = Form(None),
 ) -> FileUploadResponse:
     # Get tier limits
     max_size_mb, _ = _get_limits(user.tier)
@@ -357,6 +363,8 @@ async def upload_file(
         emails,
         show_email_stats,
         user,
+        title=title,
+        description=description,
     )
 
     await session.commit()
@@ -403,6 +411,8 @@ async def upload_multiple_files(
     passwords: str | None = Form(None),
     emails: str | None = Form(None),
     show_email_stats: bool = Form(False),
+    title: str | None = Form(None),
+    description: str | None = Form(None),
 ) -> MultiFileUploadResponse:
     if not files:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No files provided")
@@ -472,6 +482,8 @@ async def upload_multiple_files(
         emails,
         show_email_stats,
         user,
+        title=title,
+        description=description,
     )
 
     await session.commit()
@@ -507,6 +519,8 @@ async def upload_multiple_files(
         files=[_to_response(fu, group_settings, pw_count, email_count) for fu in saved_uploads],
         upload_group=upload_group,
         total_size_bytes=total_size,
+        title=group_settings.title,
+        description=group_settings.description,
     )
 
 
@@ -539,6 +553,8 @@ async def get_group_info(
         is_public=group_settings.is_public if group_settings else True,
         has_passwords=pw_count > 0,
         has_email_recipients=email_count > 0,
+        title=group_settings.title if group_settings else None,
+        description=group_settings.description if group_settings else None,
     )
 
 
@@ -938,6 +954,8 @@ async def add_files_to_group(
         files=[_to_response(fu, gs, len(pws), len(ers)) for fu in saved_uploads],
         upload_group=upload_group,
         total_size_bytes=new_total,
+        title=gs.title if gs else None,
+        description=gs.description if gs else None,
     )
 
 
@@ -1000,6 +1018,18 @@ async def refresh_group(
         f.is_active = True
         session.add(f)
 
+    # Update group settings (title/description) on refresh
+    if body.title is not None or body.description is not None:
+        gs_stmt = select(UploadGroupSettings).where(UploadGroupSettings.upload_group == upload_group)
+        gs_result = await session.execute(gs_stmt)
+        gs_obj = gs_result.scalars().first()
+        if gs_obj:
+            if body.title is not None:
+                gs_obj.title = body.title[:200] if body.title else None
+            if body.description is not None:
+                gs_obj.description = body.description[:2000] if body.description else None
+            session.add(gs_obj)
+
     await session.commit()
     for f in files:
         await session.refresh(f)
@@ -1010,6 +1040,8 @@ async def refresh_group(
         files=[_to_response(f, gs, len(pws), len(ers)) for f in active_files],
         upload_group=upload_group,
         total_size_bytes=sum(f.file_size_bytes for f in active_files),
+        title=gs.title if gs else None,
+        description=gs.description if gs else None,
     )
 
 
@@ -1045,6 +1077,18 @@ async def edit_group(
             f.max_downloads = _resolve_max_downloads(body.max_downloads, user.tier)
         session.add(f)
 
+    # Update group settings (title/description)
+    if body.title is not None or body.description is not None:
+        gs_stmt = select(UploadGroupSettings).where(UploadGroupSettings.upload_group == upload_group)
+        gs_result = await session.execute(gs_stmt)
+        gs = gs_result.scalars().first()
+        if gs:
+            if body.title is not None:
+                gs.title = body.title[:200] if body.title else None
+            if body.description is not None:
+                gs.description = body.description[:2000] if body.description else None
+            session.add(gs)
+
     await session.commit()
     for f in files:
         await session.refresh(f)
@@ -1054,6 +1098,8 @@ async def edit_group(
         files=[_to_response(f, gs, len(pws), len(ers)) for f in files],
         upload_group=upload_group,
         total_size_bytes=sum(f.file_size_bytes for f in files),
+        title=gs.title if gs else None,
+        description=gs.description if gs else None,
     )
 
 
