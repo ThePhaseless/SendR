@@ -152,7 +152,7 @@ export class DashboardComponent implements OnInit {
   }
 
   canSave(): boolean {
-    return this.userTier() === "premium";
+    return this.userTier() !== "temporary";
   }
 
   hasUnsavedFiles(): boolean {
