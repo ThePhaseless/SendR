@@ -15,4 +15,6 @@ export interface BodyUploadFileApiFilesUploadPost {
   emails?: string | null;
   show_email_stats?: boolean;
   altcha?: string;
+  title?: string | null;
+  description?: string | null;
 }

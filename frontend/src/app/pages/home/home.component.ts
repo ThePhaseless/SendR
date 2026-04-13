@@ -84,6 +84,10 @@ export class HomeComponent {
   emails = signal<string[]>([]);
   /** Whether email recipients can see download stats. */
   showEmailStats = signal(false);
+  /** Transfer title. */
+  title = signal("");
+  /** Transfer description. */
+  description = signal("");
 
   altchaHintText = computed(() => {
     switch (this.altchaState()) {
@@ -311,6 +315,8 @@ export class HomeComponent {
           passwords: this.passwords().filter((p) => p.password),
           emails: this.emails().filter((e) => e.trim()),
           showEmailStats: this.showEmailStats(),
+          title: this.title(),
+          description: this.description(),
         })
         .subscribe({
           error: (err) => {
@@ -344,6 +350,8 @@ export class HomeComponent {
         passwords: this.passwords().filter((p) => p.password),
         emails: this.emails().filter((e) => e.trim()),
         showEmailStats: this.showEmailStats(),
+        title: this.title(),
+        description: this.description(),
       })
       .subscribe({
         error: (err) => {

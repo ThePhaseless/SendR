@@ -39,7 +39,8 @@ export class DashboardComponent implements OnInit {
   // Unified panel settings (bound to upload-settings component)
   panelExpiryHours = signal(72);
   panelMaxDownloads = signal(0);
-
+  panelTitle = signal("");
+  panelDescription = signal("");
   // Download stats for the expanded group
   groupStats = signal<DownloadStatsResponse | null>(null);
   statsLoading = signal(false);
@@ -219,9 +220,10 @@ export class DashboardComponent implements OnInit {
         // Snap to nearest valid expiry option so the select shows a valid value
         this.panelExpiryHours.set(this.snapToNearestExpiry(hoursLeft));
         this.panelMaxDownloads.set(ref.max_downloads ?? 0);
-        // Load download stats if group has an upload_group
+        // Load download stats and group info (for title/description)
         if (group.uploadGroup) {
           this.loadGroupStats(group.uploadGroup);
+          this.loadGroupInfo(group.uploadGroup);
         }
       }
     }
@@ -247,6 +249,8 @@ export class DashboardComponent implements OnInit {
           .editGroup(group.uploadGroup, {
             expiry_hours: this.panelExpiryHours(),
             max_downloads: this.panelMaxDownloads() || undefined,
+            title: this.panelTitle() || null,
+            description: this.panelDescription() || null,
           })
           .subscribe({
             error: () => {
@@ -336,6 +340,8 @@ export class DashboardComponent implements OnInit {
           .refreshGroup(group.uploadGroup, {
             expiry_hours: this.panelExpiryHours(),
             max_downloads: this.panelMaxDownloads() || undefined,
+            title: this.panelTitle() || null,
+            description: this.panelDescription() || null,
           })
           .subscribe({
             error: () => {
@@ -421,6 +427,15 @@ export class DashboardComponent implements OnInit {
       next: (stats) => {
         this.groupStats.set(stats);
         this.statsLoading.set(false);
+      },
+    });
+  }
+
+  private loadGroupInfo(uploadGroup: string): void {
+    this.fileService.getGroupInfo(uploadGroup).subscribe({
+      next: (info) => {
+        this.panelTitle.set(info.title ?? "");
+        this.panelDescription.set(info.description ?? "");
       },
     });
   }

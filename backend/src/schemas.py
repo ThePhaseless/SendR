@@ -67,6 +67,8 @@ class MultiFileUploadResponse(SQLModel):
     files: list[FileUploadResponse]
     upload_group: str
     total_size_bytes: int
+    title: str | None = None
+    description: str | None = None
 
 
 class UploadGroupInfoResponse(SQLModel):
@@ -78,6 +80,8 @@ class UploadGroupInfoResponse(SQLModel):
     is_public: bool = True
     has_passwords: bool = False
     has_email_recipients: bool = False
+    title: str | None = None
+    description: str | None = None
 
 
 class TransferInfoResponse(SQLModel):
@@ -115,11 +119,15 @@ class FileEditRequest(SQLModel):
 class GroupRefreshRequest(SQLModel):
     expiry_hours: int | None = None
     max_downloads: int | None = None
+    title: str | None = None
+    description: str | None = None
 
 
 class GroupEditRequest(SQLModel):
     expiry_hours: int | None = None
     max_downloads: int | None = None
+    title: str | None = None
+    description: str | None = None
 
 
 class AdminUserUpdateRequest(SQLModel):

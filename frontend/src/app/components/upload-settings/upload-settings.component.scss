@@ -36,6 +36,24 @@ h3 {
       border-color: var(--color-input-focus);
     }
   }
+
+  input.form-input,
+  textarea.form-input {
+    @apply text-sm rounded-md border px-3 py-1.5 flex-1;
+    background: var(--color-input-bg, var(--color-card-bg));
+    border-color: var(--color-input-border);
+    color: var(--color-text);
+    min-width: 140px;
+
+    &:focus {
+      border-color: var(--color-input-focus);
+      outline: none;
+    }
+  }
+
+  textarea.form-input {
+    resize: vertical;
+  }
 }
 
 .input-with-toggle {

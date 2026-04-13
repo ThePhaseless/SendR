@@ -9,4 +9,6 @@
 export interface GroupRefreshRequest {
   expiry_hours?: number | null;
   max_downloads?: number | null;
+  title?: string | null;
+  description?: string | null;
 }
