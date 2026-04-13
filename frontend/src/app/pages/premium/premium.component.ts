@@ -19,8 +19,13 @@ export class PremiumComponent implements OnInit {
   loading = signal(true);
   error = signal<string | null>(null);
   processing = signal(false);
+  isAuthenticated = this.authService.isAuthenticated();
 
   ngOnInit(): void {
+    if (!this.isAuthenticated) {
+      this.loading.set(false);
+      return;
+    }
     this.authService.getMe().subscribe({
       error: () => {
         this.loading.set(false);

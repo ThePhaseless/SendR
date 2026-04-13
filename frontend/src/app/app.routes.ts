@@ -28,7 +28,6 @@ export const routes: Routes = [
     path: "dashboard",
   },
   {
-    canActivate: [authGuard],
     loadComponent: () =>
       import("./pages/premium/premium.component").then((m) => m.PremiumComponent),
     path: "premium",
