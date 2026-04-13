@@ -166,7 +166,7 @@
 }
 
 .upload-another {
-  @apply mt-2;
+  /* no extra margin — contained in flex gap */
 }
 
 .result-file-list {
@@ -236,6 +236,11 @@ app-upload-settings {
 
 .result-actions {
   @apply flex gap-2 justify-center flex-wrap;
+
+  .btn {
+    @apply flex-1;
+    min-width: 0;
+  }
 }
 
 .popup-overlay {
