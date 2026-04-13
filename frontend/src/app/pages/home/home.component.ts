@@ -88,6 +88,8 @@ export class HomeComponent {
   title = signal("");
   /** Transfer description. */
   description = signal("");
+  /** Whether upload settings have a validation error. */
+  settingsHasError = signal(false);
 
   altchaHintText = computed(() => {
     switch (this.altchaState()) {
@@ -194,6 +196,9 @@ export class HomeComponent {
       case "unverified":
         this.altchaVerified.set(false);
         this.altchaPayload = "";
+        break;
+      case "verifying":
+      case "code":
         break;
     }
   }
@@ -466,6 +471,32 @@ export class HomeComponent {
       return single.file_size_bytes;
     }
     return 0;
+  }
+
+  /** Password visibility toggles in post-upload view. */
+  postUploadPasswordVisibility: boolean[] = [];
+
+  togglePostPasswordVisibility(index: number): void {
+    this.postUploadPasswordVisibility[index] = !this.postUploadPasswordVisibility[index];
+  }
+
+  /** Get passwords that were submitted (non-empty). */
+  getSubmittedPasswords(): PasswordEntry[] {
+    return this.passwords().filter((p) => p.password);
+  }
+
+  /** Get emails that were submitted (non-empty). */
+  getSubmittedEmails(): string[] {
+    return this.emails().filter((e) => e.trim());
+  }
+
+  /** Get the title of the uploaded group/file. */
+  getResultTitle(): string {
+    const multi = this.uploadResult();
+    if (multi?.title) {
+      return multi.title;
+    }
+    return this.title();
   }
 
   resetUpload(): void {

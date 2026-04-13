@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './accessEditRequest';
 export * from './accessInfoResponse';
 export * from './adminUserListResponse';
 export * from './adminUserUpdateRequest';
@@ -32,6 +33,7 @@ export * from './hTTPValidationError';
 export * from './limitsResponse';
 export * from './listUsersApiAdminUsersGetParams';
 export * from './multiFileUploadResponse';
+export * from './passwordEntry';
 export * from './passwordInfo';
 export * from './quotaResponse';
 export * from './recipientDownloadEntry';

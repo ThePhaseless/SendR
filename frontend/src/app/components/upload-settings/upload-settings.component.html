@@ -54,9 +54,11 @@
         (ngModelChange)="onMaxDownloadsChange($event)"
         placeholder="Custom"
         [min]="1"
-        [max]="maxDownloadsLimit()"
       />
     </div>
+    @if (maxDownloadsExceedsLimit()) {
+      <p class="validation-warning">Maximum allowed is {{ maxDownloadsLimit() }} for your plan.</p>
+    }
   } @else {
     <select
       id="max-downloads"

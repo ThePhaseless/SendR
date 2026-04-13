@@ -30,6 +30,9 @@
                 } @else {
                   {{ group.files[0].original_filename }}
                 }
+                @if (panelTitle() && expandedGroupKey() === group.key) {
+                  <span class="group-title">{{ panelTitle() }}</span>
+                }
                 @if (isGroupExpired(group)) {
                   <span class="badge badge-expired">Expired</span>
                 }
@@ -197,35 +200,221 @@
                 />
               </div>
 
-              <!-- Download Activity -->
+              <!-- Access Control -->
               @if (group.uploadGroup) {
                 <div class="expanded-section">
-                  <h4>Download Activity</h4>
-                  @if (statsLoading()) {
-                    <p class="stats-loading">Loading stats...</p>
-                  } @else if (groupStats(); as stats) {
-                    @if (stats.stats.length === 0) {
-                      <p class="stats-empty">No downloads yet.</p>
-                    } @else {
-                      <div class="stats-table">
-                        <div class="stats-row stats-header">
-                          <span>Access</span>
-                          <span>Identifier</span>
-                          <span>Downloads</span>
-                          <span>Last</span>
+                  <h4>Access Control</h4>
+                  @if (accessLoading() && !accessInfo()) {
+                    <p class="stats-loading">Loading access info...</p>
+                  } @else if (accessInfo(); as access) {
+                    <!-- Links section -->
+                    <div class="access-links">
+                      @if (access.is_public) {
+                        <div class="link-card link-public">
+                          <div class="link-header">
+                            <span class="material-symbols-outlined">public</span>
+                            <span>Public Link</span>
+                          </div>
+                          <p class="link-hint">Anyone with this link can download</p>
                         </div>
-                        @for (entry of stats.stats; track entry.access_type + entry.identifier) {
-                          <div class="stats-row">
-                            <span class="stats-type">{{ entry.access_type }}</span>
-                            <span class="stats-id">{{ entry.identifier || "—" }}</span>
-                            <span>{{ entry.download_count }}</span>
-                            <span class="stats-date">{{
-                              entry.last_download ? (entry.last_download | date: "short") : "—"
-                            }}</span>
+                      }
+                      @if (access.passwords.length > 0 || access.emails.length > 0) {
+                        <div class="link-card link-restricted">
+                          <div class="link-header">
+                            <span class="material-symbols-outlined">lock</span>
+                            <span>Restricted Access</span>
+                          </div>
+                          <p class="link-hint">
+                            @if (access.passwords.length > 0 && access.emails.length > 0) {
+                              {{ access.passwords.length }} password(s) and
+                              {{ access.emails.length }} email invite(s)
+                            } @else if (access.passwords.length > 0) {
+                              {{ access.passwords.length }} password(s) configured
+                            } @else {
+                              {{ access.emails.length }} email invite(s) sent
+                            }
+                          </p>
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Public toggle -->
+                    <div class="access-row">
+                      <div class="access-row-info">
+                        <span class="material-symbols-outlined">link</span>
+                        <span>Public link</span>
+                      </div>
+                      <label class="switch">
+                        <input
+                          type="checkbox"
+                          [checked]="access.is_public"
+                          (change)="togglePublic(group.uploadGroup!, !access.is_public)"
+                          [disabled]="accessLoading()"
+                        />
+                        <span class="switch-slider"></span>
+                      </label>
+                    </div>
+
+                    <!-- Passwords list -->
+                    <div class="access-subsection">
+                      <h5>Passwords</h5>
+                      @if (access.passwords.length === 0) {
+                        <p class="access-empty">No passwords configured</p>
+                      } @else {
+                        @for (pw of access.passwords; track pw.id) {
+                          <div class="access-entry">
+                            <span class="access-entry-label">{{ pw.label }}</span>
+                            <span class="access-entry-value">•••••••</span>
+                            <button
+                              class="btn-file-action btn-file-remove"
+                              (click)="removePassword(group.uploadGroup!, pw.id)"
+                              title="Remove password"
+                              [disabled]="accessLoading()"
+                            >
+                              <span class="material-symbols-outlined" style="font-size: 16px"
+                                >close</span
+                              >
+                            </button>
                           </div>
                         }
+                      }
+                      <div class="access-add-row">
+                        <input
+                          type="text"
+                          class="form-input form-input-sm"
+                          placeholder="Label"
+                          [ngModel]="newPasswordLabel()"
+                          (ngModelChange)="newPasswordLabel.set($event)"
+                        />
+                        <input
+                          type="password"
+                          class="form-input form-input-sm"
+                          placeholder="Password"
+                          [ngModel]="newPasswordValue()"
+                          (ngModelChange)="newPasswordValue.set($event)"
+                          (keydown.enter)="addPassword(group.uploadGroup!)"
+                        />
+                        <button
+                          class="btn btn-secondary btn-sm"
+                          (click)="addPassword(group.uploadGroup!)"
+                          [disabled]="!newPasswordValue() || accessLoading()"
+                        >
+                          Add
+                        </button>
                       </div>
-                      <p class="stats-total">Total: {{ stats.total_downloads }} downloads</p>
+                    </div>
+
+                    <!-- Emails list -->
+                    <div class="access-subsection">
+                      <h5>Email Invites</h5>
+                      @if (access.emails.length === 0) {
+                        <p class="access-empty">No email invites</p>
+                      } @else {
+                        @for (er of access.emails; track er.id) {
+                          <div class="access-entry">
+                            <span class="access-entry-label">{{ er.email }}</span>
+                            @if (er.notified) {
+                              <span class="badge badge-notified">sent</span>
+                            } @else {
+                              <span class="badge badge-pending">pending</span>
+                            }
+                            <button
+                              class="btn-file-action btn-file-remove"
+                              (click)="removeEmail(group.uploadGroup!, er.id)"
+                              title="Remove email"
+                              [disabled]="accessLoading()"
+                            >
+                              <span class="material-symbols-outlined" style="font-size: 16px"
+                                >close</span
+                              >
+                            </button>
+                          </div>
+                        }
+                      }
+                      <div class="access-add-row">
+                        <input
+                          type="email"
+                          class="form-input form-input-sm"
+                          placeholder="email@example.com"
+                          [ngModel]="newEmail()"
+                          (ngModelChange)="newEmail.set($event)"
+                          (keydown.enter)="addEmail(group.uploadGroup!)"
+                        />
+                        <button
+                          class="btn btn-secondary btn-sm"
+                          (click)="addEmail(group.uploadGroup!)"
+                          [disabled]="!newEmail() || accessLoading()"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Show email stats toggle -->
+                    @if (access.emails.length > 0) {
+                      <div class="access-row">
+                        <div class="access-row-info">
+                          <span class="material-symbols-outlined">visibility</span>
+                          <span>Let recipients see download activity</span>
+                        </div>
+                        <label class="switch">
+                          <input
+                            type="checkbox"
+                            [checked]="access.show_email_stats"
+                            (change)="
+                              toggleShowEmailStats(group.uploadGroup!, !access.show_email_stats)
+                            "
+                            [disabled]="accessLoading()"
+                          />
+                          <span class="switch-slider"></span>
+                        </label>
+                      </div>
+                    }
+                  }
+                </div>
+              }
+
+              <!-- Download Activity (collapsible) -->
+              @if (group.uploadGroup) {
+                <div class="expanded-section">
+                  <button type="button" class="accordion-header" (click)="toggleStatsExpanded()">
+                    <h4 style="margin: 0">
+                      Download Activity
+                      @if (groupStats(); as stats) {
+                        <span class="badge-count">{{ stats.total_downloads }}</span>
+                      }
+                    </h4>
+                    <span class="accordion-arrow" [class.open]="statsExpanded()">
+                      <span class="material-symbols-outlined">chevron_right</span>
+                    </span>
+                  </button>
+                  @if (statsExpanded()) {
+                    @if (statsLoading()) {
+                      <p class="stats-loading">Loading stats...</p>
+                    } @else if (groupStats(); as stats) {
+                      @if (stats.stats.length === 0) {
+                        <p class="stats-empty">No downloads yet.</p>
+                      } @else {
+                        <div class="stats-table">
+                          <div class="stats-row stats-header">
+                            <span>Access</span>
+                            <span>Identifier</span>
+                            <span>Downloads</span>
+                            <span>Last</span>
+                          </div>
+                          @for (entry of stats.stats; track entry.access_type + entry.identifier) {
+                            <div class="stats-row">
+                              <span class="stats-type">{{ entry.access_type }}</span>
+                              <span class="stats-id">{{ entry.identifier || "—" }}</span>
+                              <span>{{ entry.download_count }}</span>
+                              <span class="stats-date">{{
+                                entry.last_download ? (entry.last_download | date: "short") : "—"
+                              }}</span>
+                            </div>
+                          }
+                        </div>
+                        <p class="stats-total">Total: {{ stats.total_downloads }} downloads</p>
+                      }
                     }
                   }
                 </div>

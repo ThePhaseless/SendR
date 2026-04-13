@@ -384,3 +384,163 @@ async def test_quota_includes_access_limits(free_headers):
     # Free tier should have limits > 0 for passwords
     assert data["max_passwords_per_upload"] == 3
     assert data["max_emails_per_upload"] == 5
+
+
+# ── Access edit endpoint ─────────────────────────────────────────────
+
+
+async def _upload_with_access(client, headers, *, is_public=True, passwords=None, emails=None):
+    """Helper: upload a file with access settings and return upload_group."""
+    data = {"altcha": json.dumps({"mock": True}), "is_public": str(is_public).lower()}
+    if passwords:
+        data["passwords"] = json.dumps(passwords)
+    if emails:
+        data["emails"] = json.dumps(emails)
+    resp = await client.post(
+        "/api/files/upload",
+        files=[("file", ("edit.txt", b"data", "text/plain"))],
+        data=data,
+        headers=headers,
+    )
+    assert resp.status_code == 201
+    return resp.json()["upload_group"]
+
+
+@pytest.mark.asyncio
+async def test_edit_access_toggle_public(free_headers):
+    """Can toggle is_public on an existing group."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        group = await _upload_with_access(
+            client, free_headers, is_public=True, passwords=[{"label": "A", "password": "pw1"}]
+        )
+
+        # Set to not public
+        resp = await client.patch(
+            f"/api/files/group/{group}/access",
+            json={"is_public": False},
+            headers=free_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["is_public"] is False
+
+        # Verify via access-info
+        info = await client.get(f"/api/files/group/{group}/access-info", headers=free_headers)
+        assert info.json()["is_public"] is False
+
+
+@pytest.mark.asyncio
+async def test_edit_access_add_password(free_headers):
+    """Can add a new password to an existing group."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        group = await _upload_with_access(client, free_headers, is_public=False)
+
+        resp = await client.patch(
+            f"/api/files/group/{group}/access",
+            json={"passwords_to_add": [{"label": "New", "password": "newpass"}]},
+            headers=free_headers,
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()["passwords"]) == 1
+        assert resp.json()["passwords"][0]["label"] == "New"
+
+
+@pytest.mark.asyncio
+async def test_edit_access_remove_password(free_headers):
+    """Can remove a password from an existing group."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        group = await _upload_with_access(client, free_headers, passwords=[{"label": "X", "password": "xpw"}])
+
+        # Get the password ID
+        info = await client.get(f"/api/files/group/{group}/access-info", headers=free_headers)
+        pw_id = info.json()["passwords"][0]["id"]
+
+        # Remove it
+        resp = await client.patch(
+            f"/api/files/group/{group}/access",
+            json={"password_ids_to_remove": [pw_id]},
+            headers=free_headers,
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()["passwords"]) == 0
+
+
+@pytest.mark.asyncio
+async def test_edit_access_add_email(free_headers):
+    """Can add email recipients to an existing group."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        group = await _upload_with_access(client, free_headers, is_public=False)
+
+        resp = await client.patch(
+            f"/api/files/group/{group}/access",
+            json={"emails_to_add": ["new@example.com"]},
+            headers=free_headers,
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()["emails"]) == 1
+        assert resp.json()["emails"][0]["email"] == "new@example.com"
+
+
+@pytest.mark.asyncio
+async def test_edit_access_remove_email(free_headers):
+    """Can remove email recipients from an existing group."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        group = await _upload_with_access(client, free_headers, emails=["old@example.com"])
+
+        info = await client.get(f"/api/files/group/{group}/access-info", headers=free_headers)
+        email_id = info.json()["emails"][0]["id"]
+
+        resp = await client.patch(
+            f"/api/files/group/{group}/access",
+            json={"email_ids_to_remove": [email_id]},
+            headers=free_headers,
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()["emails"]) == 0
+
+
+@pytest.mark.asyncio
+async def test_edit_access_exceeds_password_limit(free_headers):
+    """Adding passwords beyond tier limit should fail."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        group = await _upload_with_access(
+            client,
+            free_headers,
+            passwords=[{"label": f"pw{i}", "password": f"p{i}"} for i in range(3)],
+        )
+
+        # Free tier limit is 3, already at 3, adding 1 more should fail
+        resp = await client.patch(
+            f"/api/files/group/{group}/access",
+            json={"passwords_to_add": [{"label": "Extra", "password": "extra"}]},
+            headers=free_headers,
+        )
+        assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_edit_access_unauthorized(free_headers, temp_headers):
+    """Non-owner cannot edit access control."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        group = await _upload_with_access(client, free_headers)
+
+        resp = await client.patch(
+            f"/api/files/group/{group}/access",
+            json={"is_public": False},
+            headers=temp_headers,
+        )
+        assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_edit_access_toggle_show_email_stats(free_headers):
+    """Can toggle show_email_stats."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        group = await _upload_with_access(client, free_headers)
+
+        resp = await client.patch(
+            f"/api/files/group/{group}/access",
+            json={"show_email_stats": True},
+            headers=free_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["show_email_stats"] is True

@@ -5,6 +5,7 @@ import type { Observable } from "rxjs";
 import { environment } from "../../environments/environment";
 import { FilesService as ApiFilesService } from "../api/endpoints/files/files.service";
 import type {
+  AccessEditRequest,
   AccessInfoResponse,
   DownloadStatsResponse,
   FileEditRequest,
@@ -18,6 +19,7 @@ import type {
 } from "../api/model";
 
 export type {
+  AccessEditRequest,
   AccessInfoResponse,
   DownloadStatsResponse,
   FileEditRequest,
@@ -160,6 +162,10 @@ export class FileService {
 
   getAccessInfo(uploadGroup: string): Observable<AccessInfoResponse> {
     return this.api.getAccessInfoApiFilesGroupUploadGroupAccessInfoGet(uploadGroup);
+  }
+
+  editAccess(uploadGroup: string, body: AccessEditRequest): Observable<AccessInfoResponse> {
+    return this.api.editAccessApiFilesGroupUploadGroupAccessPatch(uploadGroup, body);
   }
 
   getGroupStats(uploadGroup: string): Observable<DownloadStatsResponse> {

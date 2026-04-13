@@ -1,3 +1,4 @@
+@use "../../styles/mixins";
 @reference "tailwindcss";
 
 .home {
@@ -240,6 +241,67 @@ app-upload-settings {
   .btn {
     @apply flex-1;
     min-width: 0;
+  }
+}
+
+// Post-upload access info
+.result-access-section {
+  @apply flex flex-col gap-3 w-full mb-4;
+}
+
+.result-access-card {
+  @apply rounded-lg p-3;
+  border: 1px solid var(--color-border);
+  background: var(--color-card-bg);
+
+  .result-access-header {
+    @apply flex items-center gap-1.5 text-sm font-semibold mb-2;
+  }
+
+  &.result-public .result-access-header {
+    color: var(--color-primary);
+  }
+
+  &.result-restricted .result-access-header {
+    color: var(--color-text);
+  }
+}
+
+.result-access-list {
+  @apply mt-2;
+
+  h5 {
+    @apply text-xs font-semibold uppercase tracking-wide mb-1;
+    color: var(--color-text-secondary);
+  }
+}
+
+.result-access-entry {
+  @apply flex items-center gap-2 text-sm py-1 px-2 rounded;
+
+  .result-access-label {
+    @apply flex-1 min-w-0;
+    @include mixins.text-truncate;
+  }
+
+  .result-access-value {
+    @apply shrink-0 text-xs;
+    color: var(--color-text-secondary);
+    letter-spacing: 2px;
+  }
+
+  .btn-toggle-vis {
+    @apply shrink-0 border-none cursor-pointer p-0;
+    background: none;
+    color: var(--color-text-secondary);
+
+    .material-symbols-outlined {
+      font-size: 1rem;
+    }
+
+    &:hover {
+      color: var(--color-text);
+    }
   }
 }
 

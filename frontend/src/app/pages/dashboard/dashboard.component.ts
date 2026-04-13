@@ -6,7 +6,12 @@ import type { UploadFileEntry } from "../../components/file-picker/file-picker.c
 import { FilePickerComponent } from "../../components/file-picker/file-picker.component";
 import { UploadSettingsComponent } from "../../components/upload-settings/upload-settings.component";
 import { AuthService } from "../../services/auth.service";
-import type { DownloadStatsResponse, FileUploadResponse } from "../../services/file.service";
+import type {
+  AccessEditRequest,
+  AccessInfoResponse,
+  DownloadStatsResponse,
+  FileUploadResponse,
+} from "../../services/file.service";
 import { FileService } from "../../services/file.service";
 import { extractDownloadToken, formatFileSize, isExpired } from "../../utils/file.utils";
 import { resolveAppUrl } from "../../utils/url.utils";
@@ -44,6 +49,14 @@ export class DashboardComponent implements OnInit {
   // Download stats for the expanded group
   groupStats = signal<DownloadStatsResponse | null>(null);
   statsLoading = signal(false);
+  statsExpanded = signal(false);
+
+  // Access control for the expanded group
+  accessInfo = signal<AccessInfoResponse | null>(null);
+  accessLoading = signal(false);
+  newPasswordLabel = signal("");
+  newPasswordValue = signal("");
+  newEmail = signal("");
 
   // Staged new files for the expanded group
   newFiles = signal<UploadFileEntry[]>([]);
@@ -205,10 +218,17 @@ export class DashboardComponent implements OnInit {
       this.expandedGroupKey.set(null);
       this.newFiles.set([]);
       this.groupStats.set(null);
+      this.accessInfo.set(null);
+      this.statsExpanded.set(false);
     } else {
       this.expandedGroupKey.set(groupKey);
       this.newFiles.set([]);
       this.groupStats.set(null);
+      this.accessInfo.set(null);
+      this.statsExpanded.set(false);
+      this.newPasswordLabel.set("");
+      this.newPasswordValue.set("");
+      this.newEmail.set("");
       // Pre-populate panel settings from the group
       const group = this.uploadGroups().find((g) => g.key === groupKey);
       if (group) {
@@ -224,6 +244,7 @@ export class DashboardComponent implements OnInit {
         if (group.uploadGroup) {
           this.loadGroupStats(group.uploadGroup);
           this.loadGroupInfo(group.uploadGroup);
+          this.loadAccessInfo(group.uploadGroup);
         }
       }
     }
@@ -423,7 +444,9 @@ export class DashboardComponent implements OnInit {
   private loadGroupStats(uploadGroup: string): void {
     this.statsLoading.set(true);
     this.fileService.getGroupStats(uploadGroup).subscribe({
-      error: () => this.statsLoading.set(false),
+      error: () => {
+        this.statsLoading.set(false);
+      },
       next: (stats) => {
         this.groupStats.set(stats);
         this.statsLoading.set(false);
@@ -438,6 +461,89 @@ export class DashboardComponent implements OnInit {
         this.panelDescription.set(info.description ?? "");
       },
     });
+  }
+
+  private loadAccessInfo(uploadGroup: string): void {
+    this.accessLoading.set(true);
+    this.fileService.getAccessInfo(uploadGroup).subscribe({
+      error: () => {
+        this.accessLoading.set(false);
+      },
+      next: (info) => {
+        this.accessInfo.set(info);
+        this.accessLoading.set(false);
+      },
+    });
+  }
+
+  toggleStatsExpanded(): void {
+    this.statsExpanded.update((v) => !v);
+  }
+
+  editAccess(uploadGroup: string, body: AccessEditRequest): void {
+    this.accessLoading.set(true);
+    this.fileService.editAccess(uploadGroup, body).subscribe({
+      error: () => {
+        this.error.set("Failed to update access control.");
+        this.accessLoading.set(false);
+      },
+      next: (info) => {
+        this.accessInfo.set(info);
+        this.accessLoading.set(false);
+        // Update file list badges
+        this.files.update((files) =>
+          files.map((f) => {
+            if (f.upload_group === uploadGroup) {
+              return {
+                ...f,
+                is_public: info.is_public,
+                has_passwords: info.passwords.length > 0,
+                has_email_recipients: info.emails.length > 0,
+              };
+            }
+            return f;
+          }),
+        );
+      },
+    });
+  }
+
+  addPassword(uploadGroup: string): void {
+    const label = this.newPasswordLabel().trim();
+    const password = this.newPasswordValue().trim();
+    if (!password) {
+      return;
+    }
+    this.editAccess(uploadGroup, {
+      passwords_to_add: [{ label: label || "Password", password }],
+    });
+    this.newPasswordLabel.set("");
+    this.newPasswordValue.set("");
+  }
+
+  removePassword(uploadGroup: string, passwordId: number): void {
+    this.editAccess(uploadGroup, { password_ids_to_remove: [passwordId] });
+  }
+
+  addEmail(uploadGroup: string): void {
+    const email = this.newEmail().trim().toLowerCase();
+    if (!email) {
+      return;
+    }
+    this.editAccess(uploadGroup, { emails_to_add: [email] });
+    this.newEmail.set("");
+  }
+
+  removeEmail(uploadGroup: string, emailId: number): void {
+    this.editAccess(uploadGroup, { email_ids_to_remove: [emailId] });
+  }
+
+  togglePublic(uploadGroup: string, isPublic: boolean): void {
+    this.editAccess(uploadGroup, { is_public: isPublic });
+  }
+
+  toggleShowEmailStats(uploadGroup: string, show: boolean): void {
+    this.editAccess(uploadGroup, { show_email_stats: show });
   }
 
   formatSize(bytes: number): string {

@@ -247,6 +247,180 @@
   color: var(--color-text-secondary);
 }
 
+// Group title
+.group-title {
+  @apply text-sm font-normal;
+  color: var(--color-text-secondary);
+}
+
+// Access control section
+.access-links {
+  @apply flex gap-2 mb-3;
+  flex-wrap: wrap;
+}
+
+.link-card {
+  @apply flex-1 min-w-[140px] rounded-lg p-3;
+  border: 1px solid var(--color-border);
+  background: var(--color-card-bg);
+
+  .link-header {
+    @apply flex items-center gap-1.5 text-sm font-semibold mb-0.5;
+  }
+
+  .link-hint {
+    @apply text-xs m-0;
+    color: var(--color-text-secondary);
+  }
+
+  &.link-public .link-header {
+    color: var(--color-primary);
+  }
+
+  &.link-restricted .link-header {
+    color: var(--color-text);
+  }
+}
+
+.access-row {
+  @apply flex items-center justify-between py-2;
+
+  .access-row-info {
+    @apply flex items-center gap-2 text-sm;
+  }
+}
+
+.access-subsection {
+  @apply mt-3 pt-2;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+
+  h5 {
+    @apply text-xs font-semibold uppercase tracking-wide mb-1.5;
+    color: var(--color-text-secondary);
+  }
+}
+
+.access-empty {
+  @apply text-sm;
+  color: var(--color-text-secondary);
+}
+
+.access-entry {
+  @apply flex items-center gap-2 text-sm py-1 px-2 rounded;
+
+  &:hover {
+    background: var(--color-card-bg);
+  }
+
+  .access-entry-label {
+    @apply flex-1 min-w-0;
+    @include mixins.text-truncate;
+  }
+
+  .access-entry-value {
+    @apply shrink-0 text-xs;
+    color: var(--color-text-secondary);
+    letter-spacing: 2px;
+  }
+}
+
+.access-add-row {
+  @apply flex gap-1.5 mt-1.5;
+
+  .form-input-sm {
+    @apply flex-1 min-w-0;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.8125rem;
+  }
+}
+
+.badge-notified {
+  @apply text-[0.625rem];
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+}
+
+.badge-pending {
+  @apply text-[0.625rem];
+  background: color-mix(in srgb, var(--color-text-secondary) 15%, transparent);
+  color: var(--color-text-secondary);
+}
+
+.badge-count {
+  @apply inline-flex items-center justify-center text-[0.6875rem] font-bold rounded-full ml-1;
+  background: var(--color-primary);
+  color: white;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+}
+
+// Accordion header for collapsible sections
+.accordion-header {
+  @apply flex items-center justify-between w-full border-0 cursor-pointer text-left p-0 mb-2;
+  background: none;
+  color: var(--color-text);
+
+  h4 {
+    @apply text-xs font-semibold uppercase tracking-wide flex items-center gap-1;
+    color: var(--color-text-secondary);
+  }
+}
+
+.accordion-arrow {
+  transition: transform 0.2s ease;
+  display: flex;
+
+  &.open {
+    transform: rotate(90deg);
+  }
+
+  .material-symbols-outlined {
+    font-size: 1.125rem;
+    color: var(--color-text-secondary);
+  }
+}
+
+// Switch toggle (same as upload-settings)
+.switch {
+  @apply relative inline-block shrink-0;
+  width: 2.75rem;
+  height: 1.5rem;
+
+  input {
+    @apply opacity-0 w-0 h-0;
+  }
+
+  input:checked + .switch-slider {
+    background: var(--color-primary);
+  }
+
+  input:checked + .switch-slider::before {
+    transform: translateX(1.25rem);
+  }
+
+  input:disabled + .switch-slider {
+    @apply opacity-40 cursor-not-allowed;
+  }
+}
+
+.switch-slider {
+  @apply absolute inset-0 cursor-pointer rounded-full;
+  background: var(--color-border);
+  transition: 0.2s;
+
+  &::before {
+    content: "";
+    @apply absolute rounded-full;
+    height: 1.125rem;
+    width: 1.125rem;
+    left: 0.1875rem;
+    bottom: 0.1875rem;
+    background: white;
+    transition: 0.2s;
+  }
+}
+
 .popup-overlay {
   @apply fixed inset-0 z-50 flex items-center justify-center;
   background: rgb(0 0 0 / 50%);

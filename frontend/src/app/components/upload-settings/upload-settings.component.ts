@@ -1,4 +1,4 @@
-import { Component, computed, effect, input, model } from "@angular/core";
+import { Component, computed, effect, input, model, output } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 
 export interface ExpiryOption {
@@ -66,6 +66,9 @@ export class UploadSettingsComponent {
   /** Track password visibility per entry. */
   passwordVisibility: boolean[] = [];
 
+  /** Emits whether the settings have a validation error. */
+  hasError = output<boolean>();
+
   constructor() {
     effect(() => {
       const options = this.expiryOptions();
@@ -78,6 +81,10 @@ export class UploadSettingsComponent {
       if (!this.canDisablePublic()) {
         this.isPublic.set(true);
       }
+    });
+    // Emit validation error state
+    effect(() => {
+      this.hasError.emit(this.maxDownloadsExceedsLimit());
     });
   }
 
@@ -163,13 +170,21 @@ export class UploadSettingsComponent {
     return this.passwordCount() > 0 || this.emailCount() > 0;
   });
 
+  /** Whether max downloads exceeds the tier limit. */
+  maxDownloadsExceedsLimit = computed(() => {
+    const val = this.maxDownloads();
+    if (val <= 0) {
+      return false;
+    }
+    return val > this.maxDownloadsLimit();
+  });
+
   onMaxDownloadsChange(value: number | null): void {
     if (value === null || value <= 0) {
       this.maxDownloads.set(0);
       return;
     }
-    const limit = this.maxDownloadsLimit();
-    this.maxDownloads.set(Math.min(value, limit));
+    this.maxDownloads.set(value);
   }
 
   togglePasswordsExpanded(): void {

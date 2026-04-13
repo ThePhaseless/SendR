@@ -33,6 +33,7 @@ from models import (
 )
 from routers.altcha import verify_altcha_payload
 from schemas import (
+    AccessEditRequest,
     AccessInfoResponse,
     DownloadStatEntry,
     DownloadStatsResponse,
@@ -1125,6 +1126,156 @@ async def get_access_info(
         passwords=[PasswordInfo(id=pw.id, label=pw.label) for pw in passwords],
         emails=[EmailRecipientInfo(id=er.id, email=er.email, notified=er.notified) for er in email_recipients],
         show_email_stats=group_settings.show_email_stats if group_settings else False,
+    )
+
+
+@router.patch("/group/{upload_group}/access")
+async def edit_access(
+    upload_group: str,
+    body: AccessEditRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> AccessInfoResponse:
+    """Edit access control for an upload group. Owner only."""
+    # Verify ownership
+    stmt = select(FileUpload).where(
+        FileUpload.upload_group == upload_group,
+        FileUpload.user_id == user.id,
+    )
+    result = await session.execute(stmt)
+    if not result.scalars().first():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload group not found")
+
+    group_settings, passwords, email_recipients = await _load_group_access(session, upload_group)
+    if not group_settings:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group settings not found")
+
+    # Update is_public
+    if body.is_public is not None:
+        group_settings.is_public = body.is_public
+
+    # Update show_email_stats
+    if body.show_email_stats is not None:
+        group_settings.show_email_stats = body.show_email_stats
+
+    session.add(group_settings)
+
+    # Remove passwords by ID
+    if body.password_ids_to_remove:
+        existing_ids = {pw.id for pw in passwords}
+        for pw_id in body.password_ids_to_remove:
+            if pw_id not in existing_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Password with id {pw_id} not found in this group",
+                )
+            pw_stmt = select(UploadPassword).where(UploadPassword.id == pw_id)
+            pw_result = await session.execute(pw_stmt)
+            pw_obj = pw_result.scalars().first()
+            if pw_obj:
+                await session.delete(pw_obj)
+
+    # Add new passwords
+    if body.passwords_to_add:
+        current_count = len(passwords) - len(body.password_ids_to_remove or [])
+        pw_limit = _get_password_limit(user.tier)
+        new_total = current_count + len(body.passwords_to_add)
+        if pw_limit > 0 and new_total > pw_limit:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Too many passwords. Max {pw_limit} for {user.tier.value} tier.",
+            )
+        for pw_entry in body.passwords_to_add:
+            label = pw_entry.label.strip()[:100] or "Password"
+            if not pw_entry.password:
+                continue
+            session.add(
+                UploadPassword(
+                    upload_group=upload_group,
+                    label=label,
+                    password_hash=pbkdf2_sha256.hash(pw_entry.password),
+                )
+            )
+
+    # Remove emails by ID
+    if body.email_ids_to_remove:
+        existing_ids = {er.id for er in email_recipients}
+        for er_id in body.email_ids_to_remove:
+            if er_id not in existing_ids:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Email recipient with id {er_id} not found in this group",
+                )
+            er_stmt = select(UploadEmailRecipient).where(UploadEmailRecipient.id == er_id)
+            er_result = await session.execute(er_stmt)
+            er_obj = er_result.scalars().first()
+            if er_obj:
+                await session.delete(er_obj)
+
+    # Add new emails
+    email_tokens: list[tuple[str, str]] = []
+    if body.emails_to_add:
+        if user.tier == UserTier.temporary:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Create a free account to use email invites.",
+            )
+        current_count = len(email_recipients) - len(body.email_ids_to_remove or [])
+        email_limit = _get_email_limit(user.tier)
+        new_total = current_count + len(body.emails_to_add)
+        if email_limit > 0 and new_total > email_limit:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Too many email invites. Max {email_limit} for {user.tier.value} tier.",
+            )
+        for email_addr in body.emails_to_add:
+            email_str = email_addr.strip().lower()
+            if not _EMAIL_RE.match(email_str):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid email address: {email_str}",
+                )
+            raw_token = secrets.token_urlsafe(32)
+            token_hash = sha256(raw_token.encode()).hexdigest()
+            session.add(
+                UploadEmailRecipient(
+                    upload_group=upload_group,
+                    email=email_str,
+                    token_hash=token_hash,
+                )
+            )
+            email_tokens.append((email_str, raw_token))
+
+    await session.commit()
+
+    # Send email invites for newly added emails
+    if email_tokens:
+        any_file_stmt = select(FileUpload).where(
+            FileUpload.upload_group == upload_group,
+            FileUpload.is_active.is_(True),
+        )
+        any_file_result = await session.execute(any_file_stmt)
+        any_file = any_file_result.scalars().first()
+        if any_file:
+            for email_str, raw_token in email_tokens:
+                try:
+                    await send_file_invite_email(
+                        to_email=email_str,
+                        upload_group=upload_group,
+                        token=raw_token,
+                        sender_email=user.email,
+                    )
+                except Exception:
+                    logger.exception("Failed to send invite to %s", email_str)
+
+    # Reload for response
+    _, updated_passwords, updated_emails = await _load_group_access(session, upload_group)
+
+    return AccessInfoResponse(
+        is_public=group_settings.is_public,
+        passwords=[PasswordInfo(id=pw.id, label=pw.label) for pw in updated_passwords],
+        emails=[EmailRecipientInfo(id=er.id, email=er.email, notified=er.notified) for er in updated_emails],
+        show_email_stats=group_settings.show_email_stats,
     )
 
 

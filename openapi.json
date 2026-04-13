@@ -1071,6 +1071,64 @@
         }
       }
     },
+    "/api/files/group/{upload_group}/access": {
+      "patch": {
+        "tags": [
+          "files"
+        ],
+        "summary": "Edit Access",
+        "description": "Edit access control for an upload group. Owner only.",
+        "operationId": "edit_access_api_files_group__upload_group__access_patch",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "upload_group",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Upload Group"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccessEditRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessInfoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/files/group/{upload_group}/stats": {
       "get": {
         "tags": [
@@ -1303,6 +1361,90 @@
   },
   "components": {
     "schemas": {
+      "AccessEditRequest": {
+        "properties": {
+          "is_public": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Public"
+          },
+          "show_email_stats": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Show Email Stats"
+          },
+          "passwords_to_add": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PasswordEntry"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passwords To Add"
+          },
+          "password_ids_to_remove": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password Ids To Remove"
+          },
+          "emails_to_add": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emails To Add"
+          },
+          "email_ids_to_remove": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Ids To Remove"
+          }
+        },
+        "type": "object",
+        "title": "AccessEditRequest"
+      },
       "AccessInfoResponse": {
         "properties": {
           "is_public": {
@@ -2084,6 +2226,24 @@
           "total_size_bytes"
         ],
         "title": "MultiFileUploadResponse"
+      },
+      "PasswordEntry": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "password"
+        ],
+        "title": "PasswordEntry"
       },
       "PasswordInfo": {
         "properties": {

@@ -163,6 +163,20 @@ class EmailRecipientInfo(SQLModel):
     notified: bool
 
 
+class PasswordEntry(SQLModel):
+    label: str
+    password: str
+
+
+class AccessEditRequest(SQLModel):
+    is_public: bool | None = None
+    show_email_stats: bool | None = None
+    passwords_to_add: list[PasswordEntry] | None = None
+    password_ids_to_remove: list[int] | None = None
+    emails_to_add: list[str] | None = None
+    email_ids_to_remove: list[int] | None = None
+
+
 class AccessInfoResponse(SQLModel):
     is_public: bool
     passwords: list[PasswordInfo]

@@ -75,6 +75,11 @@ h3 {
   }
 }
 
+.validation-warning {
+  @apply text-xs mt-1;
+  color: var(--color-warning, #e6a700);
+}
+
 .toggle-checkbox {
   @apply w-4 h-4 cursor-pointer;
   accent-color: var(--color-primary);

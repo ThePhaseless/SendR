@@ -26,6 +26,7 @@ import {
 } from 'rxjs';
 
 import type {
+  AccessEditRequest,
   AccessInfoResponse,
   BodyAddFilesToGroupApiFilesGroupUploadGroupAddPost,
   BodyUploadFileApiFilesUploadPost,
@@ -715,6 +716,47 @@ bodyAddFilesToGroupApiFilesGroupUploadGroupAddPost.files.forEach(value => formDa
 
     return this.http.get<TData>(
       `/api/files/group/${uploadGroup}/access-info`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+/**
+ * Edit access control for an upload group. Owner only.
+ * @summary Edit Access
+ */
+ editAccessApiFilesGroupUploadGroupAccessPatch<TData = AccessInfoResponse>(uploadGroup: string,
+    accessEditRequest: AccessEditRequest, options?: HttpClientBodyOptions): Observable<TData>;
+ editAccessApiFilesGroupUploadGroupAccessPatch<TData = AccessInfoResponse>(uploadGroup: string,
+    accessEditRequest: AccessEditRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ editAccessApiFilesGroupUploadGroupAccessPatch<TData = AccessInfoResponse>(uploadGroup: string,
+    accessEditRequest: AccessEditRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  editAccessApiFilesGroupUploadGroupAccessPatch<TData = AccessInfoResponse>(
+    uploadGroup: string,
+    accessEditRequest: AccessEditRequest, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.patch<TData>(
+      `/api/files/group/${uploadGroup}/access`,
+      accessEditRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.patch<TData>(
+      `/api/files/group/${uploadGroup}/access`,
+      accessEditRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.patch<TData>(
+      `/api/files/group/${uploadGroup}/access`,
+      accessEditRequest,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }
