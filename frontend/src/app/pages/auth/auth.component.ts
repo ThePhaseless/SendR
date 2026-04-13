@@ -41,8 +41,14 @@ export class AuthComponent {
   error = signal<string | null>(null);
   message = signal<string | null>(null);
 
+  private static readonly EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
   requestCode(): void {
     if (!this.email) {
+      return;
+    }
+    if (!AuthComponent.EMAIL_PATTERN.test(this.email)) {
+      this.error.set("Please enter a valid email address.");
       return;
     }
     this.loading.set(true);
@@ -70,6 +76,7 @@ export class AuthComponent {
 
     this.authService.verifyCode(this.email, this.code, this.isRegister).subscribe({
       error: (err) => {
+        this.message.set(null);
         this.error.set(this.getErrorDetail(err, "Invalid code."));
         this.loading.set(false);
       },
