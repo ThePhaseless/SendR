@@ -122,6 +122,14 @@ export class UploadSettingsComponent {
     return t === "free" || t === "premium";
   });
 
+  /** Available max download options for the select (temporary tier). */
+  maxDownloadsOptions = computed<{ value: number; label: string }[]>(() => {
+    return [
+      { label: "Unlimited", value: 0 },
+      { label: "1", value: 1 },
+    ];
+  });
+
   /** Whether user can add more passwords. */
   canAddPassword = computed(() => {
     const limit = this.maxPasswordsPerUpload();

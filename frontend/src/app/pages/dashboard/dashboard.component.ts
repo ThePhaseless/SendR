@@ -37,8 +37,9 @@ export class DashboardComponent implements OnInit {
   userTier = signal("temporary");
 
   // Unified panel settings (bound to upload-settings component)
-  panelExpiryHours = signal(168);
-  panelMaxDownloads = signal(0);  panelTitle = signal("");
+  panelExpiryHours = signal(72);
+  panelMaxDownloads = signal(0);
+  panelTitle = signal("");
   panelDescription = signal("");
   // Download stats for the expanded group
   groupStats = signal<DownloadStatsResponse | null>(null);
@@ -152,7 +153,7 @@ export class DashboardComponent implements OnInit {
   }
 
   canSave(): boolean {
-    return this.userTier() === "premium";
+    return this.userTier() !== "temporary";
   }
 
   hasUnsavedFiles(): boolean {
@@ -216,7 +217,8 @@ export class DashboardComponent implements OnInit {
           1,
           Math.ceil((new Date(ref.expires_at).getTime() - Date.now()) / (1000 * 60 * 60)),
         );
-        this.panelExpiryHours.set(hoursLeft > 0 ? hoursLeft : 168);
+        // Snap to nearest valid expiry option so the select shows a valid value
+        this.panelExpiryHours.set(this.snapToNearestExpiry(hoursLeft));
         this.panelMaxDownloads.set(ref.max_downloads ?? 0);
         // Load download stats and group info (for title/description)
         if (group.uploadGroup) {
@@ -444,5 +446,21 @@ export class DashboardComponent implements OnInit {
 
   isExpired(expiresAt: string): boolean {
     return isExpired(expiresAt);
+  }
+
+  /** Snap a raw hours value to the nearest valid expiry option for the user's tier. */
+  private snapToNearestExpiry(hours: number): number {
+    const tier = this.userTier();
+    let options: number[];
+    if (tier === "premium") {
+      options = [1, 24, 72, 168, 336, 720];
+    } else if (tier === "free") {
+      options = [1, 24, 72, 168];
+    } else {
+      options = [24, 72];
+    }
+    return options.reduce((best, opt) =>
+      Math.abs(opt - hours) < Math.abs(best - hours) ? opt : best,
+    );
   }
 }

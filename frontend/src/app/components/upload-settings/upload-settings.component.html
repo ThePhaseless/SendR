@@ -65,10 +65,9 @@
       [ngModel]="maxDownloads()"
       (ngModelChange)="maxDownloads.set($event)"
     >
-      <option [ngValue]="0">Unlimited</option>
-      <option [ngValue]="1">1</option>
-      <option [ngValue]="5">5</option>
-      <option [ngValue]="10">10</option>
+      @for (opt of maxDownloadsOptions(); track opt.value) {
+        <option [ngValue]="opt.value">{{ opt.label }}</option>
+      }
     </select>
   }
 </div>

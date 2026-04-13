@@ -91,7 +91,11 @@
     </div>
 
     <div class="actions">
-      <a routerLink="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+      @if (isAuthenticated) {
+        <a routerLink="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+      } @else {
+        <a routerLink="/" class="btn btn-secondary">Back to Home</a>
+      }
     </div>
   }
 </div>
