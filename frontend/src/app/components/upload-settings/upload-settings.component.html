@@ -3,20 +3,18 @@
 }
 
 <div class="settings-row">
-  <label for="title">Title</label>
   <input
     type="text"
     id="title"
     class="form-input"
     [ngModel]="title()"
     (ngModelChange)="title.set($event)"
-    placeholder="Optional title"
+    placeholder="Title"
     maxlength="200"
   />
 </div>
 
 <div class="settings-row">
-  <label for="description">Description</label>
   <textarea
     id="description"
     class="form-input"
@@ -221,15 +219,29 @@
               </button>
             </div>
           }
-          <div class="settings-row email-stats-toggle">
-            <label for="show-email-stats">Let recipients see download activity</label>
-            <input
-              type="checkbox"
-              id="show-email-stats"
-              class="toggle-checkbox"
-              [ngModel]="showEmailStats()"
-              (ngModelChange)="showEmailStats.set($event)"
-            />
+          <div class="public-link-row">
+            <div class="public-link-info">
+              <span class="material-symbols-outlined public-link-icon">visibility</span>
+              <div>
+                <span class="public-link-label">Let recipients see download activity</span>
+                <span class="public-link-hint">
+                  @if (showEmailStats()) {
+                    Recipients can see who else downloaded
+                  } @else {
+                    Download activity is hidden from recipients
+                  }
+                </span>
+              </div>
+            </div>
+            <label class="switch">
+              <input
+                type="checkbox"
+                id="show-email-stats"
+                [ngModel]="showEmailStats()"
+                (ngModelChange)="showEmailStats.set($event)"
+              />
+              <span class="switch-slider"></span>
+            </label>
           </div>
         </div>
       }
