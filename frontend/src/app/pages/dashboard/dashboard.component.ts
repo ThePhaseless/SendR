@@ -37,7 +37,7 @@ export class DashboardComponent implements OnInit {
   userTier = signal("temporary");
 
   // Unified panel settings (bound to upload-settings component)
-  panelExpiryHours = signal(168);
+  panelExpiryHours = signal(72);
   panelMaxDownloads = signal(0);
 
   // Download stats for the expanded group
