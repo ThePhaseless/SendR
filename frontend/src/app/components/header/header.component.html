@@ -41,6 +41,8 @@
         @if (auth.authenticated()) {
           <a routerLink="/dashboard" class="nav-link" (click)="closeMenu()">Dashboard</a>
           <a routerLink="/premium" class="nav-link" (click)="closeMenu()">Account Tier</a>
+        } @else {
+          <a routerLink="/premium" class="nav-link" (click)="closeMenu()">Plans</a>
         }
         @if (isAdmin()) {
           <a routerLink="/admin" class="nav-link" (click)="closeMenu()">Admin</a>

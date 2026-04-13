@@ -25,7 +25,7 @@
           <div class="file-row">
             <div class="file-info">
               <h3 class="file-name">
-                @if (group.isGroup) {
+                @if (group.isGroup && group.files.length > 1) {
                   📁 {{ group.files.length }} files
                 } @else {
                   {{ group.files[0].original_filename }}
@@ -172,7 +172,7 @@
               </div>
 
               <!-- Add files (compact picker, auto-stages) -->
-              @if (group.isGroup && group.uploadGroup) {
+              @if (group.uploadGroup) {
                 <div class="expanded-section">
                   <h4>Add Files</h4>
                   <app-file-picker
