@@ -58,20 +58,20 @@ export class FileService {
     return this.api.uploadFileApiFilesUploadPost(
       {
         altcha: altchaPayload,
+        description: options?.description ?? undefined,
+        emails:
+          options?.emails && options.emails.length > 0 ? JSON.stringify(options.emails) : undefined,
         expiry_hours: options?.expiryHours,
         file,
+        is_public: options?.isPublic ?? true,
         max_downloads:
           options?.maxDownloads && options.maxDownloads > 0 ? options.maxDownloads : undefined,
-        is_public: options?.isPublic ?? true,
         passwords:
           options?.passwords && options.passwords.length > 0
             ? JSON.stringify(options.passwords)
             : undefined,
-        emails:
-          options?.emails && options.emails.length > 0 ? JSON.stringify(options.emails) : undefined,
         show_email_stats: options?.showEmailStats ?? false,
-        title: options?.title || undefined,
-        description: options?.description || undefined,
+        title: options?.title ?? undefined,
       },
       { observe: "events", reportProgress: true },
     );
@@ -111,20 +111,20 @@ export class FileService {
     return this.api.uploadMultipleFilesApiFilesUploadMultiplePost(
       {
         altcha: altchaPayload,
+        description: options?.description ?? undefined,
+        emails:
+          options?.emails && options.emails.length > 0 ? JSON.stringify(options.emails) : undefined,
         expiry_hours: options?.expiryHours,
         files,
+        is_public: options?.isPublic ?? true,
         max_downloads:
           options?.maxDownloads && options.maxDownloads > 0 ? options.maxDownloads : undefined,
-        is_public: options?.isPublic ?? true,
         passwords:
           options?.passwords && options.passwords.length > 0
             ? JSON.stringify(options.passwords)
             : undefined,
-        emails:
-          options?.emails && options.emails.length > 0 ? JSON.stringify(options.emails) : undefined,
         show_email_stats: options?.showEmailStats ?? false,
-        title: options?.title || undefined,
-        description: options?.description || undefined,
+        title: options?.title ?? undefined,
       },
       { observe: "events", reportProgress: true },
     );

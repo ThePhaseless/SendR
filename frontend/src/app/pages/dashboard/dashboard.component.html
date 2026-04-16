@@ -216,6 +216,17 @@
                             <span>Public Link</span>
                           </div>
                           <p class="link-hint">Anyone with this link can download</p>
+                          <div class="link-copy">
+                            <input
+                              type="text"
+                              [value]="getDownloadPageUrl(group)"
+                              readonly
+                              class="link-input"
+                            />
+                            <button class="btn btn-primary btn-sm" (click)="copyLink(group)">
+                              {{ copiedGroupKey() === group.key ? "Copied!" : "Copy" }}
+                            </button>
+                          </div>
                         </div>
                       }
                       @if (access.passwords.length > 0 || access.emails.length > 0) {
@@ -227,13 +238,24 @@
                           <p class="link-hint">
                             @if (access.passwords.length > 0 && access.emails.length > 0) {
                               {{ access.passwords.length }} password(s) and
-                              {{ access.emails.length }} email invite(s)
+                              {{ access.emails.length }} email invite(s) configured
                             } @else if (access.passwords.length > 0) {
                               {{ access.passwords.length }} password(s) configured
                             } @else {
                               {{ access.emails.length }} email invite(s) sent
                             }
                           </p>
+                          <div class="link-copy">
+                            <input
+                              type="text"
+                              [value]="getDownloadPageUrl(group)"
+                              readonly
+                              class="link-input"
+                            />
+                            <button class="btn btn-primary btn-sm" (click)="copyLink(group)">
+                              {{ copiedGroupKey() === group.key ? "Copied!" : "Copy" }}
+                            </button>
+                          </div>
                         </div>
                       }
                     </div>

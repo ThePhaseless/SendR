@@ -93,16 +93,21 @@ export class HomeComponent {
 
   altchaHintText = computed(() => {
     switch (this.altchaState()) {
-      case "verifying":
+      case "verifying": {
         return "Verifying…";
-      case "expired":
+      }
+      case "expired": {
         return "CAPTCHA expired — fetching a new challenge…";
-      case "error":
+      }
+      case "error": {
         return "Verification failed. Please try again.";
-      case "code":
+      }
+      case "code": {
         return "Please complete the code challenge.";
-      default:
+      }
+      default: {
         return "Please complete the CAPTCHA to upload.";
+      }
     }
   });
 
@@ -175,31 +180,36 @@ export class HomeComponent {
     const state = (detail?.state ?? "unverified") as AltchaState;
     this.altchaState.set(state);
     switch (state) {
-      case "verified":
+      case "verified": {
         if (detail?.payload) {
           this.altchaPayload = detail.payload;
           this.altchaVerified.set(true);
         }
         break;
-      case "expired":
+      }
+      case "expired": {
         this.altchaVerified.set(false);
         this.altchaPayload = "";
         this.altchaChallenge.set(null);
         this.loadAltchaChallenge();
         break;
-      case "error":
+      }
+      case "error": {
         this.altchaVerified.set(false);
         this.altchaPayload = "";
         this.altchaChallenge.set(null);
         this.loadAltchaChallenge();
         break;
-      case "unverified":
+      }
+      case "unverified": {
         this.altchaVerified.set(false);
         this.altchaPayload = "";
         break;
+      }
       case "verifying":
-      case "code":
+      case "code": {
         break;
+      }
     }
   }
 
@@ -314,14 +324,14 @@ export class HomeComponent {
     if (files.length === 1) {
       this.fileService
         .upload(files[0], this.altchaPayload, {
-          expiryHours: this.expiryHours(),
-          maxDownloads: this.maxDownloads(),
-          isPublic: this.isPublic(),
-          passwords: this.passwords().filter((p) => p.password),
+          description: this.description(),
           emails: this.emails().filter((e) => e.trim()),
+          expiryHours: this.expiryHours(),
+          isPublic: this.isPublic(),
+          maxDownloads: this.maxDownloads(),
+          passwords: this.passwords().filter((p) => p.password),
           showEmailStats: this.showEmailStats(),
           title: this.title(),
-          description: this.description(),
         })
         .subscribe({
           error: (err) => {
@@ -349,14 +359,14 @@ export class HomeComponent {
 
     this.fileService
       .uploadMultiple(files, this.altchaPayload, {
-        expiryHours: this.expiryHours(),
-        maxDownloads: this.maxDownloads(),
-        isPublic: this.isPublic(),
-        passwords: this.passwords().filter((p) => p.password),
+        description: this.description(),
         emails: this.emails().filter((e) => e.trim()),
+        expiryHours: this.expiryHours(),
+        isPublic: this.isPublic(),
+        maxDownloads: this.maxDownloads(),
+        passwords: this.passwords().filter((p) => p.password),
         showEmailStats: this.showEmailStats(),
         title: this.title(),
-        description: this.description(),
       })
       .subscribe({
         error: (err) => {
@@ -464,11 +474,13 @@ export class HomeComponent {
   getTotalResultSize(): number {
     const multi = this.uploadResult();
     if (multi) {
-      return multi.total_size_bytes;
+      return (
+        multi.total_size_bytes ?? multi.files.reduce((sum, f) => sum + (f.file_size_bytes ?? 0), 0)
+      );
     }
     const single = this.singleUploadResult();
     if (single) {
-      return single.file_size_bytes;
+      return single.file_size_bytes ?? 0;
     }
     return 0;
   }

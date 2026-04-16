@@ -268,10 +268,10 @@ export class DashboardComponent implements OnInit {
       if (group.isGroup && group.uploadGroup) {
         this.fileService
           .editGroup(group.uploadGroup, {
+            description: this.panelDescription() || null,
             expiry_hours: this.panelExpiryHours(),
             max_downloads: this.panelMaxDownloads() || undefined,
             title: this.panelTitle() || null,
-            description: this.panelDescription() || null,
           })
           .subscribe({
             error: () => {
@@ -359,10 +359,10 @@ export class DashboardComponent implements OnInit {
       if (group.isGroup && group.uploadGroup) {
         this.fileService
           .refreshGroup(group.uploadGroup, {
+            description: this.panelDescription() || null,
             expiry_hours: this.panelExpiryHours(),
             max_downloads: this.panelMaxDownloads() || undefined,
             title: this.panelTitle() || null,
-            description: this.panelDescription() || null,
           })
           .subscribe({
             error: () => {
@@ -496,9 +496,9 @@ export class DashboardComponent implements OnInit {
             if (f.upload_group === uploadGroup) {
               return {
                 ...f,
-                is_public: info.is_public,
-                has_passwords: info.passwords.length > 0,
                 has_email_recipients: info.emails.length > 0,
+                has_passwords: info.passwords.length > 0,
+                is_public: info.is_public,
               };
             }
             return f;

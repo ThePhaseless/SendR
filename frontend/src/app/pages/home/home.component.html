@@ -41,19 +41,13 @@
               <span class="material-symbols-outlined">public</span>
               <span>Public Link</span>
             </div>
+            <p class="result-access-hint">Anyone with this link can download</p>
             <div class="share-link">
               <input type="text" [value]="getShareableLink()" readonly class="link-input" />
               <button class="btn btn-primary" (click)="copyLink()">
                 {{ copied() ? "Copied!" : "Copy Link" }}
               </button>
             </div>
-          </div>
-        } @else {
-          <div class="share-link">
-            <input type="text" [value]="getShareableLink()" readonly class="link-input" />
-            <button class="btn btn-primary" (click)="copyLink()">
-              {{ copied() ? "Copied!" : "Copy Link" }}
-            </button>
           </div>
         }
 
@@ -62,6 +56,14 @@
             <div class="result-access-header">
               <span class="material-symbols-outlined">lock</span>
               <span>Restricted Access</span>
+            </div>
+            <p class="result-access-hint">Only people with a password or email invite can access</p>
+
+            <div class="share-link">
+              <input type="text" [value]="getShareableLink()" readonly class="link-input" />
+              <button class="btn btn-primary" (click)="copyLink()">
+                {{ copied() ? "Copied!" : "Copy Link" }}
+              </button>
             </div>
 
             @if (getSubmittedPasswords().length > 0) {
@@ -101,6 +103,23 @@
                 }
               </div>
             }
+          </div>
+        }
+
+        @if (
+          !isPublic() && getSubmittedPasswords().length === 0 && getSubmittedEmails().length === 0
+        ) {
+          <div class="result-access-card result-public">
+            <div class="result-access-header">
+              <span class="material-symbols-outlined">link</span>
+              <span>Shareable Link</span>
+            </div>
+            <div class="share-link">
+              <input type="text" [value]="getShareableLink()" readonly class="link-input" />
+              <button class="btn btn-primary" (click)="copyLink()">
+                {{ copied() ? "Copied!" : "Copy Link" }}
+              </button>
+            </div>
           </div>
         }
       </div>

@@ -2,7 +2,7 @@
 @reference "tailwindcss";
 
 .home {
-  @apply flex flex-col items-center pt-8 mx-auto w-full;
+  @apply flex flex-col items-center mx-auto w-full;
   max-width: 1200px;
 }
 
@@ -150,7 +150,7 @@
 }
 
 .share-link {
-  @apply flex gap-2 mb-4;
+  @apply flex gap-2;
 
   .link-input {
     @apply flex-1 text-sm outline-none;
@@ -255,7 +255,12 @@ app-upload-settings {
   background: var(--color-card-bg);
 
   .result-access-header {
-    @apply flex items-center gap-1.5 text-sm font-semibold mb-2;
+    @apply flex items-center gap-1.5 text-sm font-semibold mb-1;
+  }
+
+  .result-access-hint {
+    @apply text-xs m-0 mb-2;
+    color: var(--color-text-secondary);
   }
 
   &.result-public .result-access-header {

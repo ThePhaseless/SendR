@@ -74,7 +74,7 @@ export class UploadSettingsComponent {
       const options = this.expiryOptions();
       const current = this.expiryHours();
       if (options.length > 0 && !options.some((o) => o.value === current)) {
-        this.expiryHours.set(options[options.length - 1].value);
+        this.expiryHours.set(options.at(-1)!.value);
       }
     });
     effect(() => {
@@ -135,12 +135,10 @@ export class UploadSettingsComponent {
   });
 
   /** Available max download options for the select (temporary tier). */
-  maxDownloadsOptions = computed<{ value: number; label: string }[]>(() => {
-    return [
-      { label: "Unlimited", value: 0 },
-      { label: "1", value: 1 },
-    ];
-  });
+  maxDownloadsOptions = computed<{ value: number; label: string }[]>(() => [
+    { label: "Unlimited", value: 0 },
+    { label: "1", value: 1 },
+  ]);
 
   /** Whether user can add more passwords. */
   canAddPassword = computed(() => {
@@ -149,9 +147,7 @@ export class UploadSettingsComponent {
   });
 
   /** Whether user can use email invites (not temp). */
-  canUseEmails = computed(() => {
-    return this.tier() !== "temporary";
-  });
+  canUseEmails = computed(() => this.tier() !== "temporary");
 
   /** Whether user can add more emails. */
   canAddEmail = computed(() => {
@@ -166,9 +162,7 @@ export class UploadSettingsComponent {
   emailCount = computed(() => this.emails().filter((e) => e.trim()).length);
 
   /** Whether the user can disable public link (needs at least one password or email). */
-  canDisablePublic = computed(() => {
-    return this.passwordCount() > 0 || this.emailCount() > 0;
-  });
+  canDisablePublic = computed(() => this.passwordCount() > 0 || this.emailCount() > 0);
 
   /** Whether max downloads exceeds the tier limit. */
   maxDownloadsExceedsLimit = computed(() => {
@@ -203,7 +197,7 @@ export class UploadSettingsComponent {
 
   private ensureTrailingPasswordEntry(): void {
     const list = this.passwords();
-    if ((list.length === 0 || list[list.length - 1].password !== "") && this.canAddPassword()) {
+    if ((list.length === 0 || list.at(-1)!.password !== "") && this.canAddPassword()) {
       this.passwords.update((l) => [...l, { label: "", password: "" }]);
       this.passwordVisibility.push(false);
     }
@@ -211,7 +205,7 @@ export class UploadSettingsComponent {
 
   private ensureTrailingEmailEntry(): void {
     const list = this.emails();
-    if ((list.length === 0 || list[list.length - 1] !== "") && this.canAddEmail()) {
+    if ((list.length === 0 || list.at(-1) !== "") && this.canAddEmail()) {
       this.emails.update((l) => [...l, ""]);
     }
   }

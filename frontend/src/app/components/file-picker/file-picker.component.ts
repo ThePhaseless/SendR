@@ -51,7 +51,7 @@ export class FilePickerComponent {
   filesChanged = output<UploadFileEntry[]>();
 
   /** Emitted when the user clicks to add files but interceptClick is true. */
-  addClicked = output<void>();
+  addClicked = output();
 
   isDragging = signal(false);
   collapsedFolders = signal(new Set<string>());

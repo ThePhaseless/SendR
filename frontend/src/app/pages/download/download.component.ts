@@ -107,7 +107,9 @@ export class DownloadComponent {
     }
     this.recipientStatsLoading.set(true);
     this.fileService.getRecipientStats(this.group, token).subscribe({
-      error: () => this.recipientStatsLoading.set(false),
+      error: () => {
+        this.recipientStatsLoading.set(false);
+      },
       next: (stats) => {
         this.recipientStats.set(stats);
         this.recipientStatsLoading.set(false);
