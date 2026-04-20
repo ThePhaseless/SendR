@@ -22,8 +22,8 @@ async def cleanup_expired_files(session: AsyncSession) -> int:
         FileUpload.expires_at < cutoff,
         FileUpload.is_active == True,  # noqa: E712
     )
-    result = await session.execute(stmt)
-    expired_files = result.scalars().all()
+    result = await session.exec(stmt)
+    expired_files = result.all()
 
     cleaned = 0
     upload_dir = Path(settings.UPLOAD_DIR)

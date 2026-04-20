@@ -30,8 +30,8 @@ async def dev_login(role: str, session: AsyncSession = Depends(get_session)) -> 
 
     # Find or create the dev user
     stmt = select(User).where(User.email == email)
-    result = await session.execute(stmt)
-    user = result.scalars().first()
+    result = await session.exec(stmt)
+    user = result.first()
 
     if not user:
         tier = UserTier.free

@@ -37,13 +37,13 @@ async def verify_token(token: str, session: AsyncSession) -> User | None:
         AuthToken.token == hashed,
         AuthToken.expires_at > _utcnow(),
     )
-    result = await session.execute(stmt)
-    auth_token = result.scalars().first()
+    result = await session.exec(stmt)
+    auth_token = result.first()
     if not auth_token:
         return None
     stmt = select(User).where(User.id == auth_token.user_id)
-    result = await session.execute(stmt)
-    return result.scalars().first()
+    result = await session.exec(stmt)
+    return result.first()
 
 
 def _extract_token(authorization: str | None) -> str | None:

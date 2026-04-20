@@ -84,8 +84,8 @@ async def verify_code(
         VerificationCode.used == False,  # noqa: E712
         VerificationCode.expires_at > _utcnow(),
     )
-    result = await session.execute(stmt)
-    vc = result.scalars().first()
+    result = await session.exec(stmt)
+    vc = result.first()
     if not vc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification code")
 
@@ -94,8 +94,8 @@ async def verify_code(
 
     # Find or create user
     stmt = select(User).where(User.email == body.email)
-    result = await session.execute(stmt)
-    user = result.scalars().first()
+    result = await session.exec(stmt)
+    user = result.first()
     if not user:
         tier = UserTier.free if body.create_account else UserTier.temporary
         user = User(email=body.email, tier=tier)
