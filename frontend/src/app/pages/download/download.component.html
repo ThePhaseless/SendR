@@ -27,15 +27,15 @@
         <p>{{ error() }}</p>
       </div>
     }
-    @if (needsPassword()) {
+    @if (needsPasswordForDetails()) {
       <div class="card file-card">
         <div class="file-icon">🔒</div>
         <h2>Password Required</h2>
-        <p class="password-hint">This content is password protected.</p>
+        <p class="password-hint">Enter the password to view file details and download.</p>
         <form class="password-form" (ngSubmit)="submitPassword()">
           <input
             type="password"
-            class="input"
+            class="form-input"
             placeholder="Enter password"
             [ngModel]="enteredPassword()"
             (ngModelChange)="enteredPassword.set($event)"
@@ -49,29 +49,54 @@
         }
       </div>
     }
+    @if (downloadError()) {
+      <div class="alert alert-error">{{ downloadError() }}</div>
+    }
     @if (fileInfo(); as file) {
-      @if (!needsPassword()) {
+      @if (!needsPasswordForDetails()) {
         <div class="card file-card">
           <div class="file-icon">{{ getFileEmoji(file.original_filename) }}</div>
           <h2>{{ file.original_filename }}</h2>
           <div class="file-meta">
             <span>Size: {{ formatSize(file.file_size_bytes) }}</span>
-            <span
-              >Downloads: {{ file.download_count
-              }}{{ file.max_downloads ? " / " + file.max_downloads : "" }}</span
-            >
+            <span>Downloads: {{ formatDownloadCount(file) }}</span>
             <span>Expires: {{ file.expires_at | date: "medium" }}</span>
           </div>
           @if (!file.is_active || isExpired(file.expires_at)) {
             <div class="alert alert-error">This file has expired and is no longer available.</div>
+          } @else if (isFileLimitReached()) {
+            <div class="alert alert-error">Download limit has been reached.</div>
+          } @else if (needsPasswordToDownload()) {
+            <p class="password-hint">Enter the password to download this file.</p>
+            <form class="password-form" (ngSubmit)="submitPassword()">
+              <input
+                type="password"
+                class="form-input"
+                placeholder="Enter password"
+                [ngModel]="enteredPassword()"
+                (ngModelChange)="enteredPassword.set($event)"
+                name="password"
+                autofocus
+              />
+              <button class="btn btn-primary" type="submit">Unlock Download</button>
+            </form>
+            @if (passwordError()) {
+              <p class="password-error">{{ passwordError() }}</p>
+            }
           } @else {
-            <button class="btn btn-primary btn-lg" (click)="download()">Download File</button>
+            <button
+              class="btn btn-primary btn-lg"
+              [disabled]="downloading()"
+              (click)="download()"
+            >
+              {{ downloading() ? "Downloading…" : "Download File" }}
+            </button>
           }
         </div>
       }
     }
     @if (groupInfo(); as group) {
-      @if (!needsPassword()) {
+      @if (!needsPasswordForDetails()) {
         <div class="card file-card">
           <div class="file-icon">📦</div>
           @if (group.title) {
@@ -93,6 +118,7 @@
               📦 These files will be delivered as a ZIP archive.
             </div>
           }
+          @if (!needsPasswordToDownload()) {
           <div class="group-file-list">
             @for (file of group.files; track file.id) {
               <div class="group-file-item">
@@ -100,19 +126,56 @@
                   >{{ getFileEmoji(file.original_filename) }} {{ file.original_filename }}</span
                 >
                 <span class="group-file-size">{{ formatSize(file.file_size_bytes) }}</span>
-                <button
-                  class="btn btn-secondary btn-sm"
-                  [attr.aria-label]="'Download ' + file.original_filename"
-                  (click)="downloadSingleFile(file.download_url)"
-                >
-                  Download
-                </button>
+                @if (!isGroupFileLimitReached(file)) {
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    [attr.aria-label]="'Download ' + file.original_filename"
+                    [disabled]="downloading()"
+                    (click)="downloadSingleFile(file.download_url, file.original_filename)"
+                  >
+                    Download
+                  </button>
+                } @else {
+                  <span class="limit-reached-badge">Limit reached</span>
+                }
               </div>
             }
           </div>
-          <button class="btn btn-primary btn-lg download-all-btn" (click)="downloadGroup()">
-            {{ group.will_zip ? "Download All (ZIP)" : "Download All" }}
-          </button>
+          }
+          @if (needsPasswordToDownload()) {
+            <p class="password-hint">Enter the password to download these files.</p>
+            <form class="password-form" (ngSubmit)="submitPassword()">
+              <input
+                type="password"
+                class="form-input"
+                placeholder="Enter password"
+                [ngModel]="enteredPassword()"
+                (ngModelChange)="enteredPassword.set($event)"
+                name="password"
+                autofocus
+              />
+              <button class="btn btn-primary" type="submit">Unlock Download</button>
+            </form>
+            @if (passwordError()) {
+              <p class="password-error">{{ passwordError() }}</p>
+            }
+          } @else if (isGroupLimitReached()) {
+            <div class="alert alert-error">Download limit has been reached for one or more files.</div>
+          } @else {
+            <button
+              class="btn btn-primary btn-lg download-all-btn"
+              [disabled]="downloading()"
+              (click)="downloadGroup()"
+            >
+              {{
+                downloading()
+                  ? "Downloading…"
+                  : group.will_zip
+                    ? "Download All (ZIP)"
+                    : "Download All"
+              }}
+            </button>
+          }
           <!-- Recipient stats (visible to email recipients if owner enabled it) -->
           @if (recipientStatsLoading()) {
             <p class="recipient-stats-loading">Loading download activity...</p>

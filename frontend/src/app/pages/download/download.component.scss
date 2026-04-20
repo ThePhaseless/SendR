@@ -85,6 +85,11 @@
   @apply mt-4;
 }
 
+.limit-reached-badge {
+  @apply text-xs whitespace-nowrap;
+  color: var(--color-danger);
+}
+
 // Password prompt
 .password-hint {
   @apply text-sm mb-2;
@@ -94,7 +99,7 @@
 .password-form {
   @apply flex gap-2 w-full max-w-[20rem] mx-auto justify-center;
 
-  .input {
+  .form-input {
     @apply flex-1 min-w-0;
   }
 }
