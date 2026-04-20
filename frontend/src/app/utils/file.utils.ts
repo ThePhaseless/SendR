@@ -86,7 +86,11 @@ export function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) {
     return (bytes / 1024).toFixed(1) + " KB";
   }
-  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  const mb = bytes / (1024 * 1024);
+  if (mb >= 2048) {
+    return Math.floor(mb / 1024) + " GB";
+  }
+  return mb.toFixed(1) + " MB";
 }
 
 export function extractDownloadToken(downloadUrl: string): string {
