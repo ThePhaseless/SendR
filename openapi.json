@@ -475,6 +475,22 @@
               "type": "string",
               "title": "Upload Group"
             }
+          },
+          {
+            "name": "password",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Password"
+            }
           }
         ],
         "responses": {
@@ -710,6 +726,22 @@
             "schema": {
               "type": "string",
               "title": "Download Token"
+            }
+          },
+          {
+            "name": "password",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Password"
             }
           }
         ],
@@ -1385,6 +1417,17 @@
             ],
             "title": "Show Email Stats"
           },
+          "separate_download_counts": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Separate Download Counts"
+          },
           "passwords_to_add": {
             "anyOf": [
               {
@@ -1468,6 +1511,11 @@
           "show_email_stats": {
             "type": "boolean",
             "title": "Show Email Stats"
+          },
+          "separate_download_counts": {
+            "type": "boolean",
+            "title": "Separate Download Counts",
+            "default": false
           }
         },
         "type": "object",
@@ -1606,6 +1654,11 @@
             "title": "Show Email Stats",
             "default": false
           },
+          "separate_download_counts": {
+            "type": "boolean",
+            "title": "Separate Download Counts",
+            "default": false
+          },
           "title": {
             "anyOf": [
               {
@@ -1702,6 +1755,11 @@
           "show_email_stats": {
             "type": "boolean",
             "title": "Show Email Stats",
+            "default": false
+          },
+          "separate_download_counts": {
+            "type": "boolean",
+            "title": "Separate Download Counts",
             "default": false
           },
           "title": {
@@ -1952,6 +2010,16 @@
             "type": "integer",
             "title": "Download Count"
           },
+          "public_download_count": {
+            "type": "integer",
+            "title": "Public Download Count",
+            "default": 0
+          },
+          "restricted_download_count": {
+            "type": "integer",
+            "title": "Restricted Download Count",
+            "default": 0
+          },
           "max_downloads": {
             "anyOf": [
               {
@@ -1962,6 +2030,11 @@
               }
             ],
             "title": "Max Downloads"
+          },
+          "separate_download_counts": {
+            "type": "boolean",
+            "title": "Separate Download Counts",
+            "default": false
           },
           "is_active": {
             "type": "boolean",
@@ -2144,6 +2217,11 @@
             "type": "integer",
             "title": "Weekly Uploads Limit"
           },
+          "weekly_upload_size_limit_bytes": {
+            "type": "integer",
+            "title": "Weekly Upload Size Limit Bytes",
+            "default": 0
+          },
           "expiry_options_hours": {
             "items": {
               "type": "integer"
@@ -2167,6 +2245,16 @@
             "type": "integer",
             "title": "Max Emails Per Upload",
             "default": 0
+          },
+          "can_use_separate_download_counts": {
+            "type": "boolean",
+            "title": "Can Use Separate Download Counts",
+            "default": false
+          },
+          "can_use_email_stats": {
+            "type": "boolean",
+            "title": "Can Use Email Stats",
+            "default": false
           }
         },
         "type": "object",
@@ -2285,6 +2373,21 @@
             "type": "integer",
             "title": "Weekly Uploads Remaining"
           },
+          "weekly_upload_size_limit_bytes": {
+            "type": "integer",
+            "title": "Weekly Upload Size Limit Bytes",
+            "default": 0
+          },
+          "weekly_upload_size_used_bytes": {
+            "type": "integer",
+            "title": "Weekly Upload Size Used Bytes",
+            "default": 0
+          },
+          "weekly_upload_size_remaining_bytes": {
+            "type": "integer",
+            "title": "Weekly Upload Size Remaining Bytes",
+            "default": 0
+          },
           "expiry_options_hours": {
             "anyOf": [
               {
@@ -2355,6 +2458,16 @@
             "type": "integer",
             "title": "Max Emails Per Upload",
             "default": 0
+          },
+          "can_use_separate_download_counts": {
+            "type": "boolean",
+            "title": "Can Use Separate Download Counts",
+            "default": false
+          },
+          "can_use_email_stats": {
+            "type": "boolean",
+            "title": "Can Use Email Stats",
+            "default": false
           }
         },
         "type": "object",
@@ -2505,6 +2618,11 @@
           "has_email_recipients": {
             "type": "boolean",
             "title": "Has Email Recipients",
+            "default": false
+          },
+          "separate_download_counts": {
+            "type": "boolean",
+            "title": "Separate Download Counts",
             "default": false
           },
           "title": {

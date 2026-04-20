@@ -10,6 +10,7 @@ import type { PasswordEntry } from './passwordEntry';
 export interface AccessEditRequest {
   is_public?: boolean | null;
   show_email_stats?: boolean | null;
+  separate_download_counts?: boolean | null;
   passwords_to_add?: PasswordEntry[] | null;
   password_ids_to_remove?: number[] | null;
   emails_to_add?: string[] | null;
