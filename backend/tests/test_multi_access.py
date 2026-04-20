@@ -187,8 +187,8 @@ async def test_password_protected_download(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_public_download_no_password_needed(free_headers):
-    """Public file can be downloaded without password even if passwords exist."""
+async def test_public_flag_hides_details_but_requires_password_to_download(free_headers):
+    """When is_public=true and passwords exist, info is visible but download requires password."""
     passwords = [{"label": "Extra", "password": "bonus"}]
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         upload_resp = await client.post(
@@ -204,8 +204,17 @@ async def test_public_download_no_password_needed(free_headers):
         assert upload_resp.status_code == 201
         token = upload_resp.json()["download_url"].split("/")[-1]
 
-        # Public files should be downloadable without password
+        # Download without password should be rejected
         dl_resp = await client.get(f"/api/files/{token}")
+        assert dl_resp.status_code == 403
+
+        # File info should still be visible (is_public=true means details are not hidden)
+        info_resp = await client.get(f"/api/files/{token}/info")
+        assert info_resp.status_code == 200
+        assert info_resp.json()["original_filename"] == "public.txt"
+
+        # Download with correct password should work
+        dl_resp = await client.get(f"/api/files/{token}?password=bonus")
         assert dl_resp.status_code == 200
 
 
