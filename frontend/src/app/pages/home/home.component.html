@@ -35,93 +35,71 @@
 
       <!-- Shareable link with access info -->
       <div class="result-access-section">
-        @if (isPublic()) {
-          <div class="result-access-card result-public">
-            <div class="result-access-header">
+        <!-- Shareable link — always shown once -->
+        <div class="result-access-card" [class.result-public]="getSubmittedPasswords().length === 0" [class.result-restricted]="getSubmittedPasswords().length > 0">
+          <div class="result-access-header">
+            @if (getSubmittedPasswords().length > 0) {
+              <span class="material-symbols-outlined">lock</span>
+              <span>Password-Protected Link</span>
+            } @else {
               <span class="material-symbols-outlined">public</span>
               <span>Public Link</span>
-            </div>
+            }
+          </div>
+
+          @if (getSubmittedPasswords().length > 0 && !isPublic()) {
+            <p class="result-access-hint">Password required to view file details and download</p>
+          } @else if (getSubmittedPasswords().length > 0) {
+            <p class="result-access-hint">File details are visible, but downloading requires a password</p>
+          } @else {
             <p class="result-access-hint">Anyone with this link can download</p>
-            <div class="share-link">
-              <input type="text" [value]="getShareableLink()" readonly class="link-input" />
-              <button class="btn btn-primary" (click)="copyLink()">
-                {{ copied() ? "Copied!" : "Copy Link" }}
-              </button>
-            </div>
+          }
+
+          <div class="share-link">
+            <input type="text" [value]="getShareableLink()" readonly class="link-input" />
+            <button class="btn btn-primary" (click)="copyLink()">
+              {{ copied() ? "Copied!" : "Copy Link" }}
+            </button>
           </div>
-        }
 
-        @if (getSubmittedPasswords().length > 0 || getSubmittedEmails().length > 0) {
-          <div class="result-access-card result-restricted">
-            <div class="result-access-header">
-              <span class="material-symbols-outlined">lock</span>
-              <span>Restricted Access</span>
-            </div>
-            <p class="result-access-hint">Only people with a password or email invite can access</p>
-
-            <div class="share-link">
-              <input type="text" [value]="getShareableLink()" readonly class="link-input" />
-              <button class="btn btn-primary" (click)="copyLink()">
-                {{ copied() ? "Copied!" : "Copy Link" }}
-              </button>
-            </div>
-
-            @if (getSubmittedPasswords().length > 0) {
-              <div class="result-access-list">
-                <h5>Passwords</h5>
-                @for (pw of getSubmittedPasswords(); track $index; let i = $index) {
-                  <div class="result-access-entry">
-                    <span class="result-access-label">{{ pw.label || "Password" }}</span>
-                    <span class="result-access-value">
-                      @if (postUploadPasswordVisibility[i]) {
-                        {{ pw.password }}
-                      } @else {
-                        •••••••
-                      }
+          @if (getSubmittedPasswords().length > 0) {
+            <div class="result-access-list">
+              <h5>Passwords</h5>
+              @for (pw of getSubmittedPasswords(); track $index; let i = $index) {
+                <div class="result-access-entry">
+                  <span class="result-access-label">{{ pw.label || "Password" }}</span>
+                  <span class="result-access-value">
+                    @if (postUploadPasswordVisibility[i]) {
+                      {{ pw.password }}
+                    } @else {
+                      •••••••
+                    }
+                  </span>
+                  <button
+                    type="button"
+                    class="btn-toggle-vis"
+                    (click)="togglePostPasswordVisibility(i)"
+                  >
+                    <span class="material-symbols-outlined">
+                      {{ postUploadPasswordVisibility[i] ? "visibility_off" : "visibility" }}
                     </span>
-                    <button
-                      type="button"
-                      class="btn-toggle-vis"
-                      (click)="togglePostPasswordVisibility(i)"
-                    >
-                      <span class="material-symbols-outlined">
-                        {{ postUploadPasswordVisibility[i] ? "visibility_off" : "visibility" }}
-                      </span>
-                    </button>
-                  </div>
-                }
-              </div>
-            }
-
-            @if (getSubmittedEmails().length > 0) {
-              <div class="result-access-list">
-                <h5>Email Invites</h5>
-                @for (email of getSubmittedEmails(); track $index) {
-                  <div class="result-access-entry">
-                    <span class="result-access-label">{{ email }}</span>
-                  </div>
-                }
-              </div>
-            }
-          </div>
-        }
-
-        @if (
-          !isPublic() && getSubmittedPasswords().length === 0 && getSubmittedEmails().length === 0
-        ) {
-          <div class="result-access-card result-public">
-            <div class="result-access-header">
-              <span class="material-symbols-outlined">link</span>
-              <span>Shareable Link</span>
+                  </button>
+                </div>
+              }
             </div>
-            <div class="share-link">
-              <input type="text" [value]="getShareableLink()" readonly class="link-input" />
-              <button class="btn btn-primary" (click)="copyLink()">
-                {{ copied() ? "Copied!" : "Copy Link" }}
-              </button>
+          }
+
+          @if (getSubmittedEmails().length > 0) {
+            <div class="result-access-list">
+              <h5>Email Invites</h5>
+              @for (email of getSubmittedEmails(); track $index) {
+                <div class="result-access-entry">
+                  <span class="result-access-label">{{ email }}</span>
+                </div>
+              }
             </div>
-          </div>
-        }
+          }
+        </div>
       </div>
 
       <div class="result-actions">
@@ -132,6 +110,78 @@
       </div>
     </div>
   } @else {
+    @if (isAuthenticated() && weeklyUploadsLimit() > 0) {
+      <div class="quota-bar-section">
+        <div class="quota-bar-header">
+          <span class="material-symbols-outlined quota-bar-icon">cloud_upload</span>
+          <span class="quota-bar-label">Weekly uploads</span>
+          <span class="quota-bar-count"
+            >{{ weeklyUploadsUsed() }} / {{ weeklyUploadsLimit() }}
+            ({{ weeklyUploadsRemaining() }} left)</span
+          >
+        </div>
+        <div
+          class="quota-bar-track"
+          role="progressbar"
+          [attr.aria-valuenow]="weeklyUploadsUsed()"
+          [attr.aria-valuemax]="weeklyUploadsLimit()"
+          aria-label="Weekly upload quota"
+        >
+          <div
+            class="quota-bar-fill"
+            [class.quota-bar-fill--warning]="weeklyUploadsRemaining() <= 2 && !isQuotaExhausted()"
+            [class.quota-bar-fill--exhausted]="isQuotaExhausted()"
+            [style.width.%]="(weeklyUploadsUsed() / weeklyUploadsLimit()) * 100"
+          ></div>
+        </div>
+        @if (isQuotaExhausted()) {
+          <p class="quota-bar-hint quota-bar-hint--exhausted">
+            You’ve reached your weekly upload limit. Try again next week or upgrade your plan.
+          </p>
+        } @else if (weeklyUploadsRemaining() <= 2) {
+          <p class="quota-bar-hint quota-bar-hint--warning">
+            {{ weeklyUploadsRemaining() }} upload{{ weeklyUploadsRemaining() === 1 ? '' : 's' }} remaining this week.
+          </p>
+        }
+      </div>
+    }
+
+    @if (isAuthenticated() && weeklyUploadSizeLimitBytes() > 0) {
+      <div class="quota-bar-section">
+        <div class="quota-bar-header">
+          <span class="material-symbols-outlined quota-bar-icon">hard_drive</span>
+          <span class="quota-bar-label">Weekly transfer</span>
+          <span class="quota-bar-count"
+            >{{ formatSize(weeklyUploadSizeUsedBytes()) }} / {{ formatSize(weeklyUploadSizeLimitBytes()) }}
+            ({{ formatSize(weeklyUploadSizeRemainingBytes()) }} left)</span
+          >
+        </div>
+        <div
+          class="quota-bar-track"
+          role="progressbar"
+          [attr.aria-valuenow]="weeklyUploadSizeUsedBytes()"
+          [attr.aria-valuemax]="weeklyUploadSizeLimitBytes()"
+          aria-label="Weekly upload size quota"
+        >
+          <div
+            class="quota-bar-fill"
+            [class.quota-bar-fill--warning]="weeklyUploadSizeRemainingBytes() <= weeklyUploadSizeLimitBytes() * 0.1 && !isSizeQuotaExhausted()"
+            [class.quota-bar-fill--exhausted]="isSizeQuotaExhausted()"
+            [style.width.%]="(weeklyUploadSizeUsedBytes() / weeklyUploadSizeLimitBytes()) * 100"
+          ></div>
+        </div>
+        @if (isSizeQuotaExhausted()) {
+          <p class="quota-bar-hint quota-bar-hint--exhausted">
+            You've reached your weekly transfer limit. Try again next week.
+          </p>
+        } @else if (weeklyUploadSizeRemainingBytes() <= weeklyUploadSizeLimitBytes() * 0.1) {
+          <p class="quota-bar-hint quota-bar-hint--warning">
+            {{ formatSize(weeklyUploadSizeRemainingBytes()) }} remaining this week.
+          </p>
+        }
+      </div>
+    }
+
     <div class="upload-layout">
       <div class="upload-col-left">
         @if (isUploading()) {
@@ -180,10 +230,18 @@
             [(passwords)]="passwords"
             [(emails)]="emails"
             [(showEmailStats)]="showEmailStats"
+            [(separateDownloadCounts)]="separateDownloadCounts"
             [(title)]="title"
             [(description)]="description"
             [maxPasswordsPerUpload]="maxPasswordsPerUpload()"
             [maxEmailsPerUpload]="maxEmailsPerUpload()"
+            [expiryOptionsHours]="expiryOptionsHours()"
+            [minExpiryHours]="minExpiryHours()"
+            [maxExpiryHours]="maxExpiryHours()"
+            [backendMaxDownloadsLimit]="backendMaxDownloadsLimit()"
+            [backendMaxDownloadsOptions]="backendMaxDownloadsOptions()"
+            [canUseSeparateDownloadCounts]="canUseSeparateDownloadCounts()"
+            [canUseEmailStats]="canUseEmailStats()"
             (hasError)="settingsHasError.set($event)"
           />
 
@@ -198,9 +256,14 @@
           </div>
 
           <div class="upload-action">
+            @if (isQuotaExhausted()) {
+              <p class="upload-action-hint hint-error">
+                Weekly upload limit reached.
+              </p>
+            }
             <button
               class="btn btn-primary btn-lg"
-              [disabled]="isUploading() || !altchaVerified() || settingsHasError()"
+              [disabled]="isUploading() || !altchaVerified() || settingsHasError() || isQuotaExhausted() || fileLimitWarning()"
               (click)="startUpload()"
             >
               Upload {{ pendingFiles().length === 1 ? "File" : "Files" }}
@@ -242,7 +305,7 @@
 
         <div class="popup-section">
           <h2>Quick Upload</h2>
-          <p class="popup-hint">Verify your email to upload without an account</p>
+          <p class="popup-hint">Enter your email to start uploading — no account needed</p>
 
           @if (popupAuthError(); as authErr) {
             <div class="alert alert-error alert-sm">{{ authErr }}</div>
