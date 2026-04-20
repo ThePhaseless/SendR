@@ -255,6 +255,46 @@ button {
   }
 }
 
+// ── Toggle switch (shared) ───────────────────────────────
+.switch {
+  @apply relative inline-block shrink-0;
+  width: 2.75rem;
+  height: 1.5rem;
+
+  input {
+    @apply opacity-0 w-0 h-0;
+  }
+
+  input:checked + .switch-slider {
+    background: var(--color-primary);
+  }
+
+  input:checked + .switch-slider::before {
+    transform: translateX(1.25rem);
+  }
+
+  input:disabled + .switch-slider {
+    @apply opacity-40 cursor-not-allowed;
+  }
+}
+
+.switch-slider {
+  @apply absolute inset-0 cursor-pointer rounded-full;
+  background: var(--color-border);
+  transition: 0.2s;
+
+  &::before {
+    content: "";
+    @apply absolute rounded-full;
+    height: 1.125rem;
+    width: 1.125rem;
+    left: 0.1875rem;
+    bottom: 0.1875rem;
+    background: white;
+    transition: 0.2s;
+  }
+}
+
 // ── Tier badge (shared) ──────────────────────────────────
 .tier-badge {
   @apply inline-block rounded-full text-xs font-semibold capitalize;
