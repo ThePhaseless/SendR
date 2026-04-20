@@ -1,16 +1,61 @@
 # SendR – Project Documentation
+<div align="center">
+  <h3>Authors</h3>
+  <hr style="width: 200px; margin-bottom: 20px;">
+  
+  <table style="border: none;">
+    <tr style="border: none;">
+      <td style="border: none; padding: 0 20px;">
+        <strong>Franciszek Przybyłowski</strong><br>
+        s223346<br>
+      </td>
+      <td style="border: none; padding: 0 20px;">
+        <strong>Jakub Orchowski</strong><br>
+        s223281<br>
+      </td>
+      <td style="border: none; padding: 0 20px;">
+        <strong>Kamil Pizon</strong><br>
+        s223434<br>
+      </td>
+      <td style="border: none; padding: 0 20px;">
+        <strong>Filip Obuchowicz</strong><br>
+        s223421<br>
+      </td>
+    </tr>
+  </table>
+</div>
 
-## Introduction
+## Introduction- [SendR – Project Documentation](#sendr--project-documentation)
+- [SendR – Project Documentation](#sendr--project-documentation)
+  - [Introduction- SendR – Project Documentation](#introduction--sendr--project-documentation)
+    - [Overview](#overview)
+    - [Project Goals](#project-goals)
+  - [System Architecture](#system-architecture)
+    - [High-Level Overview](#high-level-overview)
+    - [Frontend](#frontend)
+    - [Backend](#backend)
+    - [Database](#database)
+    - [Deployment Model](#deployment-model)
+  - [Technology Stack](#technology-stack)
+    - [Frontend Technologies](#frontend-technologies)
+    - [Backend Technologies](#backend-technologies)
+    - [Tooling and Infrastructure](#tooling-and-infrastructure)
+  - [Key Features](#key-features)
+    - [Email-Based Authentication](#email-based-authentication)
+    - [File Sharing](#file-sharing)
+    - [CAPTCHA Protection](#captcha-protection)
+    - [Tier-Based Access Control](#tier-based-access-control)
+    - [File Expiry and Refresh](#file-expiry-and-refresh)
+    - [Upload Quota Management](#upload-quota-management)
+    - [API Documentation](#api-documentation)
+  - [Environment Configuration](#environment-configuration)
+  - [Development Process](#development-process)
+    - [Version Control and Workflow](#version-control-and-workflow)
+    - [Quick Start](#quick-start)
+
 
 ### Overview
-
-SendR is a file-sharing web application inspired by services such as WeTransfer. The goal of the project was to create a convenient and functional platform that allows users to upload, share, and manage files through download links — while meeting the security requirements defined in the context of the *Cloud Services Security* course.
-
-### Motivation
-
-The idea for SendR originated from a simple observation: existing file-sharing services like WeTransfer, while convenient, have notable limitations in terms of security and control. WeTransfer, for example, allows file sharing without requiring any account, which — while convenient for casual use — makes it difficult to enforce access control, manage quotas, or track usage.
-
-The initial concept aimed to build something *more convenient* than WeTransfer. However, as the project evolved and security requirements were taken into account, the team recognized a fundamental trade-off: convenience and security often pull in opposite directions.
+SendR is a file-sharing web application inspired by services such as WeTransfer. The goal of the project was to create a convenient and functional platform that allows users to upload, share, and manage files through download links — while meeting the security standards.
 
 > **Key Design Decision**  
 > The most significant decision made during the project was to **shift from a convenience-first approach to a security-first approach**. This meant introducing mandatory user authentication, even at the cost of the frictionless experience that services like WeTransfer are known for. A user now must authenticate via email before uploading or managing files.
@@ -18,7 +63,6 @@ The initial concept aimed to build something *more convenient* than WeTransfer. 
 This decision shaped the entire architecture of the application: authentication, tier-based access, quota enforcement, and file expiry are all consequences of prioritizing a secure environment over anonymous access.
 
 ### Project Goals
-
 The primary objectives of the project were:
 
 - Build a functional file-sharing service with a modern web interface
@@ -27,9 +71,6 @@ The primary objectives of the project were:
 - Package the application for containerized deployment using Docker
 - Deploy the application to a cloud environment
 
-### Project Timeline
-
-The project was carried out over approximately three and a half months, from early March 2025 to mid-June 2025. Development of the core application took place first, with cloud deployment planned as the final phase.
 
 ## System Architecture
 
@@ -75,25 +116,25 @@ Both the frontend and backend are packaged as **Docker containers**. Each servic
 
 ### Frontend Technologies
 
-| Technology       | Purpose                                               |
-| ---------------- | ----------------------------------------------------- |
-| Angular 19       | Main frontend framework (SPA)                         |
-| TypeScript       | Programming language for the frontend                 |
-| SCSS             | Styling                                               |
-| OpenAPI Generator| Auto-generates the HTTP client from the backend API spec |
-| Bun              | JavaScript runtime and package manager                 |
-| nginx            | Serves the frontend and proxies API requests          |
+| Technology        | Purpose                                                  |
+| ----------------- | -------------------------------------------------------- |
+| Angular 19        | Main frontend framework (SPA)                            |
+| TypeScript        | Programming language for the frontend                    |
+| SCSS              | Styling                                                  |
+| OpenAPI Generator | Auto-generates the HTTP client from the backend API spec |
+| Bun               | JavaScript runtime and package manager                   |
+| nginx             | Serves the frontend and proxies API requests             |
 
 ### Backend Technologies
 
-| Technology | Purpose                                          |
-| ---------- | ------------------------------------------------ |
-| Python     | Programming language for the backend             |
-| FastAPI    | Web framework for building the REST API          |
-| SQLModel   | ORM combining SQLAlchemy and Pydantic            |
-| Alembic    | Database migration management                    |
-| SQLite     | Relational database                              |
-| uv         | Python package and environment manager           |
+| Technology | Purpose                                 |
+| ---------- | --------------------------------------- |
+| Python     | Programming language for the backend    |
+| FastAPI    | Web framework for building the REST API |
+| SQLModel   | ORM combining SQLAlchemy and Pydantic   |
+| Alembic    | Database migration management           |
+| SQLite     | Relational database                     |
+| uv         | Python package and environment manager  |
 
 ### Tooling and Infrastructure
 
@@ -118,22 +159,30 @@ In production mode, verification codes are sent via SMTP. During local developme
 
 The core feature of SendR is file upload and sharing. After authenticating, users can upload files which are then accessible via unique download links. The system supports file expiry, after which links become invalid and files are eventually purged.
 
+### CAPTCHA Protection
+To prevent automated abuse of the authentication and upload endpoints, SendR integrates CAPTCHA verification. CAPTCHA is enabled by default in production mode (SENDR_ENVIRONMENT=production) and is relaxed in local development mode (SENDR_ENVIRONMENT=local) to streamline the development workflow.
+
+
 ### Tier-Based Access Control
 
 SendR implements a three-tier user system that controls upload limits and available features:
 
-| Feature               | Basic      | Free       | Premium    |
-| --------------------- | ---------- | ---------- | ---------- |
-| Email required        | Yes        | Yes        | Yes        |
-| Files per week        | 3          | 5          | 50         |
-| Max file size         | 100 MB     | 1 GB       | 10 GB      |
-| Browse history        | No         | Yes        | Yes        |
-| Edit files            | No         | No         | Yes        |
-| Retrieve expired files| No         | No         | Yes        |
+| Feature                | Basic  | Free | Premium |
+| ---------------------- | ------ | ---- | ------- |
+| Email required         | Yes    | Yes  | Yes     |
+| Files per week         | 3      | 5    | 50      |
+| Max file size          | 100 MB | 1 GB | 10 GB   |
+| Browse history         | No     | Yes  | Yes     |
+| Edit files             | No     | No   | Yes     |
+| Retrieve expired files | No     | No   | Yes     |
 
 ### File Expiry and Refresh
 
 Files uploaded to SendR are not stored indefinitely. Each file has a configurable expiry period. Users with a Premium tier can retrieve files even after expiry within a grace period, as well as generate new download links for existing files.
+
+### Upload Quota Management
+The system tracks upload usage per user on a rolling weekly basis. When a user reaches their tier's weekly file limit, further uploads are rejected until quota resets. This ensures fair resource usage across all accounts.
+
 
 ### API Documentation
 
@@ -142,81 +191,50 @@ Because the backend is built with FastAPI, interactive API documentation is auto
 - **Swagger UI** — available at `/docs`
 - **ReDoc** — available at `/redoc`
 
+## Environment Configuration
+
+SendR uses environment variables to control runtime behaviour. The table below documents all supported variables.
+
+| Variable                | Default           | Description                                                                                                          |
+| ----------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `SENDR_ENVIRONMENT`     | `production`      | Set to `local` to enable dev login shortcuts and disable CAPTCHA. Use `production` for real deployments.             |
+| `SENDR_DEV_MODE`        | `false`           | Enables dev-only backend routes when set to `true`. Never enable in production.                                      |
+| `SENDR_ALLOWED_ORIGINS` | (none)            | Comma-separated list or JSON array of allowed CORS origins. Required when frontend and API are on different origins. |
+| SMTP settings           | —                 | SMTP host, port, and credentials required for production email delivery. Not needed in local mode.                   |
+| `API_URL` (frontend)    | `http://api:8000` | Points the nginx reverse proxy to the backend container. Set when running frontend Docker image.                     |
+
+> **💡 In local development mode (`SENDR_ENVIRONMENT=local`), verification codes are printed to the server log instead of being sent by email, and CAPTCHA verification is relaxed.**
+
+
 ## Development Process
 
 ### Version Control and Workflow
 
-The project was developed using **Git** with the repository hosted on **GitHub**. All source code, configuration files, and infrastructure definitions are versioned in the same repository, following a monorepo structure.
+The project was developed using Git with the repository hosted on GitHub. All source code, configuration files, and infrastructure definitions are versioned in the same repository, following a monorepo structure.
 
-### Code Quality Automation
+### Quick Start
 
-A significant effort was put into automating code quality checks. The repository uses **pre-commit hooks** that run automatically before every commit. These hooks perform the following checks:
+**Backend**
 
-- **Backend**: Python code is linted and formatted using `ruff`
-- **Frontend**: TypeScript code is linted using `oxlint` and formatted automatically
-- **API sync check**: If backend API source files are modified, the `openapi.json` specification and the Angular API client are automatically regenerated and staged into the same commit
-- **Frontend build**: On frontend-related commits, a build is run to catch compile-time errors early
+```bash
+cd backend
+uv sync
+uv run alembic upgrade head
+SENDR_ENVIRONMENT=local uv run uvicorn src.app:app --host 0.0.0.0 --port 8000
+```
 
-> **Why This Matters**  
-> The automatic regeneration of the API client on every backend change ensures that the frontend is always working against an up-to-date contract. This eliminates an entire class of integration bugs that would otherwise only be caught at runtime.
+**Frontend**
 
-### Continuous Integration
-
-A **GitHub Actions** CI pipeline runs on every push and pull request. Among other checks, it validates that the `openapi.json` file and the generated Angular client are not stale — by regenerating them and checking whether any diff is produced. If the generated files are out of date, the pipeline fails.
-
-### Dependency Management
-
-Dependencies are kept up to date automatically using **Renovate**, a bot that monitors the repository and opens pull requests whenever a new version of a dependency is available.
-
-### Development Environment
-
-The repository includes a **devcontainer** configuration, allowing developers to work in a fully pre-configured environment using VS Code Dev Containers or GitHub Codespaces. The devcontainer automatically installs all required tools and sets up the pre-commit hooks on first launch.
-
-## Cloud Deployment
-
-> **Work in Progress**  
-> This section will be completed once the cloud deployment phase of the project is finalized. The target cloud provider and deployment architecture will be described here.
-
-### Containerization
-
-Both the frontend and backend are already fully containerized using **Docker**. Each service has a dedicated `Dockerfile`:
-
-- `backend/Dockerfile` — builds the FastAPI application image
-- `frontend/Dockerfile` — builds the Angular application and packages it with nginx
-
-This containerization means the application is **cloud-ready**: it can be deployed to any container orchestration platform or cloud service that supports Docker images, including AWS ECS, Azure Container Apps, or Google Cloud Run.
-
-### Planned Deployment Architecture
-
-*To be completed.*
-
-### Security Considerations for Cloud Deployment
-
-When deploying to a cloud environment, the following configuration points must be addressed:
-
-- **CORS**: The backend does not allow any cross-origin requests by default. The `SENDR_ALLOWED_ORIGINS` environment variable must be set to the frontend's public URL when deploying to separate origins.
-- **SMTP**: A production email server must be configured for the email authentication flow to work.
-- **Environment**: `SENDR_ENVIRONMENT` must be set to `production` to enable CAPTCHA and real email delivery.
-- **Storage**: SQLite is suitable for small deployments, but a managed relational database service may be considered for production scale.
-
-## Summary
-
-### What Was Achieved
-
-Over the course of the project, the team built a fully functional file-sharing web application from scratch. The application includes a working frontend, a REST API backend, email-based authentication, a tier-based access control system, and a complete containerized deployment setup.
-
-The development process itself was designed with quality in mind: automated linting, pre-commit hooks, continuous integration, and auto-generated API clients all contribute to a codebase that is consistent and maintainable.
-
-### Key Lessons Learned
-
-The most important lesson from this project was the **tension between security and usability**. The original vision was a service more convenient than WeTransfer — but once security requirements were properly considered, mandatory authentication became a necessity. This is a real-world trade-off that any security-conscious application must navigate.
-
-> **Conclusion**  
-> SendR demonstrates that it is possible to build a secure, functional, and well-structured file-sharing service using modern open-source technologies. The project served as a practical exercise in full-stack development, security-conscious design, and cloud-ready deployment.
-
-### Future Work
-
-- Complete cloud deployment and document the infrastructure setup
-- Migrate from SQLite to a managed database for production
-- Add end-to-end encryption for uploaded files
-- Implement file scanning for malicious content
+```bash
+cd frontend
+bun install
+bun start                   
+bun run start     
+```
+**Docker**
+```bash
+docker build -t sendr-api ./backend
+docker build -t sendr-frontend ./frontend
+docker run -p 8000:8000 sendr-api
+docker run -p 8080:80 -e API_URL=http://sendr-api:8000 sendr-frontend
+```
