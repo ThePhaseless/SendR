@@ -46,6 +46,15 @@ def _weekly_limit_for_tier(tier: UserTier) -> int:
     return settings.TEMPORARY_MAX_WEEKLY_UPLOADS
 
 
+def _weekly_size_limit_for_tier(tier: UserTier) -> int:
+    """Return weekly upload size limit in bytes (0 = unlimited)."""
+    if tier == UserTier.premium:
+        return settings.PREMIUM_MAX_WEEKLY_UPLOAD_SIZE_MB * 1024 * 1024
+    if tier == UserTier.free:
+        return settings.FREE_MAX_WEEKLY_UPLOAD_SIZE_MB * 1024 * 1024
+    return settings.TEMPORARY_MAX_WEEKLY_UPLOAD_SIZE_MB * 1024 * 1024
+
+
 @router.post("/request-code", status_code=status.HTTP_200_OK)
 async def request_code(
     body: EmailVerificationRequest,
@@ -156,12 +165,29 @@ async def get_quota(
     weekly_limit = _weekly_limit_for_tier(user.tier)
     weekly_remaining = max(0, weekly_limit - weekly_used) if weekly_limit > 0 else weekly_limit
 
+    # Compute weekly size usage
+    size_limit = _weekly_size_limit_for_tier(user.tier)
+    size_used = 0
+    if size_limit > 0:
+        result = await session.exec(
+            select(func.coalesce(func.sum(FileUpload.file_size_bytes), 0)).where(
+                FileUpload.user_id == user.id,
+                FileUpload.created_at >= one_week_ago,
+            )
+        )
+        size_used = result.one()
+
+    size_remaining = max(0, size_limit - size_used) if size_limit > 0 else 0
+
     quota = QuotaResponse(
         max_file_size_mb=max_file_size_mb,
         max_files_per_upload=max_files_per_upload,
         weekly_uploads_limit=weekly_limit,
         weekly_uploads_used=weekly_used,
         weekly_uploads_remaining=weekly_remaining,
+        weekly_upload_size_limit_bytes=size_limit,
+        weekly_upload_size_used_bytes=size_used,
+        weekly_upload_size_remaining_bytes=size_remaining,
     )
 
     # Populate tier-specific expiry/download options
@@ -176,11 +202,15 @@ async def get_quota(
         quota.max_downloads_limit = settings.FREE_MAX_DOWNLOADS_LIMIT
         quota.max_passwords_per_upload = settings.FREE_MAX_PASSWORDS_PER_UPLOAD
         quota.max_emails_per_upload = settings.FREE_MAX_EMAILS_PER_UPLOAD
+        quota.can_use_separate_download_counts = True
+        quota.can_use_email_stats = True
     elif user.tier == UserTier.premium:
         quota.min_expiry_hours = settings.PREMIUM_MIN_EXPIRY_HOURS
         quota.max_expiry_hours = settings.PREMIUM_MAX_EXPIRY_HOURS
         quota.max_downloads_limit = settings.PREMIUM_MAX_DOWNLOADS_LIMIT
         quota.max_passwords_per_upload = settings.PREMIUM_MAX_PASSWORDS_PER_UPLOAD
         quota.max_emails_per_upload = settings.PREMIUM_MAX_EMAILS_PER_UPLOAD
+        quota.can_use_separate_download_counts = True
+        quota.can_use_email_stats = True
 
     return quota
