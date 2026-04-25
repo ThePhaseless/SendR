@@ -1,4 +1,5 @@
 import json
+import logging
 import secrets
 from typing import Any
 
@@ -39,6 +40,10 @@ class Settings(BaseSettings):
     TEMPORARY_MAX_WEEKLY_UPLOADS: int = 3
     FREE_MAX_WEEKLY_UPLOADS: int = 5
     PREMIUM_MAX_WEEKLY_UPLOADS: int = 0
+    # Weekly upload size quotas in MB (0 = unlimited)
+    TEMPORARY_MAX_WEEKLY_UPLOAD_SIZE_MB: int = 0
+    FREE_MAX_WEEKLY_UPLOAD_SIZE_MB: int = 0
+    PREMIUM_MAX_WEEKLY_UPLOAD_SIZE_MB: int = 51200  # 50 GB
     # Expiry options per tier (hours)
     TEMPORARY_EXPIRY_OPTIONS_HOURS: list[int] = [24, 72]  # 1d or 3d only
     FREE_MIN_EXPIRY_HOURS: int = 1
@@ -110,3 +115,5 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+logger = logging.getLogger(__name__)
+logger.info(f"Configuration loaded: ENVIRONMENT={settings.ENVIRONMENT}")

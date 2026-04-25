@@ -13,4 +13,5 @@ export interface AccessInfoResponse {
   passwords: PasswordInfo[];
   emails: EmailRecipientInfo[];
   show_email_stats: boolean;
+  separate_download_counts?: boolean;
 }

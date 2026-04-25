@@ -16,6 +16,7 @@ export interface UploadGroupInfoResponse {
   is_public?: boolean;
   has_passwords?: boolean;
   has_email_recipients?: boolean;
+  separate_download_counts?: boolean;
   title?: string | null;
   description?: string | null;
 }

@@ -31,13 +31,13 @@ async def list_users(
         stmt = stmt.where(User.email.contains(search))
         count_stmt = count_stmt.where(User.email.contains(search))
 
-    result = await session.execute(count_stmt)
-    total = result.scalar_one()
+    result = await session.exec(count_stmt)
+    total = result.one()
 
     offset = (page - 1) * per_page
     stmt = stmt.order_by(User.created_at.desc()).offset(offset).limit(per_page)
-    result = await session.execute(stmt)
-    users = result.scalars().all()
+    result = await session.exec(stmt)
+    users = result.all()
 
     return AdminUserListResponse(
         users=[UserResponse(id=u.id, email=u.email, tier=u.tier.value, is_admin=u.is_admin) for u in users],
@@ -53,8 +53,8 @@ async def update_user(
     session: AsyncSession = Depends(get_session),
 ) -> UserResponse:
     stmt = select(User).where(User.id == user_id)
-    result = await session.execute(stmt)
-    user = result.scalars().first()
+    result = await session.exec(stmt)
+    user = result.first()
 
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -96,8 +96,8 @@ async def delete_user(
         )
 
     stmt = select(User).where(User.id == user_id)
-    result = await session.execute(stmt)
-    user = result.scalars().first()
+    result = await session.exec(stmt)
+    user = result.first()
 
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")

@@ -54,6 +54,8 @@ class FileUpload(SQLModel, table=True):
     file_size_bytes: int
     download_token: str = Field(unique=True, index=True)
     download_count: int = Field(default=0)
+    public_download_count: int = Field(default=0)
+    restricted_download_count: int = Field(default=0)
     max_downloads: int | None = Field(default=None)
     upload_group: str = Field(default_factory=lambda: str(uuid4()), index=True)
     expires_at: datetime
@@ -65,6 +67,7 @@ class UploadGroupSettings(SQLModel, table=True):
     upload_group: str = Field(primary_key=True, index=True)
     is_public: bool = Field(default=True)
     show_email_stats: bool = Field(default=False)
+    separate_download_counts: bool = Field(default=False)
     title: str | None = Field(default=None)
     description: str | None = Field(default=None)
 

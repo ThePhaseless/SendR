@@ -10,8 +10,11 @@ export interface LimitsResponse {
   max_file_size_mb: number;
   max_files_per_upload: number;
   weekly_uploads_limit: number;
+  weekly_upload_size_limit_bytes?: number;
   expiry_options_hours: number[];
   max_downloads_options: number[];
   max_passwords_per_upload?: number;
   max_emails_per_upload?: number;
+  can_use_separate_download_counts?: boolean;
+  can_use_email_stats?: boolean;
 }

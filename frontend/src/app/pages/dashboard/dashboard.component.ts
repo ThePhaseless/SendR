@@ -14,6 +14,7 @@ import type {
 } from "../../services/file.service";
 import { FileService } from "../../services/file.service";
 import { extractDownloadToken, formatFileSize, isExpired } from "../../utils/file.utils";
+import { getErrorDetail } from "../../utils/error.utils";
 import { resolveAppUrl } from "../../utils/url.utils";
 
 export interface UploadGroup {
@@ -129,8 +130,8 @@ export class DashboardComponent implements OnInit {
   private loadFiles(): void {
     this.loading.set(true);
     this.fileService.listFiles().subscribe({
-      error: () => {
-        this.error.set("Failed to load uploads.");
+      error: (err: unknown) => {
+        this.error.set(getErrorDetail(err, "Failed to load uploads."));
         this.loading.set(false);
       },
       next: (res) => {
@@ -274,8 +275,8 @@ export class DashboardComponent implements OnInit {
             title: this.panelTitle() || null,
           })
           .subscribe({
-            error: () => {
-              this.error.set("Failed to save changes.");
+            error: (err: unknown) => {
+              this.error.set(getErrorDetail(err, "Failed to save changes."));
               this.isSaving.set(false);
             },
             next: (res) => {
@@ -296,8 +297,8 @@ export class DashboardComponent implements OnInit {
             max_downloads: this.panelMaxDownloads() || undefined,
           })
           .subscribe({
-            error: () => {
-              this.error.set("Failed to save changes.");
+            error: (err: unknown) => {
+              this.error.set(getErrorDetail(err, "Failed to save changes."));
               this.isSaving.set(false);
             },
             next: (updated) => {
@@ -310,8 +311,8 @@ export class DashboardComponent implements OnInit {
 
     if (addFilesObs) {
       addFilesObs.subscribe({
-        error: () => {
-          this.error.set("Failed to add new files.");
+        error: (err: unknown) => {
+          this.error.set(getErrorDetail(err, "Failed to add new files."));
           this.isSaving.set(false);
         },
         next: (res) => {
@@ -365,8 +366,8 @@ export class DashboardComponent implements OnInit {
             title: this.panelTitle() || null,
           })
           .subscribe({
-            error: () => {
-              this.error.set("Failed to refresh upload.");
+            error: (err: unknown) => {
+              this.error.set(getErrorDetail(err, "Failed to refresh upload."));
               this.isSaving.set(false);
             },
             next: (res) => {
@@ -382,8 +383,8 @@ export class DashboardComponent implements OnInit {
         // Single file refresh
         const file = group.files[0];
         this.fileService.refreshFile(file.id, this.panelExpiryHours()).subscribe({
-          error: () => {
-            this.error.set("Failed to refresh upload.");
+          error: (err: unknown) => {
+            this.error.set(getErrorDetail(err, "Failed to refresh upload."));
             this.isSaving.set(false);
           },
           next: (updated) => {
@@ -397,8 +398,8 @@ export class DashboardComponent implements OnInit {
 
     if (addFilesObs) {
       addFilesObs.subscribe({
-        error: () => {
-          this.error.set("Failed to add new files.");
+        error: (err: unknown) => {
+          this.error.set(getErrorDetail(err, "Failed to add new files."));
           this.isSaving.set(false);
         },
         next: (res) => {
@@ -414,8 +415,8 @@ export class DashboardComponent implements OnInit {
   /** Remove a single file (delete from server). */
   removeFile(file: FileUploadResponse, group: UploadGroup): void {
     this.fileService.deleteFile(file.id).subscribe({
-      error: () => {
-        this.error.set("Failed to delete file.");
+      error: (err: unknown) => {
+        this.error.set(getErrorDetail(err, "Failed to delete file."));
       },
       next: () => {
         this.files.update((files) => files.filter((f) => f.id !== file.id));
@@ -431,8 +432,8 @@ export class DashboardComponent implements OnInit {
     this.expandedGroupKey.set(null);
     for (const file of group.files) {
       this.fileService.deleteFile(file.id).subscribe({
-        error: () => {
-          this.error.set("Failed to delete upload.");
+        error: (err: unknown) => {
+          this.error.set(getErrorDetail(err, "Failed to delete upload."));
         },
         next: () => {
           this.files.update((files) => files.filter((f) => f.id !== file.id));
@@ -483,8 +484,8 @@ export class DashboardComponent implements OnInit {
   editAccess(uploadGroup: string, body: AccessEditRequest): void {
     this.accessLoading.set(true);
     this.fileService.editAccess(uploadGroup, body).subscribe({
-      error: () => {
-        this.error.set("Failed to update access control.");
+      error: (err: unknown) => {
+        this.error.set(getErrorDetail(err, "Failed to update access control."));
         this.accessLoading.set(false);
       },
       next: (info) => {

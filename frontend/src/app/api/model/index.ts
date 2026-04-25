@@ -26,6 +26,8 @@ export * from './fileEditRequest';
 export * from './fileListResponse';
 export * from './fileUploadResponse';
 export * from './getChallengeApiAltchaChallengeGet200';
+export * from './getFileInfoApiFilesDownloadTokenInfoGetParams';
+export * from './getGroupInfoApiFilesGroupUploadGroupGetParams';
 export * from './getRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetParams';
 export * from './groupEditRequest';
 export * from './groupRefreshRequest';

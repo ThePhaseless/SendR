@@ -53,6 +53,9 @@ export class FilePickerComponent {
   /** Emitted when the user clicks to add files but interceptClick is true. */
   addClicked = output();
 
+  /** Whether any limit warning is active. */
+  hasLimitWarning = computed(() => this.limitWarning() !== null);
+
   isDragging = signal(false);
   collapsedFolders = signal(new Set<string>());
 

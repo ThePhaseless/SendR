@@ -32,7 +32,10 @@ class FileUploadResponse(SQLModel):
     download_url: str
     expires_at: datetime
     download_count: int
+    public_download_count: int = 0
+    restricted_download_count: int = 0
     max_downloads: int | None = None
+    separate_download_counts: bool = False
     is_active: bool
     upload_group: str | None = None
     message: str | None = None
@@ -51,6 +54,10 @@ class QuotaResponse(SQLModel):
     weekly_uploads_limit: int
     weekly_uploads_used: int
     weekly_uploads_remaining: int
+    # Weekly size quota (bytes, 0 = unlimited)
+    weekly_upload_size_limit_bytes: int = 0
+    weekly_upload_size_used_bytes: int = 0
+    weekly_upload_size_remaining_bytes: int = 0
     # Expiry options
     expiry_options_hours: list[int] | None = None  # Discrete choices (temporary)
     min_expiry_hours: int | None = None  # Range min (free/premium)
@@ -61,6 +68,9 @@ class QuotaResponse(SQLModel):
     # Access control limits
     max_passwords_per_upload: int = 0
     max_emails_per_upload: int = 0
+    # Feature capabilities per tier
+    can_use_separate_download_counts: bool = False
+    can_use_email_stats: bool = False
 
 
 class MultiFileUploadResponse(SQLModel):
@@ -80,6 +90,7 @@ class UploadGroupInfoResponse(SQLModel):
     is_public: bool = True
     has_passwords: bool = False
     has_email_recipients: bool = False
+    separate_download_counts: bool = False
     title: str | None = None
     description: str | None = None
 
@@ -100,6 +111,7 @@ class LimitsResponse(SQLModel):
     max_file_size_mb: int
     max_files_per_upload: int
     weekly_uploads_limit: int
+    weekly_upload_size_limit_bytes: int = 0
     # Expiry options for temporary tier
     expiry_options_hours: list[int]
     # Max download options for temporary tier
@@ -107,6 +119,9 @@ class LimitsResponse(SQLModel):
     # Access control limits
     max_passwords_per_upload: int = 1
     max_emails_per_upload: int = 0
+    # Feature capabilities (always false for temporary/unauthenticated)
+    can_use_separate_download_counts: bool = False
+    can_use_email_stats: bool = False
 
 
 class FileEditRequest(SQLModel):
@@ -171,6 +186,7 @@ class PasswordEntry(SQLModel):
 class AccessEditRequest(SQLModel):
     is_public: bool | None = None
     show_email_stats: bool | None = None
+    separate_download_counts: bool | None = None
     passwords_to_add: list[PasswordEntry] | None = None
     password_ids_to_remove: list[int] | None = None
     emails_to_add: list[str] | None = None
@@ -182,6 +198,7 @@ class AccessInfoResponse(SQLModel):
     passwords: list[PasswordInfo]
     emails: list[EmailRecipientInfo]
     show_email_stats: bool
+    separate_download_counts: bool = False
 
 
 class RecipientDownloadEntry(SQLModel):

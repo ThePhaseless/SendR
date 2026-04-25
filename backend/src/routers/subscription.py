@@ -24,8 +24,8 @@ async def get_subscription(
         Subscription.user_id == user.id,
         Subscription.is_active == True,  # noqa: E712
     )
-    result = await session.execute(stmt)
-    sub = result.scalars().first()
+    result = await session.exec(stmt)
+    sub = result.first()
 
     if sub:
         return SubscriptionResponse(
@@ -48,8 +48,8 @@ async def upgrade_to_premium(
         Subscription.user_id == user.id,
         Subscription.is_active == True,  # noqa: E712
     )
-    result = await session.execute(stmt)
-    for old_sub in result.scalars().all():
+    result = await session.exec(stmt)
+    for old_sub in result.all():
         old_sub.is_active = False
         session.add(old_sub)
 
@@ -89,8 +89,8 @@ async def cancel_subscription(
         Subscription.user_id == user.id,
         Subscription.is_active == True,  # noqa: E712
     )
-    result = await session.execute(stmt)
-    sub = result.scalars().first()
+    result = await session.exec(stmt)
+    sub = result.first()
 
     if sub:
         sub.is_active = False

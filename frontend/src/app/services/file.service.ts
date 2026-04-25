@@ -38,6 +38,7 @@ export interface UploadAccessOptions {
   passwords?: { label: string; password: string }[];
   emails?: string[];
   showEmailStats?: boolean;
+  separateDownloadCounts?: boolean;
   title?: string;
   description?: string;
 }
@@ -70,6 +71,7 @@ export class FileService {
           options?.passwords && options.passwords.length > 0
             ? JSON.stringify(options.passwords)
             : undefined,
+        separate_download_counts: options?.separateDownloadCounts ?? false,
         show_email_stats: options?.showEmailStats ?? false,
         title: options?.title ?? undefined,
       },
@@ -123,6 +125,7 @@ export class FileService {
           options?.passwords && options.passwords.length > 0
             ? JSON.stringify(options.passwords)
             : undefined,
+        separate_download_counts: options?.separateDownloadCounts ?? false,
         show_email_stats: options?.showEmailStats ?? false,
         title: options?.title ?? undefined,
       },
