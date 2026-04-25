@@ -25,7 +25,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
 
       - name: Cache bun dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('frontend/bun.lock') }}
@@ -60,7 +60,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
 
       - name: Cache bun dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('frontend/bun.lock') }}
@@ -84,7 +84,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
 
       - name: Cache bun dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('frontend/bun.lock') }}
@@ -108,7 +108,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
 
       - name: Cache bun dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('frontend/bun.lock') }}
