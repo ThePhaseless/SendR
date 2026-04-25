@@ -41,7 +41,7 @@ jobs:
       - name: Add 404.html for SPA routing
         run: cp frontend/dist/frontend/browser/index.html frontend/dist/frontend/browser/404.html
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: frontend/dist/frontend/browser
 
