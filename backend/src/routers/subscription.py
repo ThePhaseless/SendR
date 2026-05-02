@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends
 from sqlmodel import select
 
+from config import settings
 from database import get_session
-from models import Subscription, SubscriptionPlan, User, UserTier, _utcnow
+from models import FileUpload, Subscription, SubscriptionPlan, User, UserTier, _utcnow
 from schemas import SubscriptionResponse
 from security import get_current_user
 
@@ -67,6 +68,21 @@ async def upgrade_to_premium(
     user.tier = UserTier.premium
     user.updated_at = now
     session.add(user)
+
+    # Automatically restore recently expired uploads so premium takes effect immediately.
+    premium_grace_cutoff = now - timedelta(days=settings.PREMIUM_REFRESH_GRACE_DAYS)
+    restored_expiry = now + timedelta(hours=settings.PREMIUM_MAX_EXPIRY_HOURS)
+    expired_uploads_result = await session.exec(
+        select(FileUpload).where(
+            FileUpload.user_id == user.id,
+            FileUpload.is_active == True,  # noqa: E712
+            FileUpload.expires_at <= now,
+            FileUpload.expires_at > premium_grace_cutoff,
+        )
+    )
+    for file_upload in expired_uploads_result.all():
+        file_upload.expires_at = restored_expiry
+        session.add(file_upload)
 
     await session.commit()
     await session.refresh(sub)

@@ -64,6 +64,21 @@ async def get_current_user(
     user = await verify_token(token, session)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+    if user.is_banned:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is banned")
+    return user
+
+
+async def get_optional_user(
+    authorization: str | None = Depends(api_key_header),
+    session: AsyncSession = Depends(get_session),
+) -> User | None:
+    token = _extract_token(authorization)
+    if not token:
+        return None
+    user = await verify_token(token, session)
+    if user and user.is_banned:
+        return None
     return user
 
 

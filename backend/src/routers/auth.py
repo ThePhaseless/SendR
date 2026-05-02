@@ -7,7 +7,7 @@ from sqlmodel import func, select
 from config import settings
 from database import get_session
 from email_utils import send_verification_email
-from models import AuthToken, FileUpload, User, UserTier, VerificationCode, _utcnow
+from models import AuthToken, FileUpload, User, UserLogin, UserTier, VerificationCode, _utcnow
 from rate_limit import auth_rate_limiter, get_client_ip
 from schemas import (
     CodeVerificationRequest,
@@ -28,6 +28,12 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+
+async def _get_user_by_email(session: AsyncSession, email: str) -> User | None:
+    stmt = select(User).where(User.email == email)
+    result = await session.exec(stmt)
+    return result.first()
 
 
 def _get_max_file_size_for_tier(tier: UserTier) -> tuple[int, int]:
@@ -62,6 +68,10 @@ async def request_code(
     session: AsyncSession = Depends(get_session),
 ) -> dict[str, str]:
     auth_rate_limiter.check(get_client_ip(request))
+
+    user = await _get_user_by_email(session, body.email)
+    if user and user.is_banned:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is banned")
 
     code = generate_verification_code()
     expires_at = _utcnow() + timedelta(minutes=settings.VERIFICATION_CODE_EXPIRE_MINUTES)
@@ -102,14 +112,14 @@ async def verify_code(
     session.add(vc)
 
     # Find or create user
-    stmt = select(User).where(User.email == body.email)
-    result = await session.exec(stmt)
-    user = result.first()
+    user = await _get_user_by_email(session, body.email)
     if not user:
         tier = UserTier.free if body.create_account else UserTier.temporary
         user = User(email=body.email, tier=tier)
         session.add(user)
         await session.flush()
+    elif user.is_banned:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is banned")
     elif body.create_account and user.tier == UserTier.temporary:
         # Upgrade temporary user to free on registration
         user.tier = UserTier.free
@@ -123,6 +133,13 @@ async def verify_code(
         expires_at=expires_at,
     )
     session.add(auth_token)
+    session.add(
+        UserLogin(
+            user_id=user.id,
+            auth_method="verification_code",
+            ip_address=get_client_ip(request),
+        )
+    )
     await session.commit()
 
     return TokenResponse(token=raw_token, expires_at=expires_at)
@@ -130,7 +147,13 @@ async def verify_code(
 
 @router.get("/me")
 async def get_me(user: User = Depends(get_current_user)) -> UserResponse:
-    return UserResponse(id=user.id, email=user.email, tier=user.tier.value, is_admin=user.is_admin)
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        tier=user.tier.value,
+        is_admin=user.is_admin,
+        is_banned=user.is_banned,
+    )
 
 
 @router.get("/limits")

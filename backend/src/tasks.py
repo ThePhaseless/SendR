@@ -3,7 +3,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from sqlmodel import select
+from sqlmodel import and_, or_, select
 
 from config import settings
 from models import FileUpload, _utcnow
@@ -16,11 +16,16 @@ logger = logging.getLogger(__name__)
 
 async def cleanup_expired_files(session: AsyncSession) -> int:
     """Delete files that are past the grace period. Returns number of files cleaned up."""
-    cutoff = _utcnow() - timedelta(days=settings.FILE_GRACE_PERIOD_DAYS)
+    now = _utcnow()
+    cutoff = now - timedelta(days=settings.FILE_GRACE_PERIOD_DAYS)
+    owned_cutoff = now - timedelta(days=max(settings.FILE_GRACE_PERIOD_DAYS, settings.PREMIUM_REFRESH_GRACE_DAYS))
 
     stmt = select(FileUpload).where(
-        FileUpload.expires_at < cutoff,
         FileUpload.is_active == True,  # noqa: E712
+        or_(
+            and_(FileUpload.user_id.is_(None), FileUpload.expires_at < cutoff),
+            and_(FileUpload.user_id.is_not(None), FileUpload.expires_at < owned_cutoff),
+        ),
     )
     result = await session.exec(stmt)
     expired_files = result.all()

@@ -8,6 +8,8 @@
 import type {
   AccessInfoResponse,
   AdminUserListResponse,
+  AdminUserLoginListResponse,
+  AdminUserStatsResponse,
   DownloadFileApiFilesDownloadTokenGetParams,
   DownloadGroupApiFilesGroupUploadGroupDownloadGetParams,
   DownloadStatsResponse,
@@ -109,6 +111,42 @@ export function listUsersApiAdminUsersGetResource(params?: Signal<ListUsersApiAd
     });
     return request;
   }, options);
+}
+
+/**
+ * @experimental httpResource is experimental (Angular v19.2+)
+ */
+export function listUserUploadsApiAdminUsersUserIdUploadsGetResource(userId: Signal<number>,
+  options: OrvalHttpResourceOptions<FileListResponse, unknown> & { defaultValue: NoInfer<FileListResponse> }): HttpResourceRef<FileListResponse>;
+export function listUserUploadsApiAdminUsersUserIdUploadsGetResource(userId: Signal<number>,
+  options?: OrvalHttpResourceOptions<FileListResponse, unknown>): HttpResourceRef<FileListResponse | undefined>;
+export function listUserUploadsApiAdminUsersUserIdUploadsGetResource(userId: Signal<number>,
+  options?: OrvalHttpResourceOptions<FileListResponse, unknown>): HttpResourceRef<FileListResponse | undefined> {
+  return httpResource<FileListResponse>(() => `/api/admin/users/${userId()}/uploads`, options);
+}
+
+/**
+ * @experimental httpResource is experimental (Angular v19.2+)
+ */
+export function listUserLoginsApiAdminUsersUserIdLoginsGetResource(userId: Signal<number>,
+  options: OrvalHttpResourceOptions<AdminUserLoginListResponse, unknown> & { defaultValue: NoInfer<AdminUserLoginListResponse> }): HttpResourceRef<AdminUserLoginListResponse>;
+export function listUserLoginsApiAdminUsersUserIdLoginsGetResource(userId: Signal<number>,
+  options?: OrvalHttpResourceOptions<AdminUserLoginListResponse, unknown>): HttpResourceRef<AdminUserLoginListResponse | undefined>;
+export function listUserLoginsApiAdminUsersUserIdLoginsGetResource(userId: Signal<number>,
+  options?: OrvalHttpResourceOptions<AdminUserLoginListResponse, unknown>): HttpResourceRef<AdminUserLoginListResponse | undefined> {
+  return httpResource<AdminUserLoginListResponse>(() => `/api/admin/users/${userId()}/logins`, options);
+}
+
+/**
+ * @experimental httpResource is experimental (Angular v19.2+)
+ */
+export function getUserStatsApiAdminUsersUserIdStatsGetResource(userId: Signal<number>,
+  options: OrvalHttpResourceOptions<AdminUserStatsResponse, unknown> & { defaultValue: NoInfer<AdminUserStatsResponse> }): HttpResourceRef<AdminUserStatsResponse>;
+export function getUserStatsApiAdminUsersUserIdStatsGetResource(userId: Signal<number>,
+  options?: OrvalHttpResourceOptions<AdminUserStatsResponse, unknown>): HttpResourceRef<AdminUserStatsResponse | undefined>;
+export function getUserStatsApiAdminUsersUserIdStatsGetResource(userId: Signal<number>,
+  options?: OrvalHttpResourceOptions<AdminUserStatsResponse, unknown>): HttpResourceRef<AdminUserStatsResponse | undefined> {
+  return httpResource<AdminUserStatsResponse>(() => `/api/admin/users/${userId()}/stats`, options);
 }
 
 /**
@@ -300,6 +338,9 @@ export function getSubscriptionApiSubscriptionGetResource(options?: OrvalHttpRes
 }
 
 export type ListUsersApiAdminUsersGetResourceResult = NonNullable<AdminUserListResponse>
+export type ListUserUploadsApiAdminUsersUserIdUploadsGetResourceResult = NonNullable<FileListResponse>
+export type ListUserLoginsApiAdminUsersUserIdLoginsGetResourceResult = NonNullable<AdminUserLoginListResponse>
+export type GetUserStatsApiAdminUsersUserIdStatsGetResourceResult = NonNullable<AdminUserStatsResponse>
 export type GetChallengeApiAltchaChallengeGetResourceResult = NonNullable<GetChallengeApiAltchaChallengeGet200>
 export type GetMeApiAuthMeGetResourceResult = NonNullable<UserResponse>
 export type GetLimitsApiAuthLimitsGetResourceResult = NonNullable<LimitsResponse>

@@ -4,6 +4,7 @@ import { Component, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute } from "@angular/router";
 import type { FileUploadResponse, UploadGroupInfoResponse } from "../../api/model";
+import { AuthService } from "../../services/auth.service";
 import type { RecipientStatsResponse } from "../../services/file.service";
 import { FileService } from "../../services/file.service";
 import { filenameToEmoji, formatFileSize, isExpired } from "../../utils/file.utils";
@@ -16,6 +17,7 @@ import { filenameToEmoji, formatFileSize, isExpired } from "../../utils/file.uti
 })
 export class DownloadComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly authService = inject(AuthService);
   private readonly fileService = inject(FileService);
 
   private readonly token = this.route.snapshot.paramMap.get("token") ?? "";
@@ -77,9 +79,15 @@ export class DownloadComponent {
     const file = this.fileInfo();
     const group = this.groupInfo();
     if (file) {
+      if (file.viewer_is_owner) {
+        return false;
+      }
       return !file.is_public && file.has_passwords && !this.passwordToken();
     }
     if (group) {
+      if (group.viewer_is_owner) {
+        return false;
+      }
       return !group.is_public && group.has_passwords && !this.passwordToken();
     }
     return false;
@@ -90,9 +98,15 @@ export class DownloadComponent {
     const file = this.fileInfo();
     const group = this.groupInfo();
     if (file) {
+      if (file.viewer_is_owner) {
+        return false;
+      }
       return file.is_public && file.has_passwords && !this.passwordToken();
     }
     if (group) {
+      if (group.viewer_is_owner) {
+        return false;
+      }
       return group.is_public && group.has_passwords && !this.passwordToken();
     }
     return false;
@@ -101,7 +115,7 @@ export class DownloadComponent {
   /** Whether the download limit has been reached for a single file. */
   isFileLimitReached = computed(() => {
     const file = this.fileInfo();
-    if (!file || !file.max_downloads) {
+    if (!file || file.viewer_is_owner || !file.max_downloads) {
       return false;
     }
     return file.download_count >= file.max_downloads;
@@ -110,17 +124,24 @@ export class DownloadComponent {
   /** Whether the download limit has been reached for the group. */
   isGroupLimitReached = computed(() => {
     const group = this.groupInfo();
-    if (!group) {
+    if (!group || group.viewer_is_owner) {
       return false;
     }
     return group.files.some(
-      (f) => f.max_downloads != null && f.max_downloads > 0 && f.download_count >= f.max_downloads,
+      (f) =>
+        f.max_downloads !== null &&
+        f.max_downloads !== undefined &&
+        f.max_downloads > 0 &&
+        f.download_count >= f.max_downloads,
     );
   });
 
   /** Whether the download limit has been reached for a specific file in a group. */
-  isGroupFileLimitReached(file: { download_count: number; max_downloads?: number | null }): boolean {
-    if (!file.max_downloads) {
+  isGroupFileLimitReached(file: {
+    download_count: number;
+    max_downloads?: number | null;
+  }): boolean {
+    if (this.groupInfo()?.viewer_is_owner || !file.max_downloads) {
       return false;
     }
     return file.download_count >= file.max_downloads;
@@ -170,6 +191,25 @@ export class DownloadComponent {
     });
   }
 
+  private getDownloadHeaders(): HeadersInit | undefined {
+    const token = this.authService.getToken();
+    if (!token) {
+      return undefined;
+    }
+    return { Authorization: `Bearer ${token}` };
+  }
+
+  private async getDownloadErrorDetail(response: Response): Promise<string> {
+    const body = (await response.json().catch(() => null)) as unknown;
+    if (typeof body === "object" && body !== null) {
+      const detail = Reflect.get(body, "detail");
+      if (typeof detail === "string") {
+        return detail;
+      }
+    }
+    return "Download failed.";
+  }
+
   async download(): Promise<void> {
     this.downloadError.set("");
     this.downloading.set(true);
@@ -178,10 +218,9 @@ export class DownloadComponent {
       this.passwordToken() || undefined,
     );
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { headers: this.getDownloadHeaders() });
       if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        const detail = body?.detail ?? "Download failed.";
+        const detail = await this.getDownloadErrorDetail(response);
         this.downloadError.set(detail);
         this.fileInfoResource?.reload();
         return;
@@ -207,10 +246,9 @@ export class DownloadComponent {
       this.passwordToken() || undefined,
     );
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { headers: this.getDownloadHeaders() });
       if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        const detail = body?.detail ?? "Download failed.";
+        const detail = await this.getDownloadErrorDetail(response);
         this.downloadError.set(detail);
         this.groupInfoResource?.reload();
         return;
@@ -238,10 +276,9 @@ export class DownloadComponent {
       url = `${downloadUrl}${separator}password=${encodeURIComponent(pw)}`;
     }
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { headers: this.getDownloadHeaders() });
       if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        const detail = body?.detail ?? "Download failed.";
+        const detail = await this.getDownloadErrorDetail(response);
         this.downloadError.set(detail);
         this.groupInfoResource?.reload();
         return;

@@ -36,7 +36,11 @@
       <!-- Shareable link with access info -->
       <div class="result-access-section">
         <!-- Shareable link — always shown once -->
-        <div class="result-access-card" [class.result-public]="getSubmittedPasswords().length === 0" [class.result-restricted]="getSubmittedPasswords().length > 0">
+        <div
+          class="result-access-card"
+          [class.result-public]="getSubmittedPasswords().length === 0"
+          [class.result-restricted]="getSubmittedPasswords().length > 0"
+        >
           <div class="result-access-header">
             @if (getSubmittedPasswords().length > 0) {
               <span class="material-symbols-outlined">lock</span>
@@ -50,7 +54,9 @@
           @if (getSubmittedPasswords().length > 0 && !isPublic()) {
             <p class="result-access-hint">Password required to view file details and download</p>
           } @else if (getSubmittedPasswords().length > 0) {
-            <p class="result-access-hint">File details are visible, but downloading requires a password</p>
+            <p class="result-access-hint">
+              File details are visible, but downloading requires a password
+            </p>
           } @else {
             <p class="result-access-hint">Anyone with this link can download</p>
           }
@@ -116,8 +122,10 @@
           <span class="material-symbols-outlined quota-bar-icon">cloud_upload</span>
           <span class="quota-bar-label">Weekly uploads</span>
           <span class="quota-bar-count"
-            >{{ weeklyUploadsUsed() }} / {{ weeklyUploadsLimit() }}
-            ({{ weeklyUploadsRemaining() }} left)</span
+            >{{ weeklyUploadsUsed() }} / {{ weeklyUploadsLimit() }} ({{
+              weeklyUploadsRemaining()
+            }}
+            left)</span
           >
         </div>
         <div
@@ -140,7 +148,8 @@
           </p>
         } @else if (weeklyUploadsRemaining() <= 2) {
           <p class="quota-bar-hint quota-bar-hint--warning">
-            {{ weeklyUploadsRemaining() }} upload{{ weeklyUploadsRemaining() === 1 ? '' : 's' }} remaining this week.
+            {{ weeklyUploadsRemaining() }} upload{{ weeklyUploadsRemaining() === 1 ? "" : "s" }}
+            remaining this week.
           </p>
         }
       </div>
@@ -152,8 +161,11 @@
           <span class="material-symbols-outlined quota-bar-icon">hard_drive</span>
           <span class="quota-bar-label">Weekly transfer</span>
           <span class="quota-bar-count"
-            >{{ formatSize(weeklyUploadSizeUsedBytes()) }} / {{ formatSize(weeklyUploadSizeLimitBytes()) }}
-            ({{ formatSize(weeklyUploadSizeRemainingBytes()) }} left)</span
+            >{{ formatSize(weeklyUploadSizeUsedBytes()) }} /
+            {{ formatSize(weeklyUploadSizeLimitBytes()) }} ({{
+              formatSize(weeklyUploadSizeRemainingBytes())
+            }}
+            left)</span
           >
         </div>
         <div
@@ -165,7 +177,10 @@
         >
           <div
             class="quota-bar-fill"
-            [class.quota-bar-fill--warning]="weeklyUploadSizeRemainingBytes() <= weeklyUploadSizeLimitBytes() * 0.1 && !isSizeQuotaExhausted()"
+            [class.quota-bar-fill--warning]="
+              weeklyUploadSizeRemainingBytes() <= weeklyUploadSizeLimitBytes() * 0.1 &&
+              !isSizeQuotaExhausted()
+            "
             [class.quota-bar-fill--exhausted]="isSizeQuotaExhausted()"
             [style.width.%]="(weeklyUploadSizeUsedBytes() / weeklyUploadSizeLimitBytes()) * 100"
           ></div>
@@ -257,13 +272,17 @@
 
           <div class="upload-action">
             @if (isQuotaExhausted()) {
-              <p class="upload-action-hint hint-error">
-                Weekly upload limit reached.
-              </p>
+              <p class="upload-action-hint hint-error">Weekly upload limit reached.</p>
             }
             <button
               class="btn btn-primary btn-lg"
-              [disabled]="isUploading() || !altchaVerified() || settingsHasError() || isQuotaExhausted() || fileLimitWarning()"
+              [disabled]="
+                isUploading() ||
+                !altchaVerified() ||
+                settingsHasError() ||
+                isQuotaExhausted() ||
+                fileLimitWarning()
+              "
               (click)="startUpload()"
             >
               Upload {{ pendingFiles().length === 1 ? "File" : "Files" }}

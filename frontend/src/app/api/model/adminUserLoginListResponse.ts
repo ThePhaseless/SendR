@@ -5,11 +5,8 @@
  * WeTransfer-like file sharing service
  * OpenAPI spec version: 0.1.0
  */
+import type { AdminUserLoginEntry } from './adminUserLoginEntry';
 
-export interface UserResponse {
-  id: number;
-  email: string;
-  tier: string;
-  is_admin?: boolean;
-  is_banned?: boolean;
+export interface AdminUserLoginListResponse {
+  logins: AdminUserLoginEntry[];
 }
