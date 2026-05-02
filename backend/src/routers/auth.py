@@ -24,8 +24,8 @@ from security import (
     create_access_token,
     generate_verification_code,
     get_current_user,
-    hash_user_password,
     hash_token,
+    hash_user_password,
     verify_user_password,
 )
 

@@ -31,6 +31,10 @@ class RateLimiter:
                 )
             self._requests[key].append(now)
 
+    def reset(self) -> None:
+        with self._lock:
+            self._requests.clear()
+
 
 auth_rate_limiter = RateLimiter(
     max_requests=settings.AUTH_RATE_LIMIT_PER_MINUTE,

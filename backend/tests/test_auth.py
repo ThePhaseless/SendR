@@ -11,9 +11,9 @@ from security import create_access_token, hash_token, hash_user_password
 
 @pytest.fixture(autouse=True)
 def _reset_auth_rate_limiter():
-    auth_rate_limiter._requests.clear()
+    auth_rate_limiter.reset()
     yield
-    auth_rate_limiter._requests.clear()
+    auth_rate_limiter.reset()
 
 
 @pytest.mark.asyncio
@@ -33,7 +33,11 @@ async def test_get_limits_returns_basic_tier():
 @pytest.mark.asyncio
 async def test_password_login_returns_token_and_records_login():
     async with database.async_session() as session:
-        user = User(email="password-login@sendr.local", tier=UserTier.free, password_hash=hash_user_password("TopSecret123"))
+        user = User(
+            email="password-login@sendr.local",
+            tier=UserTier.free,
+            password_hash=hash_user_password("TopSecret123"),
+        )
         session.add(user)
         await session.commit()
         await session.refresh(user)
@@ -74,7 +78,8 @@ async def test_set_password_allows_future_password_login(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_change_password_replaces_existing_password(auth_headers):
+@pytest.mark.usefixtures("auth_headers")
+async def test_change_password_replaces_existing_password():
     async with database.async_session() as session:
         result = await session.exec(select(User).where(User.email == "test@sendr.local"))
         user = result.first()

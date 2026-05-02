@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import aiofiles
-from fastapi.concurrency import run_in_threadpool
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, StreamingResponse
 from passlib.hash import pbkdf2_sha256
 from sqlmodel import func, or_, select
@@ -892,9 +892,13 @@ async def download_file(
     )
 
     if access_type != "owner" and await _is_single_file_download_restricted(session, file_upload):
+        detail = (
+            "Single-file downloads are disabled for multi-file transfers with download limits. "
+            "Download the full transfer instead."
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Single-file downloads are disabled for multi-file transfers with download limits. Download the full transfer instead.",
+            detail=detail,
         )
 
     now = _utcnow()

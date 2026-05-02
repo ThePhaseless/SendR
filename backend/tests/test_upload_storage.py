@@ -1,3 +1,4 @@
+import secrets
 from datetime import timedelta
 from pathlib import Path
 
@@ -88,7 +89,7 @@ async def test_cleanup_removes_shared_file_only_after_last_active_reference() ->
             stored_filename=stored_filename,
             content_hash="abc123",
             file_size_bytes=6,
-            download_token="token-1",
+            download_token=secrets.token_urlsafe(8),
             upload_group="group-1",
             expires_at=expired_at,
         )
@@ -97,7 +98,7 @@ async def test_cleanup_removes_shared_file_only_after_last_active_reference() ->
             stored_filename=stored_filename,
             content_hash="abc123",
             file_size_bytes=6,
-            download_token="token-2",
+            download_token=secrets.token_urlsafe(8),
             upload_group="group-2",
             expires_at=active_until,
         )
