@@ -18,14 +18,14 @@ jobs:
     name: "Generated API: Up to Date"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v8.1.0
 
       - uses: oven-sh/setup-bun@v2
 
       - name: Cache bun dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('frontend/bun.lock') }}
@@ -55,12 +55,12 @@ jobs:
     name: "Frontend: Build"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: oven-sh/setup-bun@v2
 
       - name: Cache bun dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('frontend/bun.lock') }}
@@ -79,12 +79,12 @@ jobs:
     name: "Frontend: Lint"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: oven-sh/setup-bun@v2
 
       - name: Cache bun dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('frontend/bun.lock') }}
@@ -103,12 +103,12 @@ jobs:
     name: "Frontend: Format"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: oven-sh/setup-bun@v2
 
       - name: Cache bun dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('frontend/bun.lock') }}
@@ -127,12 +127,12 @@ jobs:
   #   name: "Frontend: Test"
   #   runs-on: ubuntu-latest
   #   steps:
-  #     - uses: actions/checkout@v4
+  #     - uses: actions/checkout@v6
 
   #     - uses: oven-sh/setup-bun@v2
 
   #     - name: Cache bun dependencies
-  #       uses: actions/cache@v4
+  #       uses: actions/cache@v5
   #       with:
   #         path: ~/.bun/install/cache
   #         key: ${{ runner.os }}-bun-${{ hashFiles('frontend/bun.lock') }}
@@ -151,9 +151,9 @@ jobs:
     name: "Backend: Lint"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v8.1.0
 
       - name: Install dependencies
         working-directory: backend
@@ -167,9 +167,9 @@ jobs:
     name: "Backend: Format"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v8.1.0
 
       - name: Install dependencies
         working-directory: backend
@@ -183,9 +183,9 @@ jobs:
     name: "Backend: Test"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v8.1.0
 
       - name: Install dependencies
         working-directory: backend

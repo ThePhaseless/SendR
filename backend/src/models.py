@@ -26,6 +26,7 @@ class User(SQLModel, table=True):
     email: str = Field(index=True, unique=True)
     tier: UserTier = Field(default=UserTier.free)
     is_admin: bool = Field(default=False)
+    is_banned: bool = Field(default=False)
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
 
@@ -46,6 +47,14 @@ class AuthToken(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_utcnow)
 
 
+class UserLogin(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    auth_method: str
+    ip_address: str | None = Field(default=None)
+    logged_in_at: datetime = Field(default_factory=_utcnow)
+
+
 class FileUpload(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     user_id: int | None = Field(default=None, foreign_key="user.id", index=True)
@@ -54,6 +63,8 @@ class FileUpload(SQLModel, table=True):
     file_size_bytes: int
     download_token: str = Field(unique=True, index=True)
     download_count: int = Field(default=0)
+    public_download_count: int = Field(default=0)
+    restricted_download_count: int = Field(default=0)
     max_downloads: int | None = Field(default=None)
     upload_group: str = Field(default_factory=lambda: str(uuid4()), index=True)
     expires_at: datetime
@@ -65,6 +76,7 @@ class UploadGroupSettings(SQLModel, table=True):
     upload_group: str = Field(primary_key=True, index=True)
     is_public: bool = Field(default=True)
     show_email_stats: bool = Field(default=False)
+    separate_download_counts: bool = Field(default=False)
     title: str | None = Field(default=None)
     description: str | None = Field(default=None)
 

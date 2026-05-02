@@ -39,6 +39,9 @@ export class UploadSettingsComponent {
   /** Whether email recipients can see download stats. */
   showEmailStats = model(false);
 
+  /** Whether download counts are tracked separately for public vs restricted. */
+  separateDownloadCounts = model(false);
+
   /** Transfer title. */
   title = model("");
 
@@ -56,6 +59,25 @@ export class UploadSettingsComponent {
 
   /** Max emails per upload for current tier. */
   maxEmailsPerUpload = input(0);
+
+  /** Discrete expiry hour options from backend (temporary tier). */
+  expiryOptionsHours = input<number[] | null>(null);
+
+  /** Min/max expiry hours from backend (free/premium). */
+  minExpiryHours = input<number | null>(null);
+  maxExpiryHours = input<number | null>(null);
+
+  /** Max downloads limit from backend (free/premium). 0 = unlimited. */
+  backendMaxDownloadsLimit = input<number | null>(null);
+
+  /** Discrete max download options from backend (temporary tier). */
+  backendMaxDownloadsOptions = input<number[] | null>(null);
+
+  /** Whether the user can use separate download counts (free+ only). */
+  canUseSeparateDownloadCounts = input(false);
+
+  /** Whether the user can use email stats (free+ only). */
+  canUseEmailStats = input(false);
 
   /** Whether password section is expanded. */
   passwordsExpanded = false;
@@ -77,68 +99,66 @@ export class UploadSettingsComponent {
         this.expiryHours.set(options.at(-1)!.value);
       }
     });
-    effect(() => {
-      if (!this.canDisablePublic()) {
-        this.isPublic.set(true);
-      }
-    });
     // Emit validation error state
     effect(() => {
       this.hasError.emit(this.maxDownloadsExceedsLimit());
     });
+    // Reset isPublic to true when no passwords remain (hide-details toggle only makes sense with passwords)
+    effect(() => {
+      if (this.passwordCount() === 0 && !this.isPublic()) {
+        this.isPublic.set(true);
+      }
+    });
   }
 
-  /** Available expiry duration options, based on tier. */
+  private static readonly KNOWN_EXPIRY_LABELS: Record<number, string> = {
+    1: "1 hour",
+    24: "1 day",
+    72: "3 days",
+    168: "7 days",
+    336: "14 days",
+    720: "30 days",
+  };
+
+  /** Available expiry duration options, driven by backend data. */
   expiryOptions = computed<ExpiryOption[]>(() => {
-    const t = this.tier();
-    if (t === "premium") {
-      return [
-        { label: "1 hour", value: 1 },
-        { label: "1 day", value: 24 },
-        { label: "3 days", value: 72 },
-        { label: "7 days", value: 168 },
-        { label: "14 days", value: 336 },
-        { label: "30 days", value: 720 },
-      ];
+    const discrete = this.expiryOptionsHours();
+    if (discrete) {
+      // Temporary tier: use discrete options from backend
+      return discrete.map((h) => ({
+        label: UploadSettingsComponent.KNOWN_EXPIRY_LABELS[h] ?? `${h}h`,
+        value: h,
+      }));
     }
-    if (t === "free") {
-      return [
-        { label: "1 hour", value: 1 },
-        { label: "1 day", value: 24 },
-        { label: "3 days", value: 72 },
-        { label: "7 days", value: 168 },
-      ];
-    }
-    // Temporary
-    return [
-      { label: "1 day", value: 24 },
-      { label: "3 days", value: 72 },
-    ];
+    // Free/premium: generate options within min–max range
+    const min = this.minExpiryHours() ?? 1;
+    const max = this.maxExpiryHours() ?? 168;
+    const all = [1, 24, 72, 168, 336, 720];
+    return all
+      .filter((h) => h >= min && h <= max)
+      .map((h) => ({
+        label: UploadSettingsComponent.KNOWN_EXPIRY_LABELS[h] ?? `${h}h`,
+        value: h,
+      }));
   });
 
-  /** Max download limit for custom input, based on tier. */
-  maxDownloadsLimit = computed(() => {
-    const t = this.tier();
-    if (t === "premium") {
-      return 1000;
-    }
-    if (t === "free") {
-      return 10;
-    }
-    return 1;
-  });
+  /** Max download limit from backend. */
+  maxDownloadsLimit = computed(() => this.backendMaxDownloadsLimit() ?? 1);
 
   /** Whether to show custom download input (free/premium) vs select (temporary). */
-  useCustomDownloads = computed(() => {
-    const t = this.tier();
-    return t === "free" || t === "premium";
-  });
+  useCustomDownloads = computed(() => this.backendMaxDownloadsLimit() !== null);
 
   /** Available max download options for the select (temporary tier). */
-  maxDownloadsOptions = computed<{ value: number; label: string }[]>(() => [
-    { label: "Unlimited", value: 0 },
-    { label: "1", value: 1 },
-  ]);
+  maxDownloadsOptions = computed<{ value: number; label: string }[]>(() => {
+    const opts = this.backendMaxDownloadsOptions();
+    if (opts) {
+      return opts.map((v) => ({ label: v === 0 ? "Unlimited" : String(v), value: v }));
+    }
+    return [
+      { label: "Unlimited", value: 0 },
+      { label: "1", value: 1 },
+    ];
+  });
 
   /** Whether user can add more passwords. */
   canAddPassword = computed(() => {

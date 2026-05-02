@@ -36,9 +36,6 @@
                 @if (isGroupExpired(group)) {
                   <span class="badge badge-expired">Expired</span>
                 }
-                @if (group.files[0]?.is_public) {
-                  <span class="badge badge-access" title="Public">🌐</span>
-                }
                 @if (group.files[0]?.has_passwords) {
                   <span class="badge badge-access" title="Password protected">🔑</span>
                 }
@@ -207,75 +204,60 @@
                   @if (accessLoading() && !accessInfo()) {
                     <p class="stats-loading">Loading access info...</p>
                   } @else if (accessInfo(); as access) {
-                    <!-- Links section -->
-                    <div class="access-links">
-                      @if (access.is_public) {
-                        <div class="link-card link-public">
-                          <div class="link-header">
-                            <span class="material-symbols-outlined">public</span>
-                            <span>Public Link</span>
-                          </div>
-                          <p class="link-hint">Anyone with this link can download</p>
-                          <div class="link-copy">
-                            <input
-                              type="text"
-                              [value]="getDownloadPageUrl(group)"
-                              readonly
-                              class="link-input"
-                            />
-                            <button class="btn btn-primary btn-sm" (click)="copyLink(group)">
-                              {{ copiedGroupKey() === group.key ? "Copied!" : "Copy" }}
-                            </button>
-                          </div>
-                        </div>
-                      }
-                      @if (access.passwords.length > 0 || access.emails.length > 0) {
-                        <div class="link-card link-restricted">
-                          <div class="link-header">
-                            <span class="material-symbols-outlined">lock</span>
-                            <span>Restricted Access</span>
-                          </div>
-                          <p class="link-hint">
-                            @if (access.passwords.length > 0 && access.emails.length > 0) {
-                              {{ access.passwords.length }} password(s) and
-                              {{ access.emails.length }} email invite(s) configured
-                            } @else if (access.passwords.length > 0) {
-                              {{ access.passwords.length }} password(s) configured
-                            } @else {
-                              {{ access.emails.length }} email invite(s) sent
-                            }
-                          </p>
-                          <div class="link-copy">
-                            <input
-                              type="text"
-                              [value]="getDownloadPageUrl(group)"
-                              readonly
-                              class="link-input"
-                            />
-                            <button class="btn btn-primary btn-sm" (click)="copyLink(group)">
-                              {{ copiedGroupKey() === group.key ? "Copied!" : "Copy" }}
-                            </button>
-                          </div>
-                        </div>
-                      }
+                    <!-- Link section (single card) -->
+                    <div class="link-card">
+                      <div class="link-header">
+                        @if (access.passwords.length > 0) {
+                          <span class="material-symbols-outlined">lock</span>
+                          <span>Password-Protected Link</span>
+                        } @else {
+                          <span class="material-symbols-outlined">public</span>
+                          <span>Download Link</span>
+                        }
+                      </div>
+                      <p class="link-hint">
+                        @if (access.passwords.length > 0 && access.emails.length > 0) {
+                          Password required to download &middot;
+                          {{ access.emails.length }} email invite(s) configured
+                        } @else if (access.passwords.length > 0) {
+                          Password required to download
+                        } @else if (access.emails.length > 0) {
+                          {{ access.emails.length }} email invite(s) configured
+                        } @else {
+                          Anyone with this link can download
+                        }
+                      </p>
+                      <div class="link-copy">
+                        <input
+                          type="text"
+                          [value]="getDownloadPageUrl(group)"
+                          readonly
+                          class="form-input"
+                        />
+                        <button class="btn btn-primary btn-sm" (click)="copyLink(group)">
+                          {{ copiedGroupKey() === group.key ? "Copied!" : "Copy" }}
+                        </button>
+                      </div>
                     </div>
 
-                    <!-- Public toggle -->
-                    <div class="access-row">
-                      <div class="access-row-info">
-                        <span class="material-symbols-outlined">link</span>
-                        <span>Public link</span>
+                    <!-- Hide file details toggle (only when passwords exist) -->
+                    @if (access.passwords.length > 0) {
+                      <div class="access-row">
+                        <div class="access-row-info">
+                          <span class="material-symbols-outlined">visibility_off</span>
+                          <span>Hide file details until password is entered</span>
+                        </div>
+                        <label class="switch">
+                          <input
+                            type="checkbox"
+                            [checked]="!access.is_public"
+                            (change)="togglePublic(group.uploadGroup!, !access.is_public)"
+                            [disabled]="accessLoading()"
+                          />
+                          <span class="switch-slider"></span>
+                        </label>
                       </div>
-                      <label class="switch">
-                        <input
-                          type="checkbox"
-                          [checked]="access.is_public"
-                          (change)="togglePublic(group.uploadGroup!, !access.is_public)"
-                          [disabled]="accessLoading()"
-                        />
-                        <span class="switch-slider"></span>
-                      </label>
-                    </div>
+                    }
 
                     <!-- Passwords list -->
                     <div class="access-subsection">

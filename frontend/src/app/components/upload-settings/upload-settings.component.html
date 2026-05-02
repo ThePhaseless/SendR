@@ -76,32 +76,45 @@
   <div class="access-section">
     <h4 class="section-label">Access Control</h4>
 
-    <div class="public-link-row" [class.disabled]="!canDisablePublic()">
-      <div class="public-link-info">
-        <span class="material-symbols-outlined public-link-icon">link</span>
-        <div>
-          <span class="public-link-label">Public link</span>
-          <span class="public-link-hint">
-            @if (!canDisablePublic()) {
-              Add a password or email to restrict access
-            } @else if (isPublic()) {
-              Anyone with the link can download
-            } @else {
-              Only people with a password or email invite can download
-            }
-          </span>
-        </div>
-      </div>
-      <label class="switch">
-        <input
-          type="checkbox"
-          [ngModel]="isPublic()"
-          (ngModelChange)="isPublic.set($event)"
-          [disabled]="!canDisablePublic()"
-        />
-        <span class="switch-slider"></span>
-      </label>
+    <!-- Access status message -->
+    <div class="access-status">
+      @if (passwordCount() > 0 && emailCount() > 0) {
+        <span class="material-symbols-outlined access-status-icon">lock</span>
+        <span>Password required to download. Email invites will receive a direct link.</span>
+      } @else if (passwordCount() > 0) {
+        <span class="material-symbols-outlined access-status-icon">lock</span>
+        <span>Password required to download this file.</span>
+      } @else if (emailCount() > 0) {
+        <span class="material-symbols-outlined access-status-icon">mail_lock</span>
+        <span>Only email recipients will receive a download link.</span>
+      } @else {
+        <span class="material-symbols-outlined access-status-icon">public</span>
+        <span>Anyone with the link can download. Add a password or email to restrict access.</span>
+      }
     </div>
+
+    <!-- Require password for file details toggle (only shown when passwords exist) -->
+    @if (passwordCount() > 0) {
+      <div class="public-link-row">
+        <div class="public-link-info">
+          <span class="material-symbols-outlined public-link-icon">visibility_off</span>
+          <div>
+            <span class="public-link-label">Hide file details until password is entered</span>
+            <span class="public-link-hint">
+              @if (!isPublic()) {
+                File name, size, and other details are hidden until a valid password is provided
+              } @else {
+                File details are visible to everyone, but downloading still requires a password
+              }
+            </span>
+          </div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" [ngModel]="!isPublic()" (ngModelChange)="isPublic.set(!$event)" />
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+    }
 
     <!-- Passwords accordion -->
     <div class="accordion">
@@ -221,30 +234,32 @@
               </button>
             </div>
           }
-          <div class="public-link-row">
-            <div class="public-link-info">
-              <span class="material-symbols-outlined public-link-icon">visibility</span>
-              <div>
-                <span class="public-link-label">Let recipients see download activity</span>
-                <span class="public-link-hint">
-                  @if (showEmailStats()) {
-                    Recipients can see who else downloaded
-                  } @else {
-                    Download activity is hidden from recipients
-                  }
-                </span>
+          @if (canUseEmailStats()) {
+            <div class="public-link-row">
+              <div class="public-link-info">
+                <span class="material-symbols-outlined public-link-icon">visibility</span>
+                <div>
+                  <span class="public-link-label">Let recipients see download activity</span>
+                  <span class="public-link-hint">
+                    @if (showEmailStats()) {
+                      Recipients can see who else downloaded
+                    } @else {
+                      Download activity is hidden from recipients
+                    }
+                  </span>
+                </div>
               </div>
+              <label class="switch">
+                <input
+                  type="checkbox"
+                  id="show-email-stats"
+                  [ngModel]="showEmailStats()"
+                  (ngModelChange)="showEmailStats.set($event)"
+                />
+                <span class="switch-slider"></span>
+              </label>
             </div>
-            <label class="switch">
-              <input
-                type="checkbox"
-                id="show-email-stats"
-                [ngModel]="showEmailStats()"
-                (ngModelChange)="showEmailStats.set($event)"
-              />
-              <span class="switch-slider"></span>
-            </label>
-          </div>
+          }
         </div>
       }
     </div>

@@ -14,6 +14,7 @@ export interface BodyUploadMultipleFilesApiFilesUploadMultiplePost {
   passwords?: string | null;
   emails?: string | null;
   show_email_stats?: boolean;
+  separate_download_counts?: boolean;
   title?: string | null;
   description?: string | null;
   altcha?: string;

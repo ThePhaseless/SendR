@@ -12,6 +12,9 @@ export interface QuotaResponse {
   weekly_uploads_limit: number;
   weekly_uploads_used: number;
   weekly_uploads_remaining: number;
+  weekly_upload_size_limit_bytes?: number;
+  weekly_upload_size_used_bytes?: number;
+  weekly_upload_size_remaining_bytes?: number;
   expiry_options_hours?: number[] | null;
   min_expiry_hours?: number | null;
   max_expiry_hours?: number | null;
@@ -19,4 +22,6 @@ export interface QuotaResponse {
   max_downloads_limit?: number | null;
   max_passwords_per_upload?: number;
   max_emails_per_upload?: number;
+  can_use_separate_download_counts?: boolean;
+  can_use_email_stats?: boolean;
 }

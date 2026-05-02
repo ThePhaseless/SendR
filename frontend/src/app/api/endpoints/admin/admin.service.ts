@@ -27,8 +27,12 @@ import {
 
 import type {
   AdminUserListResponse,
+  AdminUserLoginListResponse,
+  AdminUserStatsResponse,
   AdminUserUpdateRequest,
   DeleteUserApiAdminUsersUserIdDelete200,
+  DeleteUserTransferApiAdminUsersUserIdTransfersUploadGroupDelete200,
+  FileListResponse,
   ListUsersApiAdminUsersGetParams,
   UserResponse
 } from '../../model';
@@ -236,8 +240,148 @@ export class AdminService {
       }
     );
   }
+/**
+ * @summary List User Uploads
+ */
+ listUserUploadsApiAdminUsersUserIdUploadsGet<TData = FileListResponse>(userId: number, options?: HttpClientBodyOptions): Observable<TData>;
+ listUserUploadsApiAdminUsersUserIdUploadsGet<TData = FileListResponse>(userId: number, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ listUserUploadsApiAdminUsersUserIdUploadsGet<TData = FileListResponse>(userId: number, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  listUserUploadsApiAdminUsersUserIdUploadsGet<TData = FileListResponse>(
+    userId: number, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.get<TData>(
+      `/api/admin/users/${userId}/uploads`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.get<TData>(
+      `/api/admin/users/${userId}/uploads`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.get<TData>(
+      `/api/admin/users/${userId}/uploads`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+/**
+ * @summary List User Logins
+ */
+ listUserLoginsApiAdminUsersUserIdLoginsGet<TData = AdminUserLoginListResponse>(userId: number, options?: HttpClientBodyOptions): Observable<TData>;
+ listUserLoginsApiAdminUsersUserIdLoginsGet<TData = AdminUserLoginListResponse>(userId: number, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ listUserLoginsApiAdminUsersUserIdLoginsGet<TData = AdminUserLoginListResponse>(userId: number, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  listUserLoginsApiAdminUsersUserIdLoginsGet<TData = AdminUserLoginListResponse>(
+    userId: number, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.get<TData>(
+      `/api/admin/users/${userId}/logins`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.get<TData>(
+      `/api/admin/users/${userId}/logins`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.get<TData>(
+      `/api/admin/users/${userId}/logins`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+/**
+ * @summary Get User Stats
+ */
+ getUserStatsApiAdminUsersUserIdStatsGet<TData = AdminUserStatsResponse>(userId: number, options?: HttpClientBodyOptions): Observable<TData>;
+ getUserStatsApiAdminUsersUserIdStatsGet<TData = AdminUserStatsResponse>(userId: number, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ getUserStatsApiAdminUsersUserIdStatsGet<TData = AdminUserStatsResponse>(userId: number, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  getUserStatsApiAdminUsersUserIdStatsGet<TData = AdminUserStatsResponse>(
+    userId: number, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.get<TData>(
+      `/api/admin/users/${userId}/stats`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.get<TData>(
+      `/api/admin/users/${userId}/stats`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.get<TData>(
+      `/api/admin/users/${userId}/stats`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+/**
+ * @summary Delete User Transfer
+ */
+ deleteUserTransferApiAdminUsersUserIdTransfersUploadGroupDelete<TData = DeleteUserTransferApiAdminUsersUserIdTransfersUploadGroupDelete200>(userId: number,
+    uploadGroup: string, options?: HttpClientBodyOptions): Observable<TData>;
+ deleteUserTransferApiAdminUsersUserIdTransfersUploadGroupDelete<TData = DeleteUserTransferApiAdminUsersUserIdTransfersUploadGroupDelete200>(userId: number,
+    uploadGroup: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ deleteUserTransferApiAdminUsersUserIdTransfersUploadGroupDelete<TData = DeleteUserTransferApiAdminUsersUserIdTransfersUploadGroupDelete200>(userId: number,
+    uploadGroup: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  deleteUserTransferApiAdminUsersUserIdTransfersUploadGroupDelete<TData = DeleteUserTransferApiAdminUsersUserIdTransfersUploadGroupDelete200>(
+    userId: number,
+    uploadGroup: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.delete<TData>(
+      `/api/admin/users/${userId}/transfers/${uploadGroup}`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.delete<TData>(
+      `/api/admin/users/${userId}/transfers/${uploadGroup}`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.delete<TData>(
+      `/api/admin/users/${userId}/transfers/${uploadGroup}`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
 };
 
 export type ListUsersApiAdminUsersGetClientResult = NonNullable<AdminUserListResponse>
 export type UpdateUserApiAdminUsersUserIdPatchClientResult = NonNullable<UserResponse>
 export type DeleteUserApiAdminUsersUserIdDeleteClientResult = NonNullable<DeleteUserApiAdminUsersUserIdDelete200>
+export type ListUserUploadsApiAdminUsersUserIdUploadsGetClientResult = NonNullable<FileListResponse>
+export type ListUserLoginsApiAdminUsersUserIdLoginsGetClientResult = NonNullable<AdminUserLoginListResponse>
+export type GetUserStatsApiAdminUsersUserIdStatsGetClientResult = NonNullable<AdminUserStatsResponse>
+export type DeleteUserTransferApiAdminUsersUserIdTransfersUploadGroupDeleteClientResult = NonNullable<DeleteUserTransferApiAdminUsersUserIdTransfersUploadGroupDelete200>

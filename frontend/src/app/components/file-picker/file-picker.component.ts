@@ -1,5 +1,14 @@
 import { NgTemplateOutlet } from "@angular/common";
-import { Component, computed, input, model, output, signal } from "@angular/core";
+import {
+  Component,
+  ElementRef,
+  computed,
+  inject,
+  input,
+  model,
+  output,
+  signal,
+} from "@angular/core";
 import { filenameToEmoji, formatFileSize, mimeToEmoji } from "../../utils/file.utils";
 
 export interface UploadFileEntry {
@@ -23,12 +32,18 @@ export interface FileTreeNode {
 }
 
 @Component({
+  host: {
+    "(document:click)": "onDocumentClick($event)",
+    "(document:keydown.escape)": "closePickerMenu()",
+  },
   imports: [NgTemplateOutlet],
   selector: "app-file-picker",
   styleUrl: "./file-picker.component.scss",
   templateUrl: "./file-picker.component.html",
 })
 export class FilePickerComponent {
+  private readonly elementRef = inject(ElementRef<HTMLElement>);
+
   /** Max total size in MB. */
   maxFileSizeMb = input(100);
 
@@ -53,8 +68,12 @@ export class FilePickerComponent {
   /** Emitted when the user clicks to add files but interceptClick is true. */
   addClicked = output();
 
+  /** Whether any limit warning is active. */
+  hasLimitWarning = computed(() => this.limitWarning() !== null);
+
   isDragging = signal(false);
   collapsedFolders = signal(new Set<string>());
+  pickerMenuOpen = signal(false);
 
   totalPendingSize = computed(() => this.pendingFiles().reduce((sum, f) => sum + f.size, 0));
 
@@ -84,6 +103,7 @@ export class FilePickerComponent {
     event.preventDefault();
     event.stopPropagation();
     this.isDragging.set(true);
+    this.closePickerMenu();
   }
 
   onDragLeave(event: DragEvent): void {
@@ -96,10 +116,53 @@ export class FilePickerComponent {
     event.preventDefault();
     event.stopPropagation();
     this.isDragging.set(false);
+    this.closePickerMenu();
     const items = event.dataTransfer?.items;
     if (items && items.length > 0) {
       void this.processDataTransferItems(items);
     }
+  }
+
+  handlePrimaryAction(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.disabled()) {
+      return;
+    }
+    if (this.interceptClick()) {
+      this.addClicked.emit();
+      return;
+    }
+    this.pickerMenuOpen.update((open) => !open);
+  }
+
+  openFilePicker(event: Event, input: HTMLInputElement): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.closePickerMenu();
+    input.click();
+  }
+
+  openFolderPicker(event: Event, input: HTMLInputElement): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.closePickerMenu();
+    input.click();
+  }
+
+  closePickerMenu(): void {
+    this.pickerMenuOpen.set(false);
+  }
+
+  onDocumentClick(event: Event): void {
+    if (!this.pickerMenuOpen()) {
+      return;
+    }
+    const target = event.target;
+    if (target instanceof Node && this.elementRef.nativeElement.contains(target)) {
+      return;
+    }
+    this.closePickerMenu();
   }
 
   onFileSelected(event: Event): void {
@@ -107,6 +170,7 @@ export class FilePickerComponent {
     if (!(target instanceof HTMLInputElement) || !target.files || target.files.length === 0) {
       return;
     }
+    this.closePickerMenu();
     const files = [...target.files];
     const entries: UploadFileEntry[] = files.map((file) => ({
       file,
@@ -173,6 +237,7 @@ export class FilePickerComponent {
   clear(): void {
     this.pendingFiles.set([]);
     this.collapsedFolders.set(new Set());
+    this.closePickerMenu();
     this.filesChanged.emit([]);
   }
 

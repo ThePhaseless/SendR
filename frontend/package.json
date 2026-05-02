@@ -36,7 +36,7 @@
     "@angular/cli": "^21.2.2",
     "@angular/compiler-cli": "^21.2.4",
     "@types/jasmine": "~6.0.0",
-    "jasmine-core": "~6.1.0",
+    "jasmine-core": "~6.2.0",
     "karma": "~6.4.4",
     "karma-chrome-launcher": "~3.2.0",
     "karma-coverage": "~2.2.1",
@@ -45,7 +45,7 @@
     "orval": "^8.6.2",
     "oxfmt": "^0.43.0",
     "oxlint": "^1.56.0",
-    "oxlint-tsgolint": "^0.19.0",
+    "oxlint-tsgolint": "^0.22.0",
     "typescript": "^6.0.0"
   }
 }

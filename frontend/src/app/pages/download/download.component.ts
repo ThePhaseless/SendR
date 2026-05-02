@@ -1,11 +1,10 @@
 import { DatePipe } from "@angular/common";
+import { httpResource } from "@angular/common/http";
 import { Component, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute } from "@angular/router";
-import {
-  getFileInfoApiFilesDownloadTokenInfoGetResource,
-  getGroupInfoApiFilesGroupUploadGroupGetResource,
-} from "../../api/endpoints/filename.resource";
+import type { FileUploadResponse, UploadGroupInfoResponse } from "../../api/model";
+import { AuthService } from "../../services/auth.service";
 import type { RecipientStatsResponse } from "../../services/file.service";
 import { FileService } from "../../services/file.service";
 import { filenameToEmoji, formatFileSize, isExpired } from "../../utils/file.utils";
@@ -18,6 +17,7 @@ import { filenameToEmoji, formatFileSize, isExpired } from "../../utils/file.uti
 })
 export class DownloadComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly authService = inject(AuthService);
   private readonly fileService = inject(FileService);
 
   private readonly token = this.route.snapshot.paramMap.get("token") ?? "";
@@ -25,12 +25,29 @@ export class DownloadComponent {
 
   isGroup = Boolean(this.group);
 
+  /** Password input by user. */
+  enteredPassword = signal("");
+
+  /** Password token from query param (for email invite links). */
+  passwordToken = signal(this.route.snapshot.queryParamMap.get("password") ?? "");
+
+  /** Password verification error. */
+  passwordError = signal("");
+
   private readonly fileInfoResource = this.token
-    ? getFileInfoApiFilesDownloadTokenInfoGetResource(signal(this.token))
+    ? httpResource<FileUploadResponse>(() => {
+        const pw = this.passwordToken();
+        const base = `/api/files/${this.token}/info`;
+        return pw ? `${base}?password=${encodeURIComponent(pw)}` : base;
+      })
     : undefined;
 
   private readonly groupInfoResource = this.group
-    ? getGroupInfoApiFilesGroupUploadGroupGetResource(signal(this.group))
+    ? httpResource<UploadGroupInfoResponse>(() => {
+        const pw = this.passwordToken();
+        const base = `/api/files/group/${this.group}`;
+        return pw ? `${base}?password=${encodeURIComponent(pw)}` : base;
+      })
     : undefined;
 
   fileInfo = computed(() => this.fileInfoResource?.value() ?? null);
@@ -57,27 +74,84 @@ export class DownloadComponent {
     return false;
   });
 
-  /** Whether a password is required to download. */
-  needsPassword = computed(() => {
+  /** Whether a password is required to see file details (is_public=false means details are hidden). */
+  needsPasswordForDetails = computed(() => {
     const file = this.fileInfo();
     const group = this.groupInfo();
     if (file) {
-      return file.has_passwords && !this.passwordToken();
+      if (file.viewer_is_owner) {
+        return false;
+      }
+      return !file.is_public && file.has_passwords && !this.passwordToken();
     }
     if (group) {
-      return group.has_passwords && !this.passwordToken();
+      if (group.viewer_is_owner) {
+        return false;
+      }
+      return !group.is_public && group.has_passwords && !this.passwordToken();
     }
     return false;
   });
 
-  /** Password input by user. */
-  enteredPassword = signal("");
+  /** Whether a password is required to download (details visible, but download needs password). */
+  needsPasswordToDownload = computed(() => {
+    const file = this.fileInfo();
+    const group = this.groupInfo();
+    if (file) {
+      if (file.viewer_is_owner) {
+        return false;
+      }
+      return file.is_public && file.has_passwords && !this.passwordToken();
+    }
+    if (group) {
+      if (group.viewer_is_owner) {
+        return false;
+      }
+      return group.is_public && group.has_passwords && !this.passwordToken();
+    }
+    return false;
+  });
 
-  /** Password token from query param (for email invite links). */
-  passwordToken = signal(this.route.snapshot.queryParamMap.get("password") ?? "");
+  /** Whether the download limit has been reached for a single file. */
+  isFileLimitReached = computed(() => {
+    const file = this.fileInfo();
+    if (!file || file.viewer_is_owner || !file.max_downloads) {
+      return false;
+    }
+    return file.download_count >= file.max_downloads;
+  });
 
-  /** Password verification error. */
-  passwordError = signal("");
+  /** Whether the download limit has been reached for the group. */
+  isGroupLimitReached = computed(() => {
+    const group = this.groupInfo();
+    if (!group || group.viewer_is_owner) {
+      return false;
+    }
+    return group.files.some(
+      (f) =>
+        f.max_downloads !== null &&
+        f.max_downloads !== undefined &&
+        f.max_downloads > 0 &&
+        f.download_count >= f.max_downloads,
+    );
+  });
+
+  /** Whether the download limit has been reached for a specific file in a group. */
+  isGroupFileLimitReached(file: {
+    download_count: number;
+    max_downloads?: number | null;
+  }): boolean {
+    if (this.groupInfo()?.viewer_is_owner || !file.max_downloads) {
+      return false;
+    }
+    return file.download_count >= file.max_downloads;
+  }
+
+  /** Download error message. */
+  downloadError = signal("");
+
+  /** Whether a download is in progress. */
+  downloading = signal(false);
 
   /** Recipient download stats (for email recipients). */
   recipientStats = signal<RecipientStatsResponse | null>(null);
@@ -117,28 +191,117 @@ export class DownloadComponent {
     });
   }
 
-  download(): void {
-    window.location.href = this.fileService.getDownloadUrlWithPassword(
+  private getDownloadHeaders(): HeadersInit | undefined {
+    const token = this.authService.getToken();
+    if (!token) {
+      return undefined;
+    }
+    return { Authorization: `Bearer ${token}` };
+  }
+
+  private async getDownloadErrorDetail(response: Response): Promise<string> {
+    const body = (await response.json().catch(() => null)) as unknown;
+    if (typeof body === "object" && body !== null) {
+      const detail = Reflect.get(body, "detail");
+      if (typeof detail === "string") {
+        return detail;
+      }
+    }
+    return "Download failed.";
+  }
+
+  async download(): Promise<void> {
+    this.downloadError.set("");
+    this.downloading.set(true);
+    const url = this.fileService.getDownloadUrlWithPassword(
       this.token,
       this.passwordToken() || undefined,
     );
+    try {
+      const response = await fetch(url, { headers: this.getDownloadHeaders() });
+      if (!response.ok) {
+        const detail = await this.getDownloadErrorDetail(response);
+        this.downloadError.set(detail);
+        this.fileInfoResource?.reload();
+        return;
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition");
+      const match = disposition?.match(/filename="?([^"]+)"?/);
+      const filename = match?.[1] ?? this.fileInfo()?.original_filename ?? "download";
+      this.triggerDownload(blob, filename);
+      this.fileInfoResource?.reload();
+    } catch {
+      this.downloadError.set("Download failed. Please try again.");
+    } finally {
+      this.downloading.set(false);
+    }
   }
 
-  downloadGroup(): void {
-    window.location.href = this.fileService.getGroupDownloadUrlWithPassword(
+  async downloadGroup(): Promise<void> {
+    this.downloadError.set("");
+    this.downloading.set(true);
+    const url = this.fileService.getGroupDownloadUrlWithPassword(
       this.group,
       this.passwordToken() || undefined,
     );
+    try {
+      const response = await fetch(url, { headers: this.getDownloadHeaders() });
+      if (!response.ok) {
+        const detail = await this.getDownloadErrorDetail(response);
+        this.downloadError.set(detail);
+        this.groupInfoResource?.reload();
+        return;
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition");
+      const match = disposition?.match(/filename="?([^"]+)"?/);
+      const filename = match?.[1] ?? `sendr-${this.group.slice(0, 8)}.zip`;
+      this.triggerDownload(blob, filename);
+      this.groupInfoResource?.reload();
+    } catch {
+      this.downloadError.set("Download failed. Please try again.");
+    } finally {
+      this.downloading.set(false);
+    }
   }
 
-  downloadSingleFile(downloadUrl: string): void {
+  async downloadSingleFile(downloadUrl: string, originalFilename?: string): Promise<void> {
+    this.downloadError.set("");
+    this.downloading.set(true);
     const pw = this.passwordToken();
+    let url = downloadUrl;
     if (pw) {
       const separator = downloadUrl.includes("?") ? "&" : "?";
-      window.location.href = `${downloadUrl}${separator}password=${encodeURIComponent(pw)}`;
-    } else {
-      window.location.href = downloadUrl;
+      url = `${downloadUrl}${separator}password=${encodeURIComponent(pw)}`;
     }
+    try {
+      const response = await fetch(url, { headers: this.getDownloadHeaders() });
+      if (!response.ok) {
+        const detail = await this.getDownloadErrorDetail(response);
+        this.downloadError.set(detail);
+        this.groupInfoResource?.reload();
+        return;
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition");
+      const match = disposition?.match(/filename="?([^"]+)"?/);
+      const filename = match?.[1] ?? originalFilename ?? "download";
+      this.triggerDownload(blob, filename);
+      this.groupInfoResource?.reload();
+    } catch {
+      this.downloadError.set("Download failed. Please try again.");
+    } finally {
+      this.downloading.set(false);
+    }
+  }
+
+  private triggerDownload(blob: Blob, filename: string): void {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
   }
 
   formatSize(bytes: number): string {
@@ -151,5 +314,23 @@ export class DownloadComponent {
 
   getFileEmoji(name: string): string {
     return filenameToEmoji(name);
+  }
+
+  formatDownloadCount(file: {
+    download_count: number;
+    public_download_count?: number;
+    restricted_download_count?: number;
+    max_downloads?: number | null;
+    separate_download_counts?: boolean;
+  }): string {
+    if (file.separate_download_counts && file.max_downloads) {
+      const pub = file.public_download_count ?? 0;
+      const res = file.restricted_download_count ?? 0;
+      return `Public: ${pub} / ${file.max_downloads} · Restricted: ${res} / ${file.max_downloads}`;
+    }
+    if (file.max_downloads) {
+      return `${file.download_count} / ${file.max_downloads}`;
+    }
+    return `${file.download_count}`;
   }
 }

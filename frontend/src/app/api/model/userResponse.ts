@@ -11,4 +11,5 @@ export interface UserResponse {
   email: string;
   tier: string;
   is_admin?: boolean;
+  is_banned?: boolean;
 }

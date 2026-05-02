@@ -1,4 +1,4 @@
-import { HttpErrorResponse, HttpEventType } from "@angular/common/http";
+import { HttpEventType } from "@angular/common/http";
 import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject, signal } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { Router, RouterLink } from "@angular/router";
@@ -15,6 +15,7 @@ import { UploadSettingsComponent } from "../../components/upload-settings/upload
 import { AuthService } from "../../services/auth.service";
 import type { FileUploadResponse, MultiFileUploadResponse } from "../../services/file.service";
 import { FileService } from "../../services/file.service";
+import { getErrorDetail } from "../../utils/error.utils";
 import {
   extractDownloadToken,
   filenameToEmoji,
@@ -84,12 +85,31 @@ export class HomeComponent {
   emails = signal<string[]>([]);
   /** Whether email recipients can see download stats. */
   showEmailStats = signal(false);
+  /** Whether download counts are tracked separately for public vs restricted. */
+  separateDownloadCounts = signal(false);
   /** Transfer title. */
   title = signal("");
   /** Transfer description. */
   description = signal("");
   /** Whether upload settings have a validation error. */
   settingsHasError = signal(false);
+  /** Whether file picker has a limit warning. */
+  fileLimitWarning = computed(() => {
+    const files = this.pendingFiles();
+    if (files.length === 0) {
+      return false;
+    }
+    const maxBytes = this.maxFileSizeMb() * 1024 * 1024;
+    const maxPerUpload = this.maxFilesPerUpload();
+    const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+    if (maxPerUpload > 0 && files.length > maxPerUpload) {
+      return true;
+    }
+    if (totalSize > maxBytes) {
+      return true;
+    }
+    return false;
+  });
 
   altchaHintText = computed(() => {
     switch (this.altchaState()) {
@@ -148,9 +168,13 @@ export class HomeComponent {
     if (!l) {
       return "temporary";
     }
-    // QuotaResponse has min_expiry_hours, LimitsResponse doesn't
-    if ("min_expiry_hours" in l && l.min_expiry_hours !== undefined) {
-      // Authenticated user, determine tier from limits
+    // QuotaResponse has min_expiry_hours for free/premium (non-null number),
+    // Null/undefined for temporary tier. LimitsResponse doesn't have it at all.
+    if (
+      "min_expiry_hours" in l &&
+      l.min_expiry_hours !== null &&
+      l.min_expiry_hours !== undefined
+    ) {
       if ((l as { max_expiry_hours?: number | null }).max_expiry_hours === 720) {
         return "premium";
       }
@@ -173,6 +197,100 @@ export class HomeComponent {
       return (l as { max_emails_per_upload?: number }).max_emails_per_upload ?? 0;
     }
     return 0;
+  });
+
+  // Backend-driven expiry/download options
+  expiryOptionsHours = computed<number[] | null>(() => {
+    const l = this.limitsData.value();
+    return l?.expiry_options_hours ?? null;
+  });
+
+  minExpiryHours = computed<number | null>(() => {
+    const l = this.limitsData.value();
+    return (l as { min_expiry_hours?: number | null } | undefined)?.min_expiry_hours ?? null;
+  });
+
+  maxExpiryHours = computed<number | null>(() => {
+    const l = this.limitsData.value();
+    return (l as { max_expiry_hours?: number | null } | undefined)?.max_expiry_hours ?? null;
+  });
+
+  backendMaxDownloadsLimit = computed<number | null>(() => {
+    const l = this.limitsData.value();
+    return (l as { max_downloads_limit?: number | null } | undefined)?.max_downloads_limit ?? null;
+  });
+
+  backendMaxDownloadsOptions = computed<number[] | null>(() => {
+    const l = this.limitsData.value();
+    return l?.max_downloads_options ?? null;
+  });
+
+  canUseSeparateDownloadCounts = computed(() => {
+    const l = this.limitsData.value();
+    return (
+      (l as { can_use_separate_download_counts?: boolean } | undefined)
+        ?.can_use_separate_download_counts ?? false
+    );
+  });
+
+  canUseEmailStats = computed(() => {
+    const l = this.limitsData.value();
+    return (l as { can_use_email_stats?: boolean } | undefined)?.can_use_email_stats ?? false;
+  });
+
+  // Weekly upload quota
+  weeklyUploadsUsed = computed(() => {
+    const l = this.limitsData.value();
+    return (l as { weekly_uploads_used?: number } | undefined)?.weekly_uploads_used ?? 0;
+  });
+
+  weeklyUploadsLimit = computed(() => {
+    const l = this.limitsData.value();
+    return l?.weekly_uploads_limit ?? 0;
+  });
+
+  weeklyUploadsRemaining = computed(() => {
+    const l = this.limitsData.value();
+    return (l as { weekly_uploads_remaining?: number } | undefined)?.weekly_uploads_remaining ?? 0;
+  });
+
+  // Weekly upload size quota (bytes)
+  weeklyUploadSizeLimitBytes = computed(() => {
+    const l = this.limitsData.value();
+    return (
+      (l as { weekly_upload_size_limit_bytes?: number } | undefined)
+        ?.weekly_upload_size_limit_bytes ?? 0
+    );
+  });
+
+  weeklyUploadSizeUsedBytes = computed(() => {
+    const l = this.limitsData.value();
+    return (
+      (l as { weekly_upload_size_used_bytes?: number } | undefined)
+        ?.weekly_upload_size_used_bytes ?? 0
+    );
+  });
+
+  weeklyUploadSizeRemainingBytes = computed(() => {
+    const l = this.limitsData.value();
+    return (
+      (l as { weekly_upload_size_remaining_bytes?: number } | undefined)
+        ?.weekly_upload_size_remaining_bytes ?? 0
+    );
+  });
+
+  isSizeQuotaExhausted = computed(() => {
+    const limit = this.weeklyUploadSizeLimitBytes();
+    if (limit <= 0) {
+      return false;
+    }
+    return this.weeklyUploadSizeRemainingBytes() <= 0;
+  });
+
+  isQuotaExhausted = computed(() => {
+    const countLimit = this.weeklyUploadsLimit();
+    const countExhausted = countLimit > 0 && this.weeklyUploadsRemaining() <= 0;
+    return countExhausted || this.isSizeQuotaExhausted();
   });
 
   onAltchaStateChange(event: Event): void {
@@ -330,6 +448,7 @@ export class HomeComponent {
           isPublic: this.isPublic(),
           maxDownloads: this.maxDownloads(),
           passwords: this.passwords().filter((p) => p.password),
+          separateDownloadCounts: this.separateDownloadCounts(),
           showEmailStats: this.showEmailStats(),
           title: this.title(),
         })
@@ -365,6 +484,7 @@ export class HomeComponent {
         isPublic: this.isPublic(),
         maxDownloads: this.maxDownloads(),
         passwords: this.passwords().filter((p) => p.password),
+        separateDownloadCounts: this.separateDownloadCounts(),
         showEmailStats: this.showEmailStats(),
         title: this.title(),
       })
@@ -558,19 +678,6 @@ export class HomeComponent {
   }
 
   private getErrorDetail(error: unknown, fallback: string): string {
-    if (
-      !(error instanceof HttpErrorResponse) ||
-      typeof error.error !== "object" ||
-      error.error === null
-    ) {
-      return fallback;
-    }
-
-    const detail: unknown = Reflect.get(error.error, "detail");
-    if (typeof detail === "string") {
-      return detail;
-    }
-
-    return fallback;
+    return getErrorDetail(error, fallback);
   }
 }

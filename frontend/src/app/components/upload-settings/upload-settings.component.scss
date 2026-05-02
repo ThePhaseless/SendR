@@ -115,46 +115,6 @@ h3 {
   color: var(--color-text-secondary);
 }
 
-.switch {
-  @apply relative inline-block flex-shrink-0;
-  width: 40px;
-  height: 22px;
-
-  input {
-    @apply opacity-0 w-0 h-0;
-  }
-}
-
-.switch-slider {
-  @apply absolute inset-0 cursor-pointer rounded-full;
-  background: var(--color-border);
-  transition: 0.2s;
-
-  &::before {
-    @apply absolute rounded-full;
-    content: "";
-    height: 16px;
-    width: 16px;
-    left: 3px;
-    bottom: 3px;
-    background: white;
-    transition: 0.2s;
-  }
-
-  input:checked + & {
-    background: var(--color-primary);
-  }
-
-  input:checked + &::before {
-    transform: translateX(18px);
-  }
-
-  input:disabled + & {
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
-}
-
 .access-section {
   @apply mt-3 pt-3;
   border-top: 1px solid var(--color-border);
@@ -163,6 +123,17 @@ h3 {
 .section-label {
   @apply text-xs font-semibold uppercase tracking-wide mb-2;
   color: var(--color-text-secondary);
+}
+
+.access-status {
+  @apply flex items-center gap-2 px-3 py-2 rounded-md text-sm mb-3;
+  background: color-mix(in srgb, var(--color-border) 30%, transparent);
+  color: var(--color-text-secondary);
+}
+
+.access-status-icon {
+  @apply text-base flex-shrink-0;
+  font-size: 1.25rem;
 }
 
 .accordion {

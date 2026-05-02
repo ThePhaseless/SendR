@@ -96,6 +96,10 @@
   .upload-col-right {
     @apply flex-1 max-w-none min-w-0;
   }
+
+  .quota-bar-section {
+    max-width: none;
+  }
 }
 
 .upload-progress {
@@ -395,6 +399,70 @@ app-upload-settings {
 
 .popup-auth-buttons {
   @apply flex gap-2;
+}
+
+// Weekly quota progress bar
+.quota-bar-section {
+  @apply w-full rounded-xl p-4 mb-6;
+  max-width: 600px;
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+}
+
+.quota-bar-header {
+  @apply flex items-center gap-2 text-sm mb-2;
+  color: var(--color-text-secondary);
+}
+
+.quota-bar-icon {
+  font-size: 1.125rem;
+  color: var(--color-primary);
+}
+
+.quota-bar-label {
+  @apply flex-1;
+}
+
+.quota-bar-count {
+  @apply font-semibold tabular-nums;
+  color: var(--color-text);
+}
+
+.quota-bar-track {
+  @apply w-full overflow-hidden;
+  height: 6px;
+  background: var(--color-spinner-track);
+  border-radius: 3px;
+}
+
+.quota-bar-fill {
+  @apply h-full;
+  background: var(--color-primary);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  min-width: 0;
+  max-width: 100%;
+
+  &--warning {
+    background: var(--color-warning, #f59e0b);
+  }
+
+  &--exhausted {
+    background: var(--color-danger);
+  }
+}
+
+.quota-bar-hint {
+  @apply text-xs mt-2;
+  color: var(--color-text-secondary);
+
+  &--warning {
+    color: var(--color-warning, #f59e0b);
+  }
+
+  &--exhausted {
+    color: var(--color-danger);
+  }
 }
 
 .upload-action {

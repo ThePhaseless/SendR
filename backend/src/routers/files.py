@@ -49,7 +49,7 @@ from schemas import (
     RecipientStatsResponse,
     UploadGroupInfoResponse,
 )
-from security import get_current_user
+from security import get_current_user, get_optional_user
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -74,6 +74,62 @@ def _get_limits(tier: UserTier) -> tuple[int, int]:
     if tier == UserTier.free:
         return settings.FREE_MAX_FILE_SIZE_MB, settings.FREE_MAX_FILES_PER_UPLOAD
     return settings.TEMPORARY_MAX_FILE_SIZE_MB, settings.TEMPORARY_MAX_FILES_PER_UPLOAD
+
+
+def _weekly_limit_for_tier(tier: UserTier) -> int:
+    if tier == UserTier.premium:
+        return settings.PREMIUM_MAX_WEEKLY_UPLOADS
+    if tier == UserTier.free:
+        return settings.FREE_MAX_WEEKLY_UPLOADS
+    return settings.TEMPORARY_MAX_WEEKLY_UPLOADS
+
+
+def _weekly_size_limit_for_tier(tier: UserTier) -> int:
+    """Return weekly upload size limit in bytes (0 = unlimited)."""
+    if tier == UserTier.premium:
+        return settings.PREMIUM_MAX_WEEKLY_UPLOAD_SIZE_MB * 1024 * 1024
+    if tier == UserTier.free:
+        return settings.FREE_MAX_WEEKLY_UPLOAD_SIZE_MB * 1024 * 1024
+    return settings.TEMPORARY_MAX_WEEKLY_UPLOAD_SIZE_MB * 1024 * 1024
+
+
+async def _check_weekly_quota(user: User, session) -> None:
+    """Raise HTTP 429 if the user has exceeded their weekly upload quota."""
+    weekly_limit = _weekly_limit_for_tier(user.tier)
+    one_week_ago = _utcnow() - timedelta(days=7)
+
+    if weekly_limit > 0:
+        result = await session.exec(
+            select(func.count(FileUpload.id)).where(
+                FileUpload.user_id == user.id,
+                FileUpload.created_at >= one_week_ago,
+            )
+        )
+        weekly_used = result.one()
+        if weekly_used >= weekly_limit:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Weekly upload limit reached. You have used {weekly_used}/{weekly_limit} uploads this week.",
+            )
+
+    size_limit = _weekly_size_limit_for_tier(user.tier)
+    if size_limit > 0:
+        result = await session.exec(
+            select(func.coalesce(func.sum(FileUpload.file_size_bytes), 0)).where(
+                FileUpload.user_id == user.id,
+                FileUpload.created_at >= one_week_ago,
+            )
+        )
+        size_used = result.one()
+        if size_used >= size_limit:
+            used_gb = size_used / (1024 * 1024 * 1024)
+            limit_gb = size_limit / (1024 * 1024 * 1024)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=(
+                    f"Weekly upload size limit reached. You have used {used_gb:.1f} GB / {limit_gb:.0f} GB this week."
+                ),
+            )
 
 
 def _resolve_expiry(expiry_hours: int | None, tier: UserTier) -> timedelta:
@@ -101,8 +157,7 @@ def _resolve_max_downloads(max_downloads: int | None, tier: UserTier) -> int | N
         limit = settings.FREE_MAX_DOWNLOADS_LIMIT
     else:
         allowed = settings.TEMPORARY_MAX_DOWNLOADS_OPTIONS
-        if 0 in allowed and max_downloads not in allowed:
-            return None
+        # Clamp to closest allowed option (never grant unlimited)
         return min(allowed, key=lambda h: abs(h - max_downloads)) if allowed else max_downloads
     return min(max_downloads, limit) if limit > 0 else max_downloads
 
@@ -116,6 +171,7 @@ def _to_response(
     group_settings: UploadGroupSettings | None = None,
     password_count: int = 0,
     email_count: int = 0,
+    viewer_is_owner: bool = False,
 ) -> FileUploadResponse:
     return FileUploadResponse(
         id=f.id,
@@ -124,12 +180,16 @@ def _to_response(
         download_url=_build_download_url(f.download_token),
         expires_at=f.expires_at,
         download_count=f.download_count,
+        public_download_count=f.public_download_count,
+        restricted_download_count=f.restricted_download_count,
         max_downloads=f.max_downloads,
+        separate_download_counts=group_settings.separate_download_counts if group_settings else False,
         is_active=f.is_active,
         upload_group=f.upload_group,
         is_public=group_settings.is_public if group_settings else True,
         has_passwords=password_count > 0,
         has_email_recipients=email_count > 0,
+        viewer_is_owner=viewer_is_owner,
     )
 
 
@@ -157,20 +217,33 @@ async def _load_group_access(
     upload_group: str,
 ) -> tuple[UploadGroupSettings | None, list[UploadPassword], list[UploadEmailRecipient]]:
     """Load group settings, passwords, and email recipients."""
-    gs_result = await session.execute(
-        select(UploadGroupSettings).where(UploadGroupSettings.upload_group == upload_group)
-    )
-    group_settings = gs_result.scalars().first()
+    gs_result = await session.exec(select(UploadGroupSettings).where(UploadGroupSettings.upload_group == upload_group))
+    group_settings = gs_result.first()
 
-    pw_result = await session.execute(select(UploadPassword).where(UploadPassword.upload_group == upload_group))
-    passwords = list(pw_result.scalars().all())
+    pw_result = await session.exec(select(UploadPassword).where(UploadPassword.upload_group == upload_group))
+    passwords = list(pw_result.all())
 
-    er_result = await session.execute(
+    er_result = await session.exec(
         select(UploadEmailRecipient).where(UploadEmailRecipient.upload_group == upload_group)
     )
-    email_recipients = list(er_result.scalars().all())
+    email_recipients = list(er_result.all())
 
     return group_settings, passwords, email_recipients
+
+
+def _has_valid_credential(
+    password: str | None,
+    passwords: list,
+    email_recipients: list,
+) -> bool:
+    """Check if the provided password matches any password or email token (without raising)."""
+    if not password:
+        return False
+    for pw in passwords:
+        if pbkdf2_sha256.verify(password, pw.password_hash):
+            return True
+    pw_hash = sha256(password.encode()).hexdigest()
+    return any(compare_digest(pw_hash, er.token_hash) for er in email_recipients)
 
 
 async def _verify_access(
@@ -199,15 +272,11 @@ async def _verify_access(
             if compare_digest(pw_hash, er.token_hash):
                 return "email", None, er.id
 
-    # If public and no password required
-    if group_settings and group_settings.is_public:
-        return "public", None, None
-
-    # Not public, no valid password
+    # If passwords or email recipients exist, a valid credential is required
     if passwords or email_recipients:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid password")
 
-    # No access control configured (legacy public files) — allow
+    # No access control configured — allow public access
     return "public", None, None
 
 
@@ -221,16 +290,23 @@ async def _create_group_access(
     user: User,
     title: str | None = None,
     description: str | None = None,
+    separate_download_counts: bool = False,
 ) -> tuple[UploadGroupSettings, int, int, list[tuple[str, str]]]:
     """Create group settings, passwords, and email recipients.
 
     Returns (settings, pw_count, email_count, email_tokens).
     """
+    # Temporary users cannot use these features
+    if user.tier == UserTier.temporary:
+        separate_download_counts = False
+        show_email_stats = False
+
     # Create group settings
     group_settings = UploadGroupSettings(
         upload_group=upload_group,
         is_public=is_public,
         show_email_stats=show_email_stats,
+        separate_download_counts=separate_download_counts,
         title=title[:200] if title else None,
         description=description[:2000] if description else None,
     )
@@ -311,9 +387,13 @@ async def upload_file(
     passwords: str | None = Form(None),
     emails: str | None = Form(None),
     show_email_stats: bool = Form(False),
+    separate_download_counts: bool = Form(False),
     title: str | None = Form(None),
     description: str | None = Form(None),
 ) -> FileUploadResponse:
+    # Enforce weekly upload quota
+    await _check_weekly_quota(user, session)
+
     # Get tier limits
     max_size_mb, _ = _get_limits(user.tier)
 
@@ -366,6 +446,7 @@ async def upload_file(
         user,
         title=title,
         description=description,
+        separate_download_counts=separate_download_counts,
     )
 
     await session.commit()
@@ -388,8 +469,8 @@ async def upload_file(
                     UploadEmailRecipient.upload_group == upload_group,
                     UploadEmailRecipient.email == email_addr,
                 )
-                er_result = await session.execute(stmt)
-                er = er_result.scalars().first()
+                er_result = await session.exec(stmt)
+                er = er_result.first()
                 if er:
                     er.notified = True
                     session.add(er)
@@ -412,11 +493,15 @@ async def upload_multiple_files(
     passwords: str | None = Form(None),
     emails: str | None = Form(None),
     show_email_stats: bool = Form(False),
+    separate_download_counts: bool = Form(False),
     title: str | None = Form(None),
     description: str | None = Form(None),
 ) -> MultiFileUploadResponse:
     if not files:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No files provided")
+
+    # Enforce weekly upload quota
+    await _check_weekly_quota(user, session)
 
     # Get tier limits
     max_size_mb, max_per_upload = _get_limits(user.tier)
@@ -485,6 +570,7 @@ async def upload_multiple_files(
         user,
         title=title,
         description=description,
+        separate_download_counts=separate_download_counts,
     )
 
     await session.commit()
@@ -507,8 +593,8 @@ async def upload_multiple_files(
                     UploadEmailRecipient.upload_group == upload_group,
                     UploadEmailRecipient.email == email_addr,
                 )
-                er_result = await session.execute(stmt)
-                er = er_result.scalars().first()
+                er_result = await session.exec(stmt)
+                er = er_result.first()
                 if er:
                     er.notified = True
                     session.add(er)
@@ -529,13 +615,15 @@ async def upload_multiple_files(
 async def get_group_info(
     upload_group: str,
     session: AsyncSession = Depends(get_session),
+    password: str | None = Query(None),
+    current_user: User | None = Depends(get_optional_user),
 ) -> UploadGroupInfoResponse:
     stmt = select(FileUpload).where(
         FileUpload.upload_group == upload_group,
         FileUpload.is_active == True,  # noqa: E712
     )
-    result = await session.execute(stmt)
-    files = list(result.scalars().all())
+    result = await session.exec(stmt)
+    files = list(result.all())
 
     if not files:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload group not found")
@@ -543,19 +631,44 @@ async def get_group_info(
     group_settings, passwords, email_recipients = await _load_group_access(session, upload_group)
     pw_count = len(passwords)
     email_count = len(email_recipients)
+    is_public = group_settings.is_public if group_settings else True
+    viewer_is_owner = current_user is not None and files[0].user_id == current_user.id
+
+    # Check if details should be hidden (is_public=false means hide details without password)
+    hide_details = (
+        not viewer_is_owner
+        and not is_public
+        and pw_count > 0
+        and not _has_valid_credential(password, passwords, email_recipients)
+    )
 
     total_size = sum(f.file_size_bytes for f in files)
     return UploadGroupInfoResponse(
-        files=[_to_response(f, group_settings, pw_count, email_count) for f in files],
+        files=(
+            []
+            if hide_details
+            else [
+                _to_response(
+                    f,
+                    group_settings,
+                    pw_count,
+                    email_count,
+                    viewer_is_owner=viewer_is_owner,
+                )
+                for f in files
+            ]
+        ),
         upload_group=upload_group,
-        total_size_bytes=total_size,
+        total_size_bytes=0 if hide_details else total_size,
         file_count=len(files),
         will_zip=len(files) > settings.GROUP_ZIP_THRESHOLD,
-        is_public=group_settings.is_public if group_settings else True,
+        is_public=is_public,
         has_passwords=pw_count > 0,
         has_email_recipients=email_count > 0,
+        separate_download_counts=group_settings.separate_download_counts if group_settings else False,
         title=group_settings.title if group_settings else None,
         description=group_settings.description if group_settings else None,
+        viewer_is_owner=viewer_is_owner,
     )
 
 
@@ -564,26 +677,48 @@ async def download_group(
     upload_group: str,
     session: AsyncSession = Depends(get_session),
     password: str | None = Query(None),
+    current_user: User | None = Depends(get_optional_user),
 ):
     stmt = select(FileUpload).where(
         FileUpload.upload_group == upload_group,
         FileUpload.is_active == True,  # noqa: E712
     )
-    result = await session.execute(stmt)
-    files = list(result.scalars().all())
+    result = await session.exec(stmt)
+    files = list(result.all())
 
     if not files:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload group not found")
 
     # Access verification
     owner_user_id = files[0].user_id
-    access_type, pw_id, er_id = await _verify_access(session, upload_group, password, owner_user_id, None)
+    access_type, pw_id, er_id = await _verify_access(
+        session,
+        upload_group,
+        password,
+        owner_user_id,
+        current_user,
+    )
 
-    # Check expiration for all files
+    # Check expiration and download limits for all files
     now = _utcnow()
+    gs_result = await session.exec(select(UploadGroupSettings).where(UploadGroupSettings.upload_group == upload_group))
+    group_settings = gs_result.first()
+
     for f in files:
         if now > f.expires_at:
             raise HTTPException(status_code=status.HTTP_410_GONE, detail="Files have expired")
+        if f.max_downloads and access_type != "owner":
+            if group_settings and group_settings.separate_download_counts:
+                if access_type == "public":
+                    if f.public_download_count >= f.max_downloads:
+                        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Public download limit reached")
+                else:
+                    if f.restricted_download_count >= f.max_downloads:
+                        raise HTTPException(
+                            status_code=status.HTTP_410_GONE, detail="Restricted download limit reached"
+                        )
+            elif f.download_count >= f.max_downloads:
+                raise HTTPException(status_code=status.HTTP_410_GONE, detail="Download limit reached")
 
     if len(files) == 1:
         # Single file - serve directly
@@ -591,6 +726,10 @@ async def download_group(
         if not file_path.exists():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk")
         files[0].download_count += 1
+        if access_type == "public":
+            files[0].public_download_count += 1
+        elif access_type in ("password", "email"):
+            files[0].restricted_download_count += 1
         session.add(files[0])
         # Log download
         session.add(
@@ -619,6 +758,10 @@ async def download_group(
                 )
             zf.write(file_path, f.original_filename)
             f.download_count += 1
+            if access_type == "public":
+                f.public_download_count += 1
+            elif access_type in ("password", "email"):
+                f.restricted_download_count += 1
             session.add(f)
             session.add(
                 DownloadLog(
@@ -647,7 +790,10 @@ async def list_files(
     session: AsyncSession = Depends(get_session),
 ) -> FileListResponse:
     now = _utcnow()
-    grace_cutoff = now - timedelta(days=settings.FILE_GRACE_PERIOD_DAYS)
+    grace_days = settings.FILE_GRACE_PERIOD_DAYS
+    if user.tier == UserTier.premium:
+        grace_days = max(grace_days, settings.PREMIUM_REFRESH_GRACE_DAYS)
+    grace_cutoff = now - timedelta(days=grace_days)
     stmt = (
         select(FileUpload)
         .where(
@@ -661,8 +807,8 @@ async def list_files(
         )
         .order_by(FileUpload.created_at.desc())
     )
-    result = await session.execute(stmt)
-    files = list(result.scalars().all())
+    result = await session.exec(stmt)
+    files = list(result.all())
 
     # Load access info for each unique upload_group
     group_access_cache: dict[str, tuple[UploadGroupSettings | None, int, int]] = {}
@@ -681,19 +827,24 @@ async def download_file(
     download_token: str,
     session: AsyncSession = Depends(get_session),
     password: str | None = Query(None),
+    current_user: User | None = Depends(get_optional_user),
 ):
     stmt = select(FileUpload).where(
         FileUpload.download_token == download_token,
     )
-    result = await session.execute(stmt)
-    file_upload = result.scalars().first()
+    result = await session.exec(stmt)
+    file_upload = result.first()
 
     if not file_upload:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
 
     # Access verification
     access_type, pw_id, er_id = await _verify_access(
-        session, file_upload.upload_group, password, file_upload.user_id, None
+        session,
+        file_upload.upload_group,
+        password,
+        file_upload.user_id,
+        current_user,
     )
 
     now = _utcnow()
@@ -707,11 +858,28 @@ async def download_file(
             raise HTTPException(status_code=status.HTTP_410_GONE, detail="File has expired and been removed")
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="File has expired")
 
-    if file_upload.max_downloads and file_upload.download_count >= file_upload.max_downloads:
-        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Download limit reached")
+    if file_upload.max_downloads and access_type != "owner":
+        # Load group settings for separate counting check
+        gs_result = await session.exec(
+            select(UploadGroupSettings).where(UploadGroupSettings.upload_group == file_upload.upload_group)
+        )
+        gs = gs_result.first()
+        if gs and gs.separate_download_counts:
+            if access_type == "public":
+                if file_upload.public_download_count >= file_upload.max_downloads:
+                    raise HTTPException(status_code=status.HTTP_410_GONE, detail="Public download limit reached")
+            else:
+                if file_upload.restricted_download_count >= file_upload.max_downloads:
+                    raise HTTPException(status_code=status.HTTP_410_GONE, detail="Restricted download limit reached")
+        elif file_upload.download_count >= file_upload.max_downloads:
+            raise HTTPException(status_code=status.HTTP_410_GONE, detail="Download limit reached")
 
-    # Increment download count
+    # Increment download counts
     file_upload.download_count += 1
+    if access_type == "public":
+        file_upload.public_download_count += 1
+    elif access_type in ("password", "email"):
+        file_upload.restricted_download_count += 1
     session.add(file_upload)
 
     # Log download
@@ -741,16 +909,43 @@ async def download_file(
 async def get_file_info(
     download_token: str,
     session: AsyncSession = Depends(get_session),
+    password: str | None = Query(None),
+    current_user: User | None = Depends(get_optional_user),
 ) -> FileUploadResponse:
     stmt = select(FileUpload).where(FileUpload.download_token == download_token)
-    result = await session.execute(stmt)
-    file_upload = result.scalars().first()
+    result = await session.exec(stmt)
+    file_upload = result.first()
 
     if not file_upload:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
 
     gs, pws, ers = await _load_group_access(session, file_upload.upload_group)
-    return _to_response(file_upload, gs, len(pws), len(ers))
+    is_public = gs.is_public if gs else True
+    pw_count = len(pws)
+    viewer_is_owner = current_user is not None and file_upload.user_id == current_user.id
+
+    # Hide details when is_public=false and no valid credential provided
+    hide_details = (
+        not viewer_is_owner and not is_public and pw_count > 0 and not _has_valid_credential(password, pws, ers)
+    )
+
+    if hide_details:
+        return FileUploadResponse(
+            id=file_upload.id,
+            original_filename="Protected file",
+            file_size_bytes=0,
+            download_url=_build_download_url(file_upload.download_token),
+            expires_at=file_upload.expires_at,
+            download_count=0,
+            is_active=file_upload.is_active,
+            upload_group=file_upload.upload_group,
+            is_public=False,
+            has_passwords=True,
+            has_email_recipients=len(ers) > 0,
+            viewer_is_owner=False,
+        )
+
+    return _to_response(file_upload, gs, pw_count, len(ers), viewer_is_owner=viewer_is_owner)
 
 
 @router.post("/{file_id}/refresh")
@@ -764,8 +959,8 @@ async def refresh_download_link(
         FileUpload.id == file_id,
         FileUpload.user_id == user.id,
     )
-    result = await session.execute(stmt)
-    file_upload = result.scalars().first()
+    result = await session.exec(stmt)
+    file_upload = result.first()
 
     if not file_upload:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
@@ -779,11 +974,16 @@ async def refresh_download_link(
             detail="Free users can only refresh uploads before they expire.",
         )
 
-    # Premium users can refresh up to 14 days after expiry
-    if user.tier == UserTier.premium and now > file_upload.expires_at + timedelta(days=14):
+    # Premium users can refresh within the premium grace window after expiry.
+    if user.tier == UserTier.premium and now > file_upload.expires_at + timedelta(
+        days=settings.PREMIUM_REFRESH_GRACE_DAYS
+    ):
+        grace_message = (
+            f"Upload expired more than {settings.PREMIUM_REFRESH_GRACE_DAYS} days ago and can no longer be refreshed."
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Upload expired more than 2 weeks ago and can no longer be refreshed.",
+            detail=grace_message,
         )
 
     # Temporary users cannot refresh
@@ -825,8 +1025,8 @@ async def edit_file(
         FileUpload.id == file_id,
         FileUpload.user_id == user.id,
     )
-    result = await session.execute(stmt)
-    file_upload = result.scalars().first()
+    result = await session.exec(stmt)
+    file_upload = result.first()
 
     if not file_upload:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
@@ -856,8 +1056,8 @@ async def deactivate_file(
         FileUpload.id == file_id,
         FileUpload.user_id == user.id,
     )
-    result = await session.execute(stmt)
-    file_upload = result.scalars().first()
+    result = await session.exec(stmt)
+    file_upload = result.first()
 
     if not file_upload:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
@@ -885,8 +1085,8 @@ async def add_files_to_group(
         FileUpload.upload_group == upload_group,
         FileUpload.user_id == user.id,
     )
-    result = await session.execute(stmt)
-    existing_files = list(result.scalars().all())
+    result = await session.exec(stmt)
+    existing_files = list(result.all())
 
     if not existing_files:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload group not found")
@@ -972,8 +1172,8 @@ async def refresh_group(
         FileUpload.upload_group == upload_group,
         FileUpload.user_id == user.id,
     )
-    result = await session.execute(stmt)
-    files = list(result.scalars().all())
+    result = await session.exec(stmt)
+    files = list(result.all())
 
     if not files:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload group not found")
@@ -995,11 +1195,16 @@ async def refresh_group(
             detail="Free users can only refresh uploads before they expire.",
         )
 
-    # Premium users can refresh up to 14 days after expiry
-    if user.tier == UserTier.premium and now > reference.expires_at + timedelta(days=14):
+    # Premium users can refresh within the premium grace window after expiry.
+    if user.tier == UserTier.premium and now > reference.expires_at + timedelta(
+        days=settings.PREMIUM_REFRESH_GRACE_DAYS
+    ):
+        grace_message = (
+            f"Upload expired more than {settings.PREMIUM_REFRESH_GRACE_DAYS} days ago and can no longer be refreshed."
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Upload expired more than 2 weeks ago and can no longer be refreshed.",
+            detail=grace_message,
         )
 
     new_expiry = now + _resolve_expiry(body.expiry_hours, user.tier)
@@ -1022,8 +1227,8 @@ async def refresh_group(
     # Update group settings (title/description) on refresh
     if body.title is not None or body.description is not None:
         gs_stmt = select(UploadGroupSettings).where(UploadGroupSettings.upload_group == upload_group)
-        gs_result = await session.execute(gs_stmt)
-        gs_obj = gs_result.scalars().first()
+        gs_result = await session.exec(gs_stmt)
+        gs_obj = gs_result.first()
         if gs_obj:
             if body.title is not None:
                 gs_obj.title = body.title[:200] if body.title else None
@@ -1065,8 +1270,8 @@ async def edit_group(
         FileUpload.user_id == user.id,
         FileUpload.is_active == True,  # noqa: E712
     )
-    result = await session.execute(stmt)
-    files = list(result.scalars().all())
+    result = await session.exec(stmt)
+    files = list(result.all())
 
     if not files:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload group not found")
@@ -1081,8 +1286,8 @@ async def edit_group(
     # Update group settings (title/description)
     if body.title is not None or body.description is not None:
         gs_stmt = select(UploadGroupSettings).where(UploadGroupSettings.upload_group == upload_group)
-        gs_result = await session.execute(gs_stmt)
-        gs = gs_result.scalars().first()
+        gs_result = await session.exec(gs_stmt)
+        gs = gs_result.first()
         if gs:
             if body.title is not None:
                 gs.title = body.title[:200] if body.title else None
@@ -1115,8 +1320,8 @@ async def get_access_info(
         FileUpload.upload_group == upload_group,
         FileUpload.user_id == user.id,
     )
-    result = await session.execute(stmt)
-    if not result.scalars().first():
+    result = await session.exec(stmt)
+    if not result.first():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload group not found")
 
     group_settings, passwords, email_recipients = await _load_group_access(session, upload_group)
@@ -1126,6 +1331,7 @@ async def get_access_info(
         passwords=[PasswordInfo(id=pw.id, label=pw.label) for pw in passwords],
         emails=[EmailRecipientInfo(id=er.id, email=er.email, notified=er.notified) for er in email_recipients],
         show_email_stats=group_settings.show_email_stats if group_settings else False,
+        separate_download_counts=group_settings.separate_download_counts if group_settings else False,
     )
 
 
@@ -1142,8 +1348,8 @@ async def edit_access(
         FileUpload.upload_group == upload_group,
         FileUpload.user_id == user.id,
     )
-    result = await session.execute(stmt)
-    if not result.scalars().first():
+    result = await session.exec(stmt)
+    if not result.first():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload group not found")
 
     group_settings, passwords, email_recipients = await _load_group_access(session, upload_group)
@@ -1156,7 +1362,19 @@ async def edit_access(
 
     # Update show_email_stats
     if body.show_email_stats is not None:
-        group_settings.show_email_stats = body.show_email_stats
+        # Temporary users cannot use this feature
+        if user.tier == UserTier.temporary:
+            group_settings.show_email_stats = False
+        else:
+            group_settings.show_email_stats = body.show_email_stats
+
+    # Update separate_download_counts
+    if body.separate_download_counts is not None:
+        # Temporary users cannot use this feature
+        if user.tier == UserTier.temporary:
+            group_settings.separate_download_counts = False
+        else:
+            group_settings.separate_download_counts = body.separate_download_counts
 
     session.add(group_settings)
 
@@ -1170,8 +1388,8 @@ async def edit_access(
                     detail=f"Password with id {pw_id} not found in this group",
                 )
             pw_stmt = select(UploadPassword).where(UploadPassword.id == pw_id)
-            pw_result = await session.execute(pw_stmt)
-            pw_obj = pw_result.scalars().first()
+            pw_result = await session.exec(pw_stmt)
+            pw_obj = pw_result.first()
             if pw_obj:
                 await session.delete(pw_obj)
 
@@ -1207,8 +1425,8 @@ async def edit_access(
                     detail=f"Email recipient with id {er_id} not found in this group",
                 )
             er_stmt = select(UploadEmailRecipient).where(UploadEmailRecipient.id == er_id)
-            er_result = await session.execute(er_stmt)
-            er_obj = er_result.scalars().first()
+            er_result = await session.exec(er_stmt)
+            er_obj = er_result.first()
             if er_obj:
                 await session.delete(er_obj)
 
@@ -1254,8 +1472,8 @@ async def edit_access(
             FileUpload.upload_group == upload_group,
             FileUpload.is_active.is_(True),
         )
-        any_file_result = await session.execute(any_file_stmt)
-        any_file = any_file_result.scalars().first()
+        any_file_result = await session.exec(any_file_stmt)
+        any_file = any_file_result.first()
         if any_file:
             for email_str, raw_token in email_tokens:
                 try:
@@ -1276,6 +1494,7 @@ async def edit_access(
         passwords=[PasswordInfo(id=pw.id, label=pw.label) for pw in updated_passwords],
         emails=[EmailRecipientInfo(id=er.id, email=er.email, notified=er.notified) for er in updated_emails],
         show_email_stats=group_settings.show_email_stats,
+        separate_download_counts=group_settings.separate_download_counts,
     )
 
 
@@ -1291,14 +1510,14 @@ async def get_group_stats(
         FileUpload.upload_group == upload_group,
         FileUpload.user_id == user.id,
     )
-    result = await session.execute(stmt)
-    if not result.scalars().first():
+    result = await session.exec(stmt)
+    if not result.first():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload group not found")
 
     # Get all download logs for this group
     log_stmt = select(DownloadLog).where(DownloadLog.upload_group == upload_group)
-    log_result = await session.execute(log_stmt)
-    logs = list(log_result.scalars().all())
+    log_result = await session.exec(log_stmt)
+    logs = list(log_result.all())
 
     if not logs:
         return DownloadStatsResponse(stats=[], total_downloads=0)
@@ -1355,8 +1574,8 @@ async def get_recipient_stats(
     er_stmt = select(UploadEmailRecipient).where(
         UploadEmailRecipient.upload_group == upload_group,
     )
-    er_result = await session.execute(er_stmt)
-    recipients = list(er_result.scalars().all())
+    er_result = await session.exec(er_stmt)
+    recipients = list(er_result.all())
 
     matched_recipient = None
     for er in recipients:
@@ -1369,16 +1588,16 @@ async def get_recipient_stats(
 
     # Check if stats are enabled
     gs_stmt = select(UploadGroupSettings).where(UploadGroupSettings.upload_group == upload_group)
-    gs_result = await session.execute(gs_stmt)
-    group_settings = gs_result.scalars().first()
+    gs_result = await session.exec(gs_stmt)
+    group_settings = gs_result.first()
 
     if not group_settings or not group_settings.show_email_stats:
         # Return only total count
         log_count_stmt = select(func.count(DownloadLog.id)).where(
             DownloadLog.upload_group == upload_group,
         )
-        count_result = await session.execute(log_count_stmt)
-        total = count_result.scalar() or 0
+        count_result = await session.exec(log_count_stmt)
+        total = count_result.first() or 0
         return RecipientStatsResponse(downloads=[], total_downloads=total)
 
     # Stats enabled: return per-email breakdown (only email downloads)
@@ -1386,8 +1605,8 @@ async def get_recipient_stats(
         DownloadLog.upload_group == upload_group,
         DownloadLog.access_type == "email",
     )
-    log_result = await session.execute(log_stmt)
-    email_logs = list(log_result.scalars().all())
+    log_result = await session.exec(log_stmt)
+    email_logs = list(log_result.all())
 
     # Map recipient IDs to emails
     er_map = {er.id: er.email for er in recipients}
@@ -1412,7 +1631,7 @@ async def get_recipient_stats(
     total_stmt = select(func.count(DownloadLog.id)).where(
         DownloadLog.upload_group == upload_group,
     )
-    total_result = await session.execute(total_stmt)
-    total = total_result.scalar() or 0
+    total_result = await session.exec(total_stmt)
+    total = total_result.first() or 0
 
     return RecipientStatsResponse(downloads=downloads, total_downloads=total)
