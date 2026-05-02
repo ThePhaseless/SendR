@@ -14,6 +14,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  hook-setup:
+    name: "Hooks: Setup"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Configure tracked git hooks
+        run: ./setup-git-hooks.sh
+
+      - name: Verify git hook entrypoint is active
+        run: |
+          test -x .githooks/pre-commit
+          test "$(git config --get core.hooksPath)" = ".githooks"
+
   openapi-generated-check:
     name: "Generated API: Up to Date"
     runs-on: ubuntu-latest

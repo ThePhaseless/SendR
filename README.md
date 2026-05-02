@@ -74,6 +74,7 @@ If you prefer to do it manually:
 
 ```bash
 uv tool install pre-commit
+chmod +x .githooks/pre-commit
 git config core.hooksPath .githooks
 pre-commit install-hooks --config .pre-commit-config.yaml
 ```
@@ -101,6 +102,8 @@ That hook requires `uv` and `bun` on the machine running the commit.
 CI also validates that [openapi.json](/workspaces/SendR/openapi.json) and [frontend/src/app/api](/workspaces/SendR/frontend/src/app/api) are not stale by regenerating them in GitHub Actions and failing if that produces a diff.
 
 The hook environments are defined in [.pre-commit-config.yaml](/workspaces/SendR/.pre-commit-config.yaml). Ruff still runs from its pinned pre-commit environment, while the frontend format and lint hooks run from the repository's Bun-managed dependencies in [frontend/package.json](/workspaces/SendR/frontend/package.json). `core.hooksPath` itself is still a local Git setting, so each clone needs the one-time `git config` command above.
+
+If commits bypass the hook entirely, first check that Git is pointing at `.githooks` and that [.githooks/pre-commit](/workspaces/SendR/.githooks/pre-commit) is executable.
 
 ### Docker
 
