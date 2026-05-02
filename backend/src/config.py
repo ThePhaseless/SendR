@@ -67,6 +67,7 @@ class Settings(BaseSettings):
     # File expiration (days) - default for backwards compatibility
     FILE_EXPIRY_DAYS: int = 7
     FILE_GRACE_PERIOD_DAYS: int = 7
+    PREMIUM_REFRESH_GRACE_DAYS: int = 14
     # Token expiry
     TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
     VERIFICATION_CODE_EXPIRE_MINUTES: int = 10

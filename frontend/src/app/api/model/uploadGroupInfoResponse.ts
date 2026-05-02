@@ -19,4 +19,5 @@ export interface UploadGroupInfoResponse {
   separate_download_counts?: boolean;
   title?: string | null;
   description?: string | null;
+  viewer_is_owner?: boolean;
 }

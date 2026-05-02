@@ -6,10 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface UserResponse {
+export interface AdminUserLoginEntry {
   id: number;
-  email: string;
-  tier: string;
-  is_admin?: boolean;
-  is_banned?: boolean;
+  auth_method: string;
+  ip_address?: string | null;
+  logged_in_at: string;
 }

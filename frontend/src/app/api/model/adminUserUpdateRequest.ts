@@ -9,4 +9,5 @@
 export interface AdminUserUpdateRequest {
   tier?: string | null;
   is_admin?: boolean | null;
+  is_banned?: boolean | null;
 }

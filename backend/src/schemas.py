@@ -23,6 +23,7 @@ class UserResponse(SQLModel):
     email: str
     tier: str
     is_admin: bool = False
+    is_banned: bool = False
 
 
 class FileUploadResponse(SQLModel):
@@ -42,6 +43,7 @@ class FileUploadResponse(SQLModel):
     is_public: bool = True
     has_passwords: bool = False
     has_email_recipients: bool = False
+    viewer_is_owner: bool = False
 
 
 class FileListResponse(SQLModel):
@@ -93,6 +95,7 @@ class UploadGroupInfoResponse(SQLModel):
     separate_download_counts: bool = False
     title: str | None = None
     description: str | None = None
+    viewer_is_owner: bool = False
 
 
 class TransferInfoResponse(SQLModel):
@@ -148,11 +151,33 @@ class GroupEditRequest(SQLModel):
 class AdminUserUpdateRequest(SQLModel):
     tier: str | None = None
     is_admin: bool | None = None
+    is_banned: bool | None = None
 
 
 class AdminUserListResponse(SQLModel):
     users: list[UserResponse]
     total: int
+
+
+class AdminUserLoginEntry(SQLModel):
+    id: int
+    auth_method: str
+    ip_address: str | None = None
+    logged_in_at: datetime
+
+
+class AdminUserLoginListResponse(SQLModel):
+    logins: list[AdminUserLoginEntry]
+
+
+class AdminUserStatsResponse(SQLModel):
+    total_transfers: int
+    active_transfers: int
+    total_files_uploaded: int
+    total_uploaded_bytes: int
+    total_downloads: int
+    login_count: int
+    last_login_at: datetime | None = None
 
 
 class DownloadStatEntry(SQLModel):

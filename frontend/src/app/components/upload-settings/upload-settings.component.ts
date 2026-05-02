@@ -143,14 +143,10 @@ export class UploadSettingsComponent {
   });
 
   /** Max download limit from backend. */
-  maxDownloadsLimit = computed(() => {
-    return this.backendMaxDownloadsLimit() ?? 1;
-  });
+  maxDownloadsLimit = computed(() => this.backendMaxDownloadsLimit() ?? 1);
 
   /** Whether to show custom download input (free/premium) vs select (temporary). */
-  useCustomDownloads = computed(() => {
-    return this.backendMaxDownloadsLimit() != null;
-  });
+  useCustomDownloads = computed(() => this.backendMaxDownloadsLimit() !== null);
 
   /** Available max download options for the select (temporary tier). */
   maxDownloadsOptions = computed<{ value: number; label: string }[]>(() => {
@@ -158,7 +154,10 @@ export class UploadSettingsComponent {
     if (opts) {
       return opts.map((v) => ({ label: v === 0 ? "Unlimited" : String(v), value: v }));
     }
-    return [{ label: "Unlimited", value: 0 }, { label: "1", value: 1 }];
+    return [
+      { label: "Unlimited", value: 0 },
+      { label: "1", value: 1 },
+    ];
   });
 
   /** Whether user can add more passwords. */

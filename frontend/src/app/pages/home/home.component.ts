@@ -96,12 +96,18 @@ export class HomeComponent {
   /** Whether file picker has a limit warning. */
   fileLimitWarning = computed(() => {
     const files = this.pendingFiles();
-    if (files.length === 0) return false;
+    if (files.length === 0) {
+      return false;
+    }
     const maxBytes = this.maxFileSizeMb() * 1024 * 1024;
     const maxPerUpload = this.maxFilesPerUpload();
     const totalSize = files.reduce((sum, f) => sum + f.size, 0);
-    if (maxPerUpload > 0 && files.length > maxPerUpload) return true;
-    if (totalSize > maxBytes) return true;
+    if (maxPerUpload > 0 && files.length > maxPerUpload) {
+      return true;
+    }
+    if (totalSize > maxBytes) {
+      return true;
+    }
     return false;
   });
 
@@ -163,8 +169,12 @@ export class HomeComponent {
       return "temporary";
     }
     // QuotaResponse has min_expiry_hours for free/premium (non-null number),
-    // null/undefined for temporary tier. LimitsResponse doesn't have it at all.
-    if ("min_expiry_hours" in l && l.min_expiry_hours != null) {
+    // Null/undefined for temporary tier. LimitsResponse doesn't have it at all.
+    if (
+      "min_expiry_hours" in l &&
+      l.min_expiry_hours !== null &&
+      l.min_expiry_hours !== undefined
+    ) {
       if ((l as { max_expiry_hours?: number | null }).max_expiry_hours === 720) {
         return "premium";
       }
@@ -217,8 +227,10 @@ export class HomeComponent {
 
   canUseSeparateDownloadCounts = computed(() => {
     const l = this.limitsData.value();
-    return (l as { can_use_separate_download_counts?: boolean } | undefined)
-      ?.can_use_separate_download_counts ?? false;
+    return (
+      (l as { can_use_separate_download_counts?: boolean } | undefined)
+        ?.can_use_separate_download_counts ?? false
+    );
   });
 
   canUseEmailStats = computed(() => {
@@ -245,22 +257,33 @@ export class HomeComponent {
   // Weekly upload size quota (bytes)
   weeklyUploadSizeLimitBytes = computed(() => {
     const l = this.limitsData.value();
-    return (l as { weekly_upload_size_limit_bytes?: number } | undefined)?.weekly_upload_size_limit_bytes ?? 0;
+    return (
+      (l as { weekly_upload_size_limit_bytes?: number } | undefined)
+        ?.weekly_upload_size_limit_bytes ?? 0
+    );
   });
 
   weeklyUploadSizeUsedBytes = computed(() => {
     const l = this.limitsData.value();
-    return (l as { weekly_upload_size_used_bytes?: number } | undefined)?.weekly_upload_size_used_bytes ?? 0;
+    return (
+      (l as { weekly_upload_size_used_bytes?: number } | undefined)
+        ?.weekly_upload_size_used_bytes ?? 0
+    );
   });
 
   weeklyUploadSizeRemainingBytes = computed(() => {
     const l = this.limitsData.value();
-    return (l as { weekly_upload_size_remaining_bytes?: number } | undefined)?.weekly_upload_size_remaining_bytes ?? 0;
+    return (
+      (l as { weekly_upload_size_remaining_bytes?: number } | undefined)
+        ?.weekly_upload_size_remaining_bytes ?? 0
+    );
   });
 
   isSizeQuotaExhausted = computed(() => {
     const limit = this.weeklyUploadSizeLimitBytes();
-    if (limit <= 0) return false;
+    if (limit <= 0) {
+      return false;
+    }
     return this.weeklyUploadSizeRemainingBytes() <= 0;
   });
 

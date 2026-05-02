@@ -49,7 +49,7 @@ from schemas import (
     RecipientStatsResponse,
     UploadGroupInfoResponse,
 )
-from security import get_current_user
+from security import get_current_user, get_optional_user
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -126,7 +126,9 @@ async def _check_weekly_quota(user: User, session) -> None:
             limit_gb = size_limit / (1024 * 1024 * 1024)
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"Weekly upload size limit reached. You have used {used_gb:.1f} GB / {limit_gb:.0f} GB this week.",
+                detail=(
+                    f"Weekly upload size limit reached. You have used {used_gb:.1f} GB / {limit_gb:.0f} GB this week."
+                ),
             )
 
 
@@ -169,6 +171,7 @@ def _to_response(
     group_settings: UploadGroupSettings | None = None,
     password_count: int = 0,
     email_count: int = 0,
+    viewer_is_owner: bool = False,
 ) -> FileUploadResponse:
     return FileUploadResponse(
         id=f.id,
@@ -186,6 +189,7 @@ def _to_response(
         is_public=group_settings.is_public if group_settings else True,
         has_passwords=password_count > 0,
         has_email_recipients=email_count > 0,
+        viewer_is_owner=viewer_is_owner,
     )
 
 
@@ -213,9 +217,7 @@ async def _load_group_access(
     upload_group: str,
 ) -> tuple[UploadGroupSettings | None, list[UploadPassword], list[UploadEmailRecipient]]:
     """Load group settings, passwords, and email recipients."""
-    gs_result = await session.exec(
-        select(UploadGroupSettings).where(UploadGroupSettings.upload_group == upload_group)
-    )
+    gs_result = await session.exec(select(UploadGroupSettings).where(UploadGroupSettings.upload_group == upload_group))
     group_settings = gs_result.first()
 
     pw_result = await session.exec(select(UploadPassword).where(UploadPassword.upload_group == upload_group))
@@ -241,10 +243,7 @@ def _has_valid_credential(
         if pbkdf2_sha256.verify(password, pw.password_hash):
             return True
     pw_hash = sha256(password.encode()).hexdigest()
-    for er in email_recipients:
-        if compare_digest(pw_hash, er.token_hash):
-            return True
-    return False
+    return any(compare_digest(pw_hash, er.token_hash) for er in email_recipients)
 
 
 async def _verify_access(
@@ -617,6 +616,7 @@ async def get_group_info(
     upload_group: str,
     session: AsyncSession = Depends(get_session),
     password: str | None = Query(None),
+    current_user: User | None = Depends(get_optional_user),
 ) -> UploadGroupInfoResponse:
     stmt = select(FileUpload).where(
         FileUpload.upload_group == upload_group,
@@ -632,13 +632,32 @@ async def get_group_info(
     pw_count = len(passwords)
     email_count = len(email_recipients)
     is_public = group_settings.is_public if group_settings else True
+    viewer_is_owner = current_user is not None and files[0].user_id == current_user.id
 
     # Check if details should be hidden (is_public=false means hide details without password)
-    hide_details = not is_public and pw_count > 0 and not _has_valid_credential(password, passwords, email_recipients)
+    hide_details = (
+        not viewer_is_owner
+        and not is_public
+        and pw_count > 0
+        and not _has_valid_credential(password, passwords, email_recipients)
+    )
 
     total_size = sum(f.file_size_bytes for f in files)
     return UploadGroupInfoResponse(
-        files=[] if hide_details else [_to_response(f, group_settings, pw_count, email_count) for f in files],
+        files=(
+            []
+            if hide_details
+            else [
+                _to_response(
+                    f,
+                    group_settings,
+                    pw_count,
+                    email_count,
+                    viewer_is_owner=viewer_is_owner,
+                )
+                for f in files
+            ]
+        ),
         upload_group=upload_group,
         total_size_bytes=0 if hide_details else total_size,
         file_count=len(files),
@@ -649,6 +668,7 @@ async def get_group_info(
         separate_download_counts=group_settings.separate_download_counts if group_settings else False,
         title=group_settings.title if group_settings else None,
         description=group_settings.description if group_settings else None,
+        viewer_is_owner=viewer_is_owner,
     )
 
 
@@ -657,6 +677,7 @@ async def download_group(
     upload_group: str,
     session: AsyncSession = Depends(get_session),
     password: str | None = Query(None),
+    current_user: User | None = Depends(get_optional_user),
 ):
     stmt = select(FileUpload).where(
         FileUpload.upload_group == upload_group,
@@ -670,13 +691,17 @@ async def download_group(
 
     # Access verification
     owner_user_id = files[0].user_id
-    access_type, pw_id, er_id = await _verify_access(session, upload_group, password, owner_user_id, None)
+    access_type, pw_id, er_id = await _verify_access(
+        session,
+        upload_group,
+        password,
+        owner_user_id,
+        current_user,
+    )
 
     # Check expiration and download limits for all files
     now = _utcnow()
-    gs_result = await session.exec(
-        select(UploadGroupSettings).where(UploadGroupSettings.upload_group == upload_group)
-    )
+    gs_result = await session.exec(select(UploadGroupSettings).where(UploadGroupSettings.upload_group == upload_group))
     group_settings = gs_result.first()
 
     for f in files:
@@ -765,7 +790,10 @@ async def list_files(
     session: AsyncSession = Depends(get_session),
 ) -> FileListResponse:
     now = _utcnow()
-    grace_cutoff = now - timedelta(days=settings.FILE_GRACE_PERIOD_DAYS)
+    grace_days = settings.FILE_GRACE_PERIOD_DAYS
+    if user.tier == UserTier.premium:
+        grace_days = max(grace_days, settings.PREMIUM_REFRESH_GRACE_DAYS)
+    grace_cutoff = now - timedelta(days=grace_days)
     stmt = (
         select(FileUpload)
         .where(
@@ -799,6 +827,7 @@ async def download_file(
     download_token: str,
     session: AsyncSession = Depends(get_session),
     password: str | None = Query(None),
+    current_user: User | None = Depends(get_optional_user),
 ):
     stmt = select(FileUpload).where(
         FileUpload.download_token == download_token,
@@ -811,7 +840,11 @@ async def download_file(
 
     # Access verification
     access_type, pw_id, er_id = await _verify_access(
-        session, file_upload.upload_group, password, file_upload.user_id, None
+        session,
+        file_upload.upload_group,
+        password,
+        file_upload.user_id,
+        current_user,
     )
 
     now = _utcnow()
@@ -877,6 +910,7 @@ async def get_file_info(
     download_token: str,
     session: AsyncSession = Depends(get_session),
     password: str | None = Query(None),
+    current_user: User | None = Depends(get_optional_user),
 ) -> FileUploadResponse:
     stmt = select(FileUpload).where(FileUpload.download_token == download_token)
     result = await session.exec(stmt)
@@ -888,9 +922,12 @@ async def get_file_info(
     gs, pws, ers = await _load_group_access(session, file_upload.upload_group)
     is_public = gs.is_public if gs else True
     pw_count = len(pws)
+    viewer_is_owner = current_user is not None and file_upload.user_id == current_user.id
 
     # Hide details when is_public=false and no valid credential provided
-    hide_details = not is_public and pw_count > 0 and not _has_valid_credential(password, pws, ers)
+    hide_details = (
+        not viewer_is_owner and not is_public and pw_count > 0 and not _has_valid_credential(password, pws, ers)
+    )
 
     if hide_details:
         return FileUploadResponse(
@@ -905,9 +942,10 @@ async def get_file_info(
             is_public=False,
             has_passwords=True,
             has_email_recipients=len(ers) > 0,
+            viewer_is_owner=False,
         )
 
-    return _to_response(file_upload, gs, pw_count, len(ers))
+    return _to_response(file_upload, gs, pw_count, len(ers), viewer_is_owner=viewer_is_owner)
 
 
 @router.post("/{file_id}/refresh")
@@ -936,11 +974,16 @@ async def refresh_download_link(
             detail="Free users can only refresh uploads before they expire.",
         )
 
-    # Premium users can refresh up to 14 days after expiry
-    if user.tier == UserTier.premium and now > file_upload.expires_at + timedelta(days=14):
+    # Premium users can refresh within the premium grace window after expiry.
+    if user.tier == UserTier.premium and now > file_upload.expires_at + timedelta(
+        days=settings.PREMIUM_REFRESH_GRACE_DAYS
+    ):
+        grace_message = (
+            f"Upload expired more than {settings.PREMIUM_REFRESH_GRACE_DAYS} days ago and can no longer be refreshed."
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Upload expired more than 2 weeks ago and can no longer be refreshed.",
+            detail=grace_message,
         )
 
     # Temporary users cannot refresh
@@ -1152,11 +1195,16 @@ async def refresh_group(
             detail="Free users can only refresh uploads before they expire.",
         )
 
-    # Premium users can refresh up to 14 days after expiry
-    if user.tier == UserTier.premium and now > reference.expires_at + timedelta(days=14):
+    # Premium users can refresh within the premium grace window after expiry.
+    if user.tier == UserTier.premium and now > reference.expires_at + timedelta(
+        days=settings.PREMIUM_REFRESH_GRACE_DAYS
+    ):
+        grace_message = (
+            f"Upload expired more than {settings.PREMIUM_REFRESH_GRACE_DAYS} days ago and can no longer be refreshed."
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Upload expired more than 2 weeks ago and can no longer be refreshed.",
+            detail=grace_message,
         )
 
     new_expiry = now + _resolve_expiry(body.expiry_hours, user.tier)

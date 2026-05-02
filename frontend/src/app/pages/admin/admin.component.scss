@@ -71,6 +71,113 @@
   @apply flex gap-1.5;
 }
 
+.uploads-panel {
+  @apply mt-6 p-5;
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+}
+
+.uploads-panel-header {
+  @apply mb-4;
+
+  h2 {
+    @apply text-lg font-semibold;
+  }
+
+  p {
+    color: var(--color-text-secondary);
+    @apply text-sm mt-1;
+  }
+}
+
+.detail-sections {
+  @apply flex flex-col gap-6;
+}
+
+.detail-section {
+  h3 {
+    @apply text-base font-semibold mb-3;
+  }
+}
+
+.stats-grid {
+  @apply grid gap-3;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.stat-card {
+  @apply p-3;
+  background: var(--color-secondary-hover-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+}
+
+.stat-card-wide {
+  @apply sm:col-span-2;
+}
+
+.stat-label {
+  color: var(--color-text-secondary);
+  @apply block text-xs uppercase tracking-wide;
+}
+
+.stat-value {
+  @apply block text-lg mt-2;
+}
+
+.transfer-list {
+  @apply flex flex-col gap-3;
+}
+
+.transfer-card {
+  @apply p-4;
+  background: var(--color-secondary-hover-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+}
+
+.transfer-card-header {
+  @apply flex items-start justify-between gap-4 flex-wrap;
+
+  h3 {
+    @apply font-semibold;
+  }
+
+  p {
+    color: var(--color-text-secondary);
+    @apply text-sm mt-1;
+  }
+}
+
+.transfer-files {
+  @apply mt-3 flex flex-col gap-2;
+}
+
+.transfer-file-row {
+  @apply flex items-center justify-between gap-3 text-sm;
+}
+
+.login-list {
+  @apply flex flex-col gap-3;
+}
+
+.login-row {
+  @apply p-3;
+  background: var(--color-secondary-hover-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+
+  p {
+    color: var(--color-text-secondary);
+    @apply text-sm mt-1;
+  }
+}
+
+.login-ip {
+  color: var(--color-text);
+}
+
 .pagination {
   @apply flex items-center justify-center gap-4 mt-6 flex-wrap;
 }

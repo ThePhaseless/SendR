@@ -84,11 +84,7 @@
               <p class="password-error">{{ passwordError() }}</p>
             }
           } @else {
-            <button
-              class="btn btn-primary btn-lg"
-              [disabled]="downloading()"
-              (click)="download()"
-            >
+            <button class="btn btn-primary btn-lg" [disabled]="downloading()" (click)="download()">
               {{ downloading() ? "Downloading…" : "Download File" }}
             </button>
           }
@@ -119,28 +115,28 @@
             </div>
           }
           @if (!needsPasswordToDownload()) {
-          <div class="group-file-list">
-            @for (file of group.files; track file.id) {
-              <div class="group-file-item">
-                <span class="group-file-name"
-                  >{{ getFileEmoji(file.original_filename) }} {{ file.original_filename }}</span
-                >
-                <span class="group-file-size">{{ formatSize(file.file_size_bytes) }}</span>
-                @if (!isGroupFileLimitReached(file)) {
-                  <button
-                    class="btn btn-secondary btn-sm"
-                    [attr.aria-label]="'Download ' + file.original_filename"
-                    [disabled]="downloading()"
-                    (click)="downloadSingleFile(file.download_url, file.original_filename)"
+            <div class="group-file-list">
+              @for (file of group.files; track file.id) {
+                <div class="group-file-item">
+                  <span class="group-file-name"
+                    >{{ getFileEmoji(file.original_filename) }} {{ file.original_filename }}</span
                   >
-                    Download
-                  </button>
-                } @else {
-                  <span class="limit-reached-badge">Limit reached</span>
-                }
-              </div>
-            }
-          </div>
+                  <span class="group-file-size">{{ formatSize(file.file_size_bytes) }}</span>
+                  @if (!isGroupFileLimitReached(file)) {
+                    <button
+                      class="btn btn-secondary btn-sm"
+                      [attr.aria-label]="'Download ' + file.original_filename"
+                      [disabled]="downloading()"
+                      (click)="downloadSingleFile(file.download_url, file.original_filename)"
+                    >
+                      Download
+                    </button>
+                  } @else {
+                    <span class="limit-reached-badge">Limit reached</span>
+                  }
+                </div>
+              }
+            </div>
           }
           @if (needsPasswordToDownload()) {
             <p class="password-hint">Enter the password to download these files.</p>
@@ -160,7 +156,9 @@
               <p class="password-error">{{ passwordError() }}</p>
             }
           } @else if (isGroupLimitReached()) {
-            <div class="alert alert-error">Download limit has been reached for one or more files.</div>
+            <div class="alert alert-error">
+              Download limit has been reached for one or more files.
+            </div>
           } @else {
             <button
               class="btn btn-primary btn-lg download-all-btn"
