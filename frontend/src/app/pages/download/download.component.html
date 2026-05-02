@@ -64,6 +64,16 @@
           </div>
           @if (!file.is_active || isExpired(file.expires_at)) {
             <div class="alert alert-error">This file has expired and is no longer available.</div>
+          } @else if (singleFileGroupDownloadOnly()) {
+            <div class="alert alert-info">
+              Individual downloads are disabled for this limited multi-file transfer. Download the
+              full transfer instead.
+            </div>
+            @if (file.upload_group) {
+              <a class="btn btn-primary btn-lg" [href]="getGroupPageUrl(file.upload_group)">
+                Open Transfer Download
+              </a>
+            }
           } @else if (isFileLimitReached()) {
             <div class="alert alert-error">Download limit has been reached.</div>
           } @else if (needsPasswordToDownload()) {
@@ -114,6 +124,12 @@
               📦 These files will be delivered as a ZIP archive.
             </div>
           }
+          @if (groupRestrictsSingleFileDownloads()) {
+            <div class="alert alert-info zip-info">
+              Individual file downloads are disabled for limited multi-file transfers. Use the full
+              transfer download.
+            </div>
+          }
           @if (!needsPasswordToDownload()) {
             <div class="group-file-list">
               @for (file of group.files; track file.id) {
@@ -122,7 +138,9 @@
                     >{{ getFileEmoji(file.original_filename) }} {{ file.original_filename }}</span
                   >
                   <span class="group-file-size">{{ formatSize(file.file_size_bytes) }}</span>
-                  @if (!isGroupFileLimitReached(file)) {
+                  @if (file.group_download_only) {
+                    <span class="limit-reached-badge">Use full transfer</span>
+                  } @else if (!isGroupFileLimitReached(file)) {
                     <button
                       class="btn btn-secondary btn-sm"
                       [attr.aria-label]="'Download ' + file.original_filename"

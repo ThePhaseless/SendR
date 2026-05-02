@@ -33,6 +33,14 @@ export class AuthService {
     return this.api.requestCodeApiAuthRequestCodePost({ email });
   }
 
+  loginWithPassword(email: string, password: string): Observable<VerifyCodeResponse> {
+    return this.api.loginPasswordApiAuthLoginPasswordPost({ email, password }).pipe(
+      tap((res) => {
+        this.storeToken(res);
+      }),
+    );
+  }
+
   verifyCode(email: string, code: string, createAccount = false): Observable<VerifyCodeResponse> {
     return this.api
       .verifyCodeApiAuthVerifyCodePost({ code, create_account: createAccount, email })
@@ -45,6 +53,17 @@ export class AuthService {
 
   getMe(): Observable<MeResponse> {
     return this.api.getMeApiAuthMeGet();
+  }
+
+  setPassword(password: string): Observable<MeResponse> {
+    return this.api.setPasswordApiAuthSetPasswordPost({ password });
+  }
+
+  changePassword(currentPassword: string, newPassword: string): Observable<MeResponse> {
+    return this.api.changePasswordApiAuthChangePasswordPost({
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
   }
 
   getQuota(): Observable<QuotaResponse> {

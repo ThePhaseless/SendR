@@ -8,6 +8,7 @@ import { AuthService } from '../../services/auth.service';
 import type { RecipientStatsResponse } from '../../services/file.service';
 import { FileService } from '../../services/file.service';
 import { filenameToEmoji, formatFileSize, isExpired } from '../../utils/file.utils';
+import { resolveAppUrl } from '../../utils/url.utils';
 
 @Component({
   imports: [DatePipe, FormsModule],
@@ -121,6 +122,11 @@ export class DownloadComponent {
     return file.download_count >= file.max_downloads;
   });
 
+  singleFileGroupDownloadOnly = computed(() => {
+    const file = this.fileInfo();
+    return Boolean(file && file.group_download_only && !file.viewer_is_owner);
+  });
+
   /** Whether the download limit has been reached for the group. */
   isGroupLimitReached = computed(() => {
     const group = this.groupInfo();
@@ -139,13 +145,19 @@ export class DownloadComponent {
   /** Whether the download limit has been reached for a specific file in a group. */
   isGroupFileLimitReached(file: {
     download_count: number;
+    group_download_only?: boolean;
     max_downloads?: number | null;
   }): boolean {
-    if (this.groupInfo()?.viewer_is_owner || !file.max_downloads) {
+    if (this.groupInfo()?.viewer_is_owner || file.group_download_only || !file.max_downloads) {
       return false;
     }
     return file.download_count >= file.max_downloads;
   }
+
+  groupRestrictsSingleFileDownloads = computed(() => {
+    const group = this.groupInfo();
+    return Boolean(group && group.files.some((file) => file.group_download_only));
+  });
 
   /** Download error message. */
   downloadError = signal('');
@@ -332,5 +344,14 @@ export class DownloadComponent {
       return `${file.download_count} / ${file.max_downloads}`;
     }
     return `${file.download_count}`;
+  }
+
+  getGroupPageUrl(uploadGroup: string): string {
+    const password = this.passwordToken();
+    const base = resolveAppUrl(`download/group/${uploadGroup}`);
+    if (!password) {
+      return base;
+    }
+    return `${base}?password=${encodeURIComponent(password)}`;
   }
 }

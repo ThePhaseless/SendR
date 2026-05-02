@@ -38,9 +38,17 @@ export class DashboardComponent implements OnInit {
   files = signal<FileUploadResponse[]>([]);
   loading = signal(true);
   error = signal<string | null>(null);
+  userEmail = signal('');
+  userHasPassword = signal(false);
   copiedGroupKey = signal<string | null>(null);
   expandedGroupKey = signal<string | null>(null);
   userTier = signal('temporary');
+  accountSaving = signal(false);
+  accountError = signal<string | null>(null);
+  accountMessage = signal<string | null>(null);
+  accountCurrentPassword = signal('');
+  accountNewPassword = signal('');
+  accountConfirmPassword = signal('');
 
   // Unified panel settings (bound to upload-settings component)
   panelExpiryHours = signal(72);
@@ -122,7 +130,64 @@ export class DashboardComponent implements OnInit {
     this.loadFiles();
     this.authService.getMe().subscribe({
       next: (me) => {
+        this.userEmail.set(me.email);
+        this.userHasPassword.set(Boolean(me.has_password));
         this.userTier.set(me.tier);
+      },
+    });
+  }
+
+  saveAccountPassword(): void {
+    const newPassword = this.accountNewPassword();
+    const confirmPassword = this.accountConfirmPassword();
+    const currentPassword = this.accountCurrentPassword();
+    const changingExistingPassword = this.userHasPassword();
+
+    this.accountError.set(null);
+    this.accountMessage.set(null);
+
+    if (!newPassword) {
+      this.accountError.set('Enter a new password.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      this.accountError.set('Password must be at least 8 characters long.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      this.accountError.set('New password and confirmation do not match.');
+      return;
+    }
+    if (changingExistingPassword && !currentPassword) {
+      this.accountError.set('Enter your current password.');
+      return;
+    }
+
+    this.accountSaving.set(true);
+    const request$ = changingExistingPassword
+      ? this.authService.changePassword(currentPassword, newPassword)
+      : this.authService.setPassword(newPassword);
+
+    request$.subscribe({
+      error: (err: unknown) => {
+        this.accountError.set(
+          getErrorDetail(
+            err,
+            changingExistingPassword ? 'Failed to update password.' : 'Failed to set password.',
+          ),
+        );
+        this.accountSaving.set(false);
+      },
+      next: (me) => {
+        this.userEmail.set(me.email);
+        this.userHasPassword.set(Boolean(me.has_password));
+        this.accountMessage.set(
+          changingExistingPassword ? 'Password updated.' : 'Password created.',
+        );
+        this.accountCurrentPassword.set('');
+        this.accountNewPassword.set('');
+        this.accountConfirmPassword.set('');
+        this.accountSaving.set(false);
       },
     });
   }

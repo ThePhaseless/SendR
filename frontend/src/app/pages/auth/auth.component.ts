@@ -34,9 +34,11 @@ export class AuthComponent {
     return fallback;
   }
 
-  step = signal<'email' | 'code'>('email');
+  signInMethod = signal<'code' | 'password'>('code');
+  step = signal<'email' | 'code' | 'password'>('email');
   email = this.route.snapshot.queryParamMap.get('email') ?? '';
   code = '';
+  password = '';
   loading = signal(false);
   error = signal<string | null>(null);
   message = signal<string | null>(null);
@@ -67,6 +69,30 @@ export class AuthComponent {
     });
   }
 
+  loginWithPassword(): void {
+    if (!this.email || !this.password) {
+      return;
+    }
+    if (!AuthComponent.EMAIL_PATTERN.test(this.email)) {
+      this.error.set('Please enter a valid email address.');
+      return;
+    }
+
+    this.loading.set(true);
+    this.error.set(null);
+    this.message.set(null);
+
+    this.authService.loginWithPassword(this.email, this.password).subscribe({
+      error: (err) => {
+        this.error.set(this.getErrorDetail(err, 'Invalid email or password.'));
+        this.loading.set(false);
+      },
+      next: () => {
+        void this.router.navigate(['/']);
+      },
+    });
+  }
+
   verifyCode(): void {
     if (!this.code) {
       return;
@@ -88,6 +114,15 @@ export class AuthComponent {
 
   backToEmail(): void {
     this.step.set('email');
+    this.code = '';
+    this.error.set(null);
+    this.message.set(null);
+  }
+
+  setMethod(method: 'code' | 'password'): void {
+    this.signInMethod.set(method);
+    this.step.set(method === 'password' ? 'password' : 'email');
+    this.password = '';
     this.code = '';
     this.error.set(null);
     this.message.set(null);

@@ -4,10 +4,31 @@
     <p class="auth-subtitle">
       {{
         isRegister
-          ? "Sign up for free — no password needed"
-          : "Get a verification code sent to your email"
+          ? "Start with email verification. You can add a password later in your account settings."
+          : "Sign in with a password or get a verification code sent to your email"
       }}
     </p>
+
+    @if (!isRegister) {
+      <div class="auth-mode-toggle">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          [class.active]="step() !== 'password'"
+          (click)="setMethod('code')"
+        >
+          Email Code
+        </button>
+        <button
+          type="button"
+          class="btn btn-secondary"
+          [class.active]="step() === 'password'"
+          (click)="setMethod('password')"
+        >
+          Password
+        </button>
+      </div>
+    }
 
     @if (isRegister) {
       <ul class="benefits-list">
@@ -38,6 +59,44 @@
         </div>
         <button type="submit" class="btn btn-primary btn-full" [disabled]="loading() || !email">
           {{ loading() ? "Sending..." : "Send Code" }}
+        </button>
+      </form>
+    } @else if (step() === "password") {
+      <form (ngSubmit)="loginWithPassword()">
+        <div class="form-group">
+          <label for="email-password">Email address</label>
+          <input
+            id="email-password"
+            type="email"
+            [(ngModel)]="email"
+            name="email"
+            placeholder="you@example.com"
+            required
+            class="form-input"
+          />
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            [(ngModel)]="password"
+            name="password"
+            placeholder="Enter your password"
+            required
+            class="form-input"
+          />
+        </div>
+        <p class="password-login-hint">
+          If you have not set a password yet, use email code sign-in once and add one from the
+          dashboard.
+        </p>
+        <button
+          type="submit"
+          class="btn btn-primary btn-full"
+          [disabled]="loading() || !email || !password"
+        >
+          {{ loading() ? "Signing in..." : "Sign In" }}
         </button>
       </form>
     } @else {
