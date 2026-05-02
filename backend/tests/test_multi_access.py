@@ -4,10 +4,11 @@ import json
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlmodel import select
 
 import database
 from app import app
-from models import AuthToken, User, UserTier
+from models import AuthToken, DownloadLog, User, UserTier
 from routers.altcha import verify_altcha_payload
 from security import create_access_token, hash_token
 
@@ -249,6 +250,52 @@ async def test_group_password_protected_download(free_headers):
         # With correct password
         dl_resp = await client.get(f"/api/files/group/{group}/download?password=teampass")
         assert dl_resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_owner_can_download_password_protected_group_files_without_password(free_headers):
+    """Owners can view and download password-protected group files without supplying a password."""
+    passwords = [{"label": "Team", "password": "teampass"}]
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        upload_resp = await client.post(
+            "/api/files/upload-multiple",
+            files=[
+                ("files", ("a.txt", b"aaa", "text/plain")),
+                ("files", ("b.txt", b"bbb", "text/plain")),
+            ],
+            data={
+                "altcha": json.dumps({"mock": True}),
+                "is_public": "true",
+                "passwords": json.dumps(passwords),
+            },
+            headers=free_headers,
+        )
+        assert upload_resp.status_code == 201
+        upload_data = upload_resp.json()
+        group = upload_data["upload_group"]
+        file_id = upload_data["files"][0]["id"]
+        download_url = upload_data["files"][0]["download_url"]
+
+        info_resp = await client.get(f"/api/files/group/{group}", headers=free_headers)
+        assert info_resp.status_code == 200
+        info_data = info_resp.json()
+        assert info_data["viewer_is_owner"] is True
+        assert len(info_data["files"]) == 2
+
+        file_info_resp = await client.get(f"{download_url}/info", headers=free_headers)
+        assert file_info_resp.status_code == 200
+        assert file_info_resp.json()["viewer_is_owner"] is True
+
+        download_resp = await client.get(download_url, headers=free_headers)
+        assert download_resp.status_code == 200
+
+    session_factory = database.async_session
+    async with session_factory() as session:
+        result = await session.exec(select(DownloadLog).where(DownloadLog.file_upload_id == file_id))
+        log_entry = result.first()
+
+    assert log_entry is not None
+    assert log_entry.access_type == "owner"
 
 
 # ── Access info endpoint ─────────────────────────────────────────────

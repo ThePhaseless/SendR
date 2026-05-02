@@ -1,53 +1,67 @@
 <input #fileInput type="file" (change)="onFileSelected($event)" multiple hidden />
 <input #folderInput type="file" (change)="onFileSelected($event)" webkitdirectory multiple hidden />
 
+<ng-template #pickerChoices>
+  <div class="picker-menu" (click)="$event.stopPropagation()">
+    <p class="picker-menu-title">Choose what to add</p>
+    <div class="picker-menu-actions">
+      <button type="button" class="picker-option" (click)="openFilePicker($event, fileInput)">
+        <span class="picker-option-label">Files</span>
+        <span class="picker-option-hint">Pick one or more files</span>
+      </button>
+      <button type="button" class="picker-option" (click)="openFolderPicker($event, folderInput)">
+        <span class="picker-option-label">Folder</span>
+        <span class="picker-option-hint">Import an entire folder</span>
+      </button>
+    </div>
+  </div>
+</ng-template>
+
 @if (!compact()) {
   <div
     class="drop-zone"
     [class.dragging]="isDragging()"
     [class.disabled]="disabled()"
+    [attr.aria-expanded]="pickerMenuOpen()"
+    aria-label="Add files or a folder"
     (dragover)="onDragOver($event)"
     (dragleave)="onDragLeave($event)"
     (drop)="disabled() ? null : onDrop($event)"
-    (click)="disabled() ? null : interceptClick() ? addClicked.emit() : fileInput.click()"
+    (click)="handlePrimaryAction($event)"
+    (keydown.enter)="handlePrimaryAction($event)"
+    (keydown.space)="handlePrimaryAction($event)"
+    role="button"
+    tabindex="0"
   >
     <div class="drop-content">
       <div class="drop-icon">📁</div>
-      <p class="drop-text">Click to select files or drag & drop</p>
-      <p class="drop-folder-link">
-        or
-        <a
-          (click)="
-            $event.stopPropagation(); interceptClick() ? addClicked.emit() : folderInput.click()
-          "
-          >select a folder</a
-        >
-      </p>
+      <p class="drop-text">Click to add files or a folder</p>
       <p class="drop-hint">
-        Supports files and folders &middot; Up to
+        Choose files or a folder from one place, or drag & drop &middot; Up to
         {{ maxFilesPerUpload() === 0 ? "unlimited" : maxFilesPerUpload() }}
         files, {{ maxFileSizeMb() }} MB total
       </p>
+
+      @if (pickerMenuOpen() && !disabled() && !interceptClick()) {
+        <ng-container *ngTemplateOutlet="pickerChoices"></ng-container>
+      }
     </div>
   </div>
 } @else {
-  <div class="compact-actions">
+  <div class="compact-actions" (click)="$event.stopPropagation()">
     <button
       type="button"
       class="btn btn-secondary btn-sm"
+      [attr.aria-expanded]="pickerMenuOpen()"
       [disabled]="disabled()"
-      (click)="interceptClick() ? addClicked.emit() : fileInput.click()"
+      (click)="handlePrimaryAction($event)"
     >
-      + Add files
+      + Add files or folder
     </button>
-    <button
-      type="button"
-      class="btn btn-secondary btn-sm"
-      [disabled]="disabled()"
-      (click)="interceptClick() ? addClicked.emit() : folderInput.click()"
-    >
-      + Add folder
-    </button>
+
+    @if (pickerMenuOpen() && !disabled() && !interceptClick()) {
+      <ng-container *ngTemplateOutlet="pickerChoices"></ng-container>
+    }
   </div>
 }
 

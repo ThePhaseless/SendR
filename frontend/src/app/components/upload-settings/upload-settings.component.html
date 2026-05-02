@@ -110,11 +110,7 @@
           </div>
         </div>
         <label class="switch">
-          <input
-            type="checkbox"
-            [ngModel]="!isPublic()"
-            (ngModelChange)="isPublic.set(!$event)"
-          />
+          <input type="checkbox" [ngModel]="!isPublic()" (ngModelChange)="isPublic.set(!$event)" />
           <span class="switch-slider"></span>
         </label>
       </div>
@@ -239,30 +235,30 @@
             </div>
           }
           @if (canUseEmailStats()) {
-          <div class="public-link-row">
-            <div class="public-link-info">
-              <span class="material-symbols-outlined public-link-icon">visibility</span>
-              <div>
-                <span class="public-link-label">Let recipients see download activity</span>
-                <span class="public-link-hint">
-                  @if (showEmailStats()) {
-                    Recipients can see who else downloaded
-                  } @else {
-                    Download activity is hidden from recipients
-                  }
-                </span>
+            <div class="public-link-row">
+              <div class="public-link-info">
+                <span class="material-symbols-outlined public-link-icon">visibility</span>
+                <div>
+                  <span class="public-link-label">Let recipients see download activity</span>
+                  <span class="public-link-hint">
+                    @if (showEmailStats()) {
+                      Recipients can see who else downloaded
+                    } @else {
+                      Download activity is hidden from recipients
+                    }
+                  </span>
+                </div>
               </div>
+              <label class="switch">
+                <input
+                  type="checkbox"
+                  id="show-email-stats"
+                  [ngModel]="showEmailStats()"
+                  (ngModelChange)="showEmailStats.set($event)"
+                />
+                <span class="switch-slider"></span>
+              </label>
             </div>
-            <label class="switch">
-              <input
-                type="checkbox"
-                id="show-email-stats"
-                [ngModel]="showEmailStats()"
-                (ngModelChange)="showEmailStats.set($event)"
-              />
-              <span class="switch-slider"></span>
-            </label>
-          </div>
           }
         </div>
       }

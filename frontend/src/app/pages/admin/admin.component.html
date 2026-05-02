@@ -31,6 +31,7 @@
             <th>Email</th>
             <th>Tier</th>
             <th>Admin</th>
+            <th>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -50,6 +51,9 @@
                 <td>
                   <input type="checkbox" [(ngModel)]="editIsAdmin" />
                 </td>
+                <td>
+                  <label> <input type="checkbox" [(ngModel)]="editIsBanned" /> Banned </label>
+                </td>
                 <td class="actions-cell">
                   <button class="btn btn-primary btn-sm" (click)="saveEdit()">Save</button>
                   <button class="btn btn-secondary btn-sm" (click)="cancelEdit()">Cancel</button>
@@ -65,8 +69,18 @@
                     <span class="admin-badge">Admin</span>
                   }
                 </td>
+                <td>
+                  @if (user.is_banned) {
+                    <span class="admin-badge">Banned</span>
+                  } @else {
+                    <span>Active</span>
+                  }
+                </td>
                 <td class="actions-cell">
                   <button class="btn btn-secondary btn-sm" (click)="startEdit(user)">Edit</button>
+                  <button class="btn btn-secondary btn-sm" (click)="toggleDetails(user)">
+                    {{ selectedDetailsUser()?.id === user.id ? "Hide Details" : "Details" }}
+                  </button>
                   <button class="btn btn-danger btn-sm" (click)="deleteUser(user)">Delete</button>
                 </td>
               }
@@ -89,5 +103,128 @@
         Next →
       </button>
     </div>
+
+    @if (selectedDetailsUser(); as user) {
+      <section class="uploads-panel card">
+        <div class="uploads-panel-header">
+          <div>
+            <h2>{{ user.email }} details</h2>
+            <p>Review stats, login history, filenames, expiry, and delete full transfers.</p>
+          </div>
+        </div>
+
+        <div class="detail-sections">
+          <section class="detail-section">
+            <h3>User stats</h3>
+            @if (statsLoading()) {
+              <p>Loading stats...</p>
+            } @else if (selectedStats(); as stats) {
+              <div class="stats-grid">
+                <article class="stat-card">
+                  <span class="stat-label">Transfers</span>
+                  <strong class="stat-value">{{ stats.total_transfers }}</strong>
+                </article>
+                <article class="stat-card">
+                  <span class="stat-label">Active transfers</span>
+                  <strong class="stat-value">{{ stats.active_transfers }}</strong>
+                </article>
+                <article class="stat-card">
+                  <span class="stat-label">Files uploaded</span>
+                  <strong class="stat-value">{{ stats.total_files_uploaded }}</strong>
+                </article>
+                <article class="stat-card">
+                  <span class="stat-label">Uploaded bytes</span>
+                  <strong class="stat-value">{{ formatSize(stats.total_uploaded_bytes) }}</strong>
+                </article>
+                <article class="stat-card">
+                  <span class="stat-label">Downloads</span>
+                  <strong class="stat-value">{{ stats.total_downloads }}</strong>
+                </article>
+                <article class="stat-card">
+                  <span class="stat-label">Logins</span>
+                  <strong class="stat-value">{{ stats.login_count }}</strong>
+                </article>
+                <article class="stat-card stat-card-wide">
+                  <span class="stat-label">Last login</span>
+                  <strong class="stat-value">
+                    {{ stats.last_login_at ? (stats.last_login_at | date: "medium") : "Never" }}
+                  </strong>
+                </article>
+              </div>
+            }
+          </section>
+
+          <section class="detail-section">
+            <h3>Transfers</h3>
+            @if (uploadsLoading()) {
+              <p>Loading uploads...</p>
+            } @else if (transferGroups().length === 0) {
+              <p>No active or recently expired uploads found for this user.</p>
+            } @else {
+              <div class="transfer-list">
+                @for (group of transferGroups(); track group.uploadGroup) {
+                  <article class="transfer-card">
+                    <div class="transfer-card-header">
+                      <div>
+                        <h3>
+                          {{
+                            group.files.length === 1
+                              ? group.files[0].original_filename
+                              : group.uploadGroup
+                          }}
+                        </h3>
+                        <p>
+                          {{ group.files.length }}
+                          {{ group.files.length === 1 ? "file" : "files" }} ·
+                          {{ formatSize(group.totalSize) }} · Expires
+                          {{ group.latestExpiry | date: "medium" }}
+                        </p>
+                      </div>
+                      <button class="btn btn-danger btn-sm" (click)="deleteTransfer(group)">
+                        Delete Transfer
+                      </button>
+                    </div>
+
+                    <div class="transfer-files">
+                      @for (file of group.files; track file.id) {
+                        <div class="transfer-file-row">
+                          <span>{{ file.original_filename }}</span>
+                          <span>{{ formatSize(file.file_size_bytes) }}</span>
+                        </div>
+                      }
+                    </div>
+                  </article>
+                }
+              </div>
+            }
+          </section>
+
+          <section class="detail-section">
+            <h3>Login history</h3>
+            @if (loginsLoading()) {
+              <p>Loading logins...</p>
+            } @else if (selectedLogins().length === 0) {
+              <p>No login history recorded yet.</p>
+            } @else {
+              <div class="login-list">
+                @for (login of selectedLogins(); track login.id) {
+                  <article class="login-row">
+                    <div>
+                      <strong>{{ loginMethodLabel(login.auth_method) }}</strong>
+                      <p>
+                        {{ login.logged_in_at | date: "medium" }}
+                        @if (login.ip_address) {
+                          <span class="login-ip">· {{ login.ip_address }}</span>
+                        }
+                      </p>
+                    </div>
+                  </article>
+                }
+              </div>
+            }
+          </section>
+        </div>
+      </section>
+    }
   }
 </div>

@@ -183,6 +183,207 @@
         }
       }
     },
+    "/api/admin/users/{user_id}/uploads": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List User Uploads",
+        "operationId": "list_user_uploads_api_admin_users__user_id__uploads_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{user_id}/logins": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "List User Logins",
+        "operationId": "list_user_logins_api_admin_users__user_id__logins_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserLoginListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{user_id}/stats": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Get User Stats",
+        "operationId": "get_user_stats_api_admin_users__user_id__stats_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUserStatsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{user_id}/transfers/{upload_group}": {
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Delete User Transfer",
+        "operationId": "delete_user_transfer_api_admin_users__user_id__transfers__upload_group__delete",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "User Id"
+            }
+          },
+          {
+            "name": "upload_group",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Upload Group"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Delete User Transfer Api Admin Users  User Id  Transfers  Upload Group  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/altcha/challenge": {
       "get": {
         "tags": [
@@ -466,6 +667,11 @@
         ],
         "summary": "Get Group Info",
         "operationId": "get_group_info_api_files_group__upload_group__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
         "parameters": [
           {
             "name": "upload_group",
@@ -580,6 +786,11 @@
         ],
         "summary": "Download Group",
         "operationId": "download_group_api_files_group__upload_group__download_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
         "parameters": [
           {
             "name": "upload_group",
@@ -662,6 +873,11 @@
         ],
         "summary": "Download File",
         "operationId": "download_file_api_files__download_token__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
         "parameters": [
           {
             "name": "download_token",
@@ -718,6 +934,11 @@
         ],
         "summary": "Get File Info",
         "operationId": "get_file_info_api_files__download_token__info_get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
         "parameters": [
           {
             "name": "download_token",
@@ -1548,6 +1769,107 @@
         ],
         "title": "AdminUserListResponse"
       },
+      "AdminUserLoginEntry": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "auth_method": {
+            "type": "string",
+            "title": "Auth Method"
+          },
+          "ip_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Address"
+          },
+          "logged_in_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Logged In At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "auth_method",
+          "logged_in_at"
+        ],
+        "title": "AdminUserLoginEntry"
+      },
+      "AdminUserLoginListResponse": {
+        "properties": {
+          "logins": {
+            "items": {
+              "$ref": "#/components/schemas/AdminUserLoginEntry"
+            },
+            "type": "array",
+            "title": "Logins"
+          }
+        },
+        "type": "object",
+        "required": [
+          "logins"
+        ],
+        "title": "AdminUserLoginListResponse"
+      },
+      "AdminUserStatsResponse": {
+        "properties": {
+          "total_transfers": {
+            "type": "integer",
+            "title": "Total Transfers"
+          },
+          "active_transfers": {
+            "type": "integer",
+            "title": "Active Transfers"
+          },
+          "total_files_uploaded": {
+            "type": "integer",
+            "title": "Total Files Uploaded"
+          },
+          "total_uploaded_bytes": {
+            "type": "integer",
+            "title": "Total Uploaded Bytes"
+          },
+          "total_downloads": {
+            "type": "integer",
+            "title": "Total Downloads"
+          },
+          "login_count": {
+            "type": "integer",
+            "title": "Login Count"
+          },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_transfers",
+          "active_transfers",
+          "total_files_uploaded",
+          "total_uploaded_bytes",
+          "total_downloads",
+          "login_count"
+        ],
+        "title": "AdminUserStatsResponse"
+      },
       "AdminUserUpdateRequest": {
         "properties": {
           "tier": {
@@ -1571,6 +1893,17 @@
               }
             ],
             "title": "Is Admin"
+          },
+          "is_banned": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Banned"
           }
         },
         "type": "object",
@@ -2075,6 +2408,11 @@
           "has_email_recipients": {
             "type": "boolean",
             "title": "Has Email Recipients",
+            "default": false
+          },
+          "viewer_is_owner": {
+            "type": "boolean",
+            "title": "Viewer Is Owner",
             "default": false
           }
         },
@@ -2646,6 +2984,11 @@
               }
             ],
             "title": "Description"
+          },
+          "viewer_is_owner": {
+            "type": "boolean",
+            "title": "Viewer Is Owner",
+            "default": false
           }
         },
         "type": "object",
@@ -2675,6 +3018,11 @@
           "is_admin": {
             "type": "boolean",
             "title": "Is Admin",
+            "default": false
+          },
+          "is_banned": {
+            "type": "boolean",
+            "title": "Is Banned",
             "default": false
           }
         },
