@@ -1,4 +1,4 @@
-import { NgTemplateOutlet } from "@angular/common";
+import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   ElementRef,
@@ -8,8 +8,8 @@ import {
   model,
   output,
   signal,
-} from "@angular/core";
-import { filenameToEmoji, formatFileSize, mimeToEmoji } from "../../utils/file.utils";
+} from '@angular/core';
+import { filenameToEmoji, formatFileSize, mimeToEmoji } from '../../utils/file.utils';
 
 export interface UploadFileEntry {
   file: File;
@@ -33,13 +33,13 @@ export interface FileTreeNode {
 
 @Component({
   host: {
-    "(document:click)": "onDocumentClick($event)",
-    "(document:keydown.escape)": "closePickerMenu()",
+    '(document:click)': 'onDocumentClick($event)',
+    '(document:keydown.escape)': 'closePickerMenu()',
   },
   imports: [NgTemplateOutlet],
-  selector: "app-file-picker",
-  styleUrl: "./file-picker.component.scss",
-  templateUrl: "./file-picker.component.html",
+  selector: 'app-file-picker',
+  styleUrl: './file-picker.component.scss',
+  templateUrl: './file-picker.component.html',
 })
 export class FilePickerComponent {
   private readonly elementRef = inject(ElementRef<HTMLElement>);
@@ -94,7 +94,7 @@ export class FilePickerComponent {
         `Total size exceeds limit: ${this.formatSize(totalSize)}/${this.maxFileSizeMb()} MB`,
       );
     }
-    return warnings.length > 0 ? warnings.join(". ") : null;
+    return warnings.length > 0 ? warnings.join('. ') : null;
   });
 
   fileTree = computed<FileTreeNode[]>(() => this.buildFileTree(this.pendingFiles()));
@@ -180,7 +180,7 @@ export class FilePickerComponent {
       size: file.size,
     }));
     this.stageFileEntries(entries);
-    target.value = "";
+    target.value = '';
   }
 
   removeFile(index: number): void {
@@ -191,13 +191,13 @@ export class FilePickerComponent {
   removeFolder(folderPath: string): void {
     this.pendingFiles.update((files) =>
       files.filter(
-        (f) => !f.relativePath?.startsWith(folderPath + "/") && f.relativePath !== folderPath,
+        (f) => !f.relativePath?.startsWith(folderPath + '/') && f.relativePath !== folderPath,
       ),
     );
     this.collapsedFolders.update((set) => {
       const next = new Set(set);
       for (const key of set) {
-        if (key === folderPath || key.startsWith(folderPath + "/")) {
+        if (key === folderPath || key.startsWith(folderPath + '/')) {
           next.delete(key);
         }
       }
@@ -260,7 +260,7 @@ export class FilePickerComponent {
         entries.push(entry);
       }
     }
-    const files = await this.readEntries(entries, "");
+    const files = await this.readEntries(entries, '');
     if (files.length > 0) {
       this.stageFileEntries(files);
     }
@@ -274,7 +274,7 @@ export class FilePickerComponent {
     for (const entry of entries) {
       if (entry.isFile) {
         const file = await this.getFile(entry as FileSystemFileEntry);
-        const relativePath = basePath ? `${basePath}/${file.name}` : "";
+        const relativePath = basePath ? `${basePath}/${file.name}` : '';
         result.push({
           file,
           mimeType: file.type,
@@ -345,9 +345,9 @@ export class FilePickerComponent {
         continue;
       }
 
-      const parts = entry.relativePath.split("/");
+      const parts = entry.relativePath.split('/');
       let currentChildren = rootChildren;
-      let currentPath = "";
+      let currentPath = '';
 
       for (let p = 0; p < parts.length - 1; p++) {
         currentPath = currentPath ? `${currentPath}/${parts[p]}` : parts[p];

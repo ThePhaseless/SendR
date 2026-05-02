@@ -1,13 +1,13 @@
-import { DatePipe } from "@angular/common";
-import { HttpErrorResponse } from "@angular/common/http";
-import { Component, inject, signal } from "@angular/core";
-import { FormsModule } from "@angular/forms";
-import type { OnInit } from "@angular/core";
-import type { AdminUserLoginEntry, AdminUserStatsResponse } from "../../api/model";
-import { AdminService } from "../../services/admin.service";
-import type { AdminUser } from "../../services/admin.service";
-import type { FileUploadResponse } from "../../services/file.service";
-import { formatFileSize } from "../../utils/file.utils";
+import { DatePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import type { OnInit } from '@angular/core';
+import type { AdminUserLoginEntry, AdminUserStatsResponse } from '../../api/model';
+import { AdminService } from '../../services/admin.service';
+import type { AdminUser } from '../../services/admin.service';
+import type { FileUploadResponse } from '../../services/file.service';
+import { formatFileSize } from '../../utils/file.utils';
 
 interface AdminTransferGroup {
   uploadGroup: string;
@@ -18,9 +18,9 @@ interface AdminTransferGroup {
 
 @Component({
   imports: [DatePipe, FormsModule],
-  selector: "app-admin",
-  styleUrl: "./admin.component.scss",
-  templateUrl: "./admin.component.html",
+  selector: 'app-admin',
+  styleUrl: './admin.component.scss',
+  templateUrl: './admin.component.html',
 })
 export class AdminComponent implements OnInit {
   private readonly adminService = inject(AdminService);
@@ -29,11 +29,11 @@ export class AdminComponent implements OnInit {
   total = signal(0);
   page = signal(1);
   perPage = 20;
-  search = "";
+  search = '';
   loading = signal(true);
   error = signal<string | null>(null);
   editingUser = signal<AdminUser | null>(null);
-  editTier = "";
+  editTier = '';
   editIsAdmin = false;
   editIsBanned = false;
   selectedDetailsUser = signal<AdminUser | null>(null);
@@ -53,7 +53,7 @@ export class AdminComponent implements OnInit {
     this.error.set(null);
     this.adminService.listUsers(this.page(), this.perPage, this.search).subscribe({
       error: () => {
-        this.error.set("Failed to load users.");
+        this.error.set('Failed to load users.');
         this.loading.set(false);
       },
       next: (res) => {
@@ -97,14 +97,14 @@ export class AdminComponent implements OnInit {
   private getErrorDetail(error: unknown, fallback: string): string {
     if (
       !(error instanceof HttpErrorResponse) ||
-      typeof error.error !== "object" ||
+      typeof error.error !== 'object' ||
       error.error === null
     ) {
       return fallback;
     }
 
-    const detail: unknown = Reflect.get(error.error, "detail");
-    if (typeof detail === "string") {
+    const detail: unknown = Reflect.get(error.error, 'detail');
+    if (typeof detail === 'string') {
       return detail;
     }
 
@@ -125,7 +125,7 @@ export class AdminComponent implements OnInit {
       })
       .subscribe({
         error: (err) => {
-          this.error.set(this.getErrorDetail(err, "Failed to update user."));
+          this.error.set(this.getErrorDetail(err, 'Failed to update user.'));
         },
         next: (updated) => {
           this.users.update((users) => users.map((u) => (u.id === updated.id ? updated : u)));
@@ -144,7 +144,7 @@ export class AdminComponent implements OnInit {
 
     this.adminService.deleteUser(user.id).subscribe({
       error: (err) => {
-        this.error.set(this.getErrorDetail(err, "Failed to delete user."));
+        this.error.set(this.getErrorDetail(err, 'Failed to delete user.'));
       },
       next: () => {
         if (this.selectedDetailsUser()?.id === user.id) {
@@ -185,7 +185,7 @@ export class AdminComponent implements OnInit {
     this.statsLoading.set(true);
     this.adminService.listUserUploads(user.id).subscribe({
       error: (err) => {
-        this.error.set(this.getErrorDetail(err, "Failed to load user uploads."));
+        this.error.set(this.getErrorDetail(err, 'Failed to load user uploads.'));
         this.uploadsLoading.set(false);
       },
       next: (res) => {
@@ -195,7 +195,7 @@ export class AdminComponent implements OnInit {
     });
     this.adminService.listUserLogins(user.id).subscribe({
       error: (err) => {
-        this.error.set(this.getErrorDetail(err, "Failed to load user logins."));
+        this.error.set(this.getErrorDetail(err, 'Failed to load user logins.'));
         this.loginsLoading.set(false);
       },
       next: (res) => {
@@ -205,7 +205,7 @@ export class AdminComponent implements OnInit {
     });
     this.adminService.getUserStats(user.id).subscribe({
       error: (err) => {
-        this.error.set(this.getErrorDetail(err, "Failed to load user stats."));
+        this.error.set(this.getErrorDetail(err, 'Failed to load user stats.'));
         this.statsLoading.set(false);
       },
       next: (stats) => {
@@ -253,7 +253,7 @@ export class AdminComponent implements OnInit {
 
     this.adminService.deleteUserTransfer(user.id, group.uploadGroup).subscribe({
       error: (err) => {
-        this.error.set(this.getErrorDetail(err, "Failed to delete transfer."));
+        this.error.set(this.getErrorDetail(err, 'Failed to delete transfer.'));
       },
       next: () => {
         this.selectedUploads.update((files) =>
@@ -261,7 +261,7 @@ export class AdminComponent implements OnInit {
         );
         this.adminService.getUserStats(user.id).subscribe({
           error: (err) => {
-            this.error.set(this.getErrorDetail(err, "Failed to refresh user stats."));
+            this.error.set(this.getErrorDetail(err, 'Failed to refresh user stats.'));
           },
           next: (stats) => {
             this.selectedStats.set(stats);
@@ -277,11 +277,11 @@ export class AdminComponent implements OnInit {
 
   loginMethodLabel(authMethod: string): string {
     switch (authMethod) {
-      case "dev_login": {
-        return "Dev login";
+      case 'dev_login': {
+        return 'Dev login';
       }
-      case "verification_code": {
-        return "Verification code";
+      case 'verification_code': {
+        return 'Verification code';
       }
       default: {
         return authMethod;

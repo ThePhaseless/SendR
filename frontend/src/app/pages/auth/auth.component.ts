@@ -1,42 +1,42 @@
-import { HttpErrorResponse } from "@angular/common/http";
-import { Component, inject, signal } from "@angular/core";
-import { FormsModule } from "@angular/forms";
-import { ActivatedRoute, Router } from "@angular/router";
-import { AuthService } from "../../services/auth.service";
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   imports: [FormsModule],
-  selector: "app-auth",
-  styleUrl: "./auth.component.scss",
-  templateUrl: "./auth.component.html",
+  selector: 'app-auth',
+  styleUrl: './auth.component.scss',
+  templateUrl: './auth.component.html',
 })
 export class AuthComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
-  readonly isRegister = this.route.snapshot.queryParamMap.get("mode") === "register";
+  readonly isRegister = this.route.snapshot.queryParamMap.get('mode') === 'register';
 
   private getErrorDetail(error: unknown, fallback: string): string {
     if (
       !(error instanceof HttpErrorResponse) ||
-      typeof error.error !== "object" ||
+      typeof error.error !== 'object' ||
       error.error === null
     ) {
       return fallback;
     }
 
-    const detail: unknown = Reflect.get(error.error, "detail");
-    if (typeof detail === "string") {
+    const detail: unknown = Reflect.get(error.error, 'detail');
+    if (typeof detail === 'string') {
       return detail;
     }
 
     return fallback;
   }
 
-  step = signal<"email" | "code">("email");
-  email = this.route.snapshot.queryParamMap.get("email") ?? "";
-  code = "";
+  step = signal<'email' | 'code'>('email');
+  email = this.route.snapshot.queryParamMap.get('email') ?? '';
+  code = '';
   loading = signal(false);
   error = signal<string | null>(null);
   message = signal<string | null>(null);
@@ -48,7 +48,7 @@ export class AuthComponent {
       return;
     }
     if (!AuthComponent.EMAIL_PATTERN.test(this.email)) {
-      this.error.set("Please enter a valid email address.");
+      this.error.set('Please enter a valid email address.');
       return;
     }
     this.loading.set(true);
@@ -56,12 +56,12 @@ export class AuthComponent {
 
     this.authService.requestCode(this.email).subscribe({
       error: (err) => {
-        this.error.set(this.getErrorDetail(err, "Failed to send code."));
+        this.error.set(this.getErrorDetail(err, 'Failed to send code.'));
         this.loading.set(false);
       },
       next: (res) => {
-        this.message.set(res["message"] ?? "Verification code sent");
-        this.step.set("code");
+        this.message.set(res['message'] ?? 'Verification code sent');
+        this.step.set('code');
         this.loading.set(false);
       },
     });
@@ -77,18 +77,18 @@ export class AuthComponent {
     this.authService.verifyCode(this.email, this.code, this.isRegister).subscribe({
       error: (err) => {
         this.message.set(null);
-        this.error.set(this.getErrorDetail(err, "Invalid code."));
+        this.error.set(this.getErrorDetail(err, 'Invalid code.'));
         this.loading.set(false);
       },
       next: () => {
-        void this.router.navigate(["/"]);
+        void this.router.navigate(['/']);
       },
     });
   }
 
   backToEmail(): void {
-    this.step.set("email");
-    this.code = "";
+    this.step.set('email');
+    this.code = '';
     this.error.set(null);
     this.message.set(null);
   }

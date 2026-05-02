@@ -1,34 +1,34 @@
-import { HttpEventType } from "@angular/common/http";
-import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject, signal } from "@angular/core";
-import { FormsModule } from "@angular/forms";
-import { Router, RouterLink } from "@angular/router";
-import { AltchaService } from "../../api/endpoints/altcha/altcha.service";
+import { HttpEventType } from '@angular/common/http';
+import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { AltchaService } from '../../api/endpoints/altcha/altcha.service';
 import {
   getLimitsApiAuthLimitsGetResource,
   getQuotaApiAuthQuotaGetResource,
-} from "../../api/endpoints/filename.resource";
-import type { UploadFileEntry } from "../../components/file-picker/file-picker.component";
-import { FilePickerComponent } from "../../components/file-picker/file-picker.component";
-import { JumpingTextComponent } from "../../components/jumping-text/jumping-text.component";
-import type { PasswordEntry } from "../../components/upload-settings/upload-settings.component";
-import { UploadSettingsComponent } from "../../components/upload-settings/upload-settings.component";
-import { AuthService } from "../../services/auth.service";
-import type { FileUploadResponse, MultiFileUploadResponse } from "../../services/file.service";
-import { FileService } from "../../services/file.service";
-import { getErrorDetail } from "../../utils/error.utils";
+} from '../../api/endpoints/filename.resource';
+import type { UploadFileEntry } from '../../components/file-picker/file-picker.component';
+import { FilePickerComponent } from '../../components/file-picker/file-picker.component';
+import { JumpingTextComponent } from '../../components/jumping-text/jumping-text.component';
+import type { PasswordEntry } from '../../components/upload-settings/upload-settings.component';
+import { UploadSettingsComponent } from '../../components/upload-settings/upload-settings.component';
+import { AuthService } from '../../services/auth.service';
+import type { FileUploadResponse, MultiFileUploadResponse } from '../../services/file.service';
+import { FileService } from '../../services/file.service';
+import { getErrorDetail } from '../../utils/error.utils';
 import {
   extractDownloadToken,
   filenameToEmoji,
   formatFileSize,
   resolveAppUrl,
-} from "../../utils/file.utils";
+} from '../../utils/file.utils';
 
 interface AltchaStateChangeDetail {
   payload?: string;
   state?: string;
 }
 
-type AltchaState = "unverified" | "verifying" | "verified" | "expired" | "error" | "code";
+type AltchaState = 'unverified' | 'verifying' | 'verified' | 'expired' | 'error' | 'code';
 
 @Component({
   imports: [
@@ -39,9 +39,9 @@ type AltchaState = "unverified" | "verifying" | "verified" | "expired" | "error"
     UploadSettingsComponent,
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
-  selector: "app-home",
-  styleUrl: "./home.component.scss",
-  templateUrl: "./home.component.html",
+  selector: 'app-home',
+  styleUrl: './home.component.scss',
+  templateUrl: './home.component.html',
 })
 export class HomeComponent {
   private readonly fileService = inject(FileService);
@@ -58,15 +58,15 @@ export class HomeComponent {
   error = signal<string | null>(null);
   copied = signal(false);
   altchaVerified = signal(false);
-  altchaState = signal<AltchaState>("unverified");
+  altchaState = signal<AltchaState>('unverified');
   altchaChallenge = signal<string | null>(null);
   pendingFiles = signal<UploadFileEntry[]>([]);
-  private altchaPayload = "";
+  private altchaPayload = '';
 
   // Auth popup for unauthenticated users
   showAuthPopup = signal(false);
-  popupEmail = signal("");
-  popupCode = signal("");
+  popupEmail = signal('');
+  popupCode = signal('');
   popupCodeSent = signal(false);
   popupCodeRequesting = signal(false);
   popupCodeVerifying = signal(false);
@@ -88,9 +88,9 @@ export class HomeComponent {
   /** Whether download counts are tracked separately for public vs restricted. */
   separateDownloadCounts = signal(false);
   /** Transfer title. */
-  title = signal("");
+  title = signal('');
   /** Transfer description. */
-  description = signal("");
+  description = signal('');
   /** Whether upload settings have a validation error. */
   settingsHasError = signal(false);
   /** Whether file picker has a limit warning. */
@@ -113,20 +113,20 @@ export class HomeComponent {
 
   altchaHintText = computed(() => {
     switch (this.altchaState()) {
-      case "verifying": {
-        return "Verifying…";
+      case 'verifying': {
+        return 'Verifying…';
       }
-      case "expired": {
-        return "CAPTCHA expired — fetching a new challenge…";
+      case 'expired': {
+        return 'CAPTCHA expired — fetching a new challenge…';
       }
-      case "error": {
-        return "Verification failed. Please try again.";
+      case 'error': {
+        return 'Verification failed. Please try again.';
       }
-      case "code": {
-        return "Please complete the code challenge.";
+      case 'code': {
+        return 'Please complete the code challenge.';
       }
       default: {
-        return "Please complete the CAPTCHA to upload.";
+        return 'Please complete the CAPTCHA to upload.';
       }
     }
   });
@@ -166,26 +166,26 @@ export class HomeComponent {
   userTier = computed(() => {
     const l = this.limitsData.value();
     if (!l) {
-      return "temporary";
+      return 'temporary';
     }
     // QuotaResponse has min_expiry_hours for free/premium (non-null number),
     // Null/undefined for temporary tier. LimitsResponse doesn't have it at all.
     if (
-      "min_expiry_hours" in l &&
+      'min_expiry_hours' in l &&
       l.min_expiry_hours !== null &&
       l.min_expiry_hours !== undefined
     ) {
       if ((l as { max_expiry_hours?: number | null }).max_expiry_hours === 720) {
-        return "premium";
+        return 'premium';
       }
-      return "free";
+      return 'free';
     }
-    return "temporary";
+    return 'temporary';
   });
 
   maxPasswordsPerUpload = computed(() => {
     const l = this.limitsData.value();
-    if (l && "max_passwords_per_upload" in l) {
+    if (l && 'max_passwords_per_upload' in l) {
       return (l as { max_passwords_per_upload?: number }).max_passwords_per_upload ?? 0;
     }
     return 1;
@@ -193,7 +193,7 @@ export class HomeComponent {
 
   maxEmailsPerUpload = computed(() => {
     const l = this.limitsData.value();
-    if (l && "max_emails_per_upload" in l) {
+    if (l && 'max_emails_per_upload' in l) {
       return (l as { max_emails_per_upload?: number }).max_emails_per_upload ?? 0;
     }
     return 0;
@@ -295,37 +295,37 @@ export class HomeComponent {
 
   onAltchaStateChange(event: Event): void {
     const detail = this.getAltchaStateDetail(event);
-    const state = (detail?.state ?? "unverified") as AltchaState;
+    const state = (detail?.state ?? 'unverified') as AltchaState;
     this.altchaState.set(state);
     switch (state) {
-      case "verified": {
+      case 'verified': {
         if (detail?.payload) {
           this.altchaPayload = detail.payload;
           this.altchaVerified.set(true);
         }
         break;
       }
-      case "expired": {
+      case 'expired': {
         this.altchaVerified.set(false);
-        this.altchaPayload = "";
+        this.altchaPayload = '';
         this.altchaChallenge.set(null);
         this.loadAltchaChallenge();
         break;
       }
-      case "error": {
+      case 'error': {
         this.altchaVerified.set(false);
-        this.altchaPayload = "";
+        this.altchaPayload = '';
         this.altchaChallenge.set(null);
         this.loadAltchaChallenge();
         break;
       }
-      case "unverified": {
+      case 'unverified': {
         this.altchaVerified.set(false);
-        this.altchaPayload = "";
+        this.altchaPayload = '';
         break;
       }
-      case "verifying":
-      case "code": {
+      case 'verifying':
+      case 'code': {
         break;
       }
     }
@@ -359,27 +359,27 @@ export class HomeComponent {
 
   goToLogin(): void {
     const email = this.popupEmail().trim();
-    void this.router.navigate(["/auth"], { queryParams: email ? { email } : {} });
+    void this.router.navigate(['/auth'], { queryParams: email ? { email } : {} });
   }
 
   goToRegister(): void {
     const email = this.popupEmail().trim();
-    void this.router.navigate(["/auth"], {
-      queryParams: { mode: "register", ...(email ? { email } : {}) },
+    void this.router.navigate(['/auth'], {
+      queryParams: { mode: 'register', ...(email ? { email } : {}) },
     });
   }
 
   requestPopupCode(): void {
     const email = this.popupEmail().trim();
     if (!email) {
-      this.popupAuthError.set("Please enter your email address.");
+      this.popupAuthError.set('Please enter your email address.');
       return;
     }
     this.popupCodeRequesting.set(true);
     this.popupAuthError.set(null);
     this.authService.requestCode(email).subscribe({
       error: (err) => {
-        this.popupAuthError.set(this.getErrorDetail(err, "Failed to send verification code."));
+        this.popupAuthError.set(this.getErrorDetail(err, 'Failed to send verification code.'));
         this.popupCodeRequesting.set(false);
       },
       next: () => {
@@ -393,14 +393,14 @@ export class HomeComponent {
     const email = this.popupEmail().trim();
     const code = this.popupCode().trim();
     if (!code) {
-      this.popupAuthError.set("Please enter the verification code.");
+      this.popupAuthError.set('Please enter the verification code.');
       return;
     }
     this.popupCodeVerifying.set(true);
     this.popupAuthError.set(null);
     this.authService.verifyCode(email, code).subscribe({
       error: (err) => {
-        this.popupAuthError.set(this.getErrorDetail(err, "Verification failed. Please try again."));
+        this.popupAuthError.set(this.getErrorDetail(err, 'Verification failed. Please try again.'));
         this.popupCodeVerifying.set(false);
       },
       next: () => {
@@ -421,7 +421,7 @@ export class HomeComponent {
 
   private uploadFiles(files: File[]): void {
     if (!this.altchaPayload) {
-      this.error.set("Please complete the CAPTCHA verification first.");
+      this.error.set('Please complete the CAPTCHA verification first.');
       return;
     }
 
@@ -454,7 +454,7 @@ export class HomeComponent {
         })
         .subscribe({
           error: (err) => {
-            this.error.set(this.getErrorDetail(err, "Upload failed. Please try again."));
+            this.error.set(this.getErrorDetail(err, 'Upload failed. Please try again.'));
             this.isUploading.set(false);
             this.uploadProgress.set(0);
             this.resetAltcha();
@@ -490,7 +490,7 @@ export class HomeComponent {
       })
       .subscribe({
         error: (err) => {
-          this.error.set(this.getErrorDetail(err, "Upload failed. Please try again."));
+          this.error.set(this.getErrorDetail(err, 'Upload failed. Please try again.'));
           this.isUploading.set(false);
           this.uploadProgress.set(0);
           this.resetAltcha();
@@ -536,7 +536,7 @@ export class HomeComponent {
       return resolveAppUrl(`download/group/${multiResult.upload_group}`);
     }
 
-    return "";
+    return '';
   }
 
   copyLink(): void {
@@ -548,7 +548,7 @@ export class HomeComponent {
           this.copied.set(false);
         }, 2000);
       } catch {
-        this.error.set("Failed to copy link to clipboard.");
+        this.error.set('Failed to copy link to clipboard.');
       }
     })();
   }
@@ -563,7 +563,7 @@ export class HomeComponent {
   }
 
   formatSpeed(bytesPerSec: number): string {
-    return formatFileSize(bytesPerSec) + "/s";
+    return formatFileSize(bytesPerSec) + '/s';
   }
 
   formatTime(seconds: number): string {
@@ -641,8 +641,8 @@ export class HomeComponent {
 
   private resetAltcha(): void {
     this.altchaVerified.set(false);
-    this.altchaState.set("unverified");
-    this.altchaPayload = "";
+    this.altchaState.set('unverified');
+    this.altchaPayload = '';
     this.altchaChallenge.set(null);
     this.loadAltchaChallenge();
   }
@@ -651,7 +651,7 @@ export class HomeComponent {
     this.altchaService.getChallengeApiAltchaChallengeGet().subscribe({
       error: () => {
         this.altchaChallenge.set(null);
-        this.error.set("Unable to load CAPTCHA challenge. Please try again later.");
+        this.error.set('Unable to load CAPTCHA challenge. Please try again later.');
       },
       next: (challenge) => {
         this.altchaChallenge.set(JSON.stringify(challenge));
@@ -662,18 +662,18 @@ export class HomeComponent {
   private getAltchaStateDetail(event: Event): AltchaStateChangeDetail | null {
     if (
       !(event instanceof CustomEvent) ||
-      typeof event.detail !== "object" ||
+      typeof event.detail !== 'object' ||
       event.detail === null
     ) {
       return null;
     }
 
-    const state: unknown = Reflect.get(event.detail, "state");
-    const payload: unknown = Reflect.get(event.detail, "payload");
+    const state: unknown = Reflect.get(event.detail, 'state');
+    const payload: unknown = Reflect.get(event.detail, 'payload');
 
     return {
-      payload: typeof payload === "string" ? payload : undefined,
-      state: typeof state === "string" ? state : undefined,
+      payload: typeof payload === 'string' ? payload : undefined,
+      state: typeof state === 'string' ? state : undefined,
     };
   }
 

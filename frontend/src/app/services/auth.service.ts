@@ -1,26 +1,26 @@
-import { HttpClient } from "@angular/common/http";
-import { Injectable, inject, signal } from "@angular/core";
-import type { Observable } from "rxjs";
-import { tap } from "rxjs/operators";
-import { environment } from "../../environments/environment";
-import { AuthService as ApiAuthService } from "../api/endpoints/auth/auth.service";
-import { SubscriptionService as ApiSubscriptionService } from "../api/endpoints/subscription/subscription.service";
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject, signal } from '@angular/core';
+import type { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
+import { AuthService as ApiAuthService } from '../api/endpoints/auth/auth.service';
+import { SubscriptionService as ApiSubscriptionService } from '../api/endpoints/subscription/subscription.service';
 import type {
   LimitsResponse,
   QuotaResponse,
   SubscriptionResponse,
   TokenResponse,
   UserResponse,
-} from "../api/model";
+} from '../api/model';
 
 export type VerifyCodeResponse = TokenResponse;
 export type MeResponse = UserResponse;
 
-const TOKEN_KEY = "sendr_token";
-const EXPIRES_KEY = "sendr_token_expires";
+const TOKEN_KEY = 'sendr_token';
+const EXPIRES_KEY = 'sendr_token_expires';
 
 @Injectable({
-  providedIn: "root",
+  providedIn: 'root',
 })
 export class AuthService {
   private readonly http = inject(HttpClient);
@@ -83,7 +83,7 @@ export class AuthService {
     return localStorage.getItem(TOKEN_KEY);
   }
 
-  devLogin(role: "admin" | "user" | "premium"): Observable<VerifyCodeResponse> {
+  devLogin(role: 'admin' | 'user' | 'premium'): Observable<VerifyCodeResponse> {
     return this.http.post<VerifyCodeResponse>(`${this.apiUrl}/api/dev/login/${role}`, {}).pipe(
       tap((res) => {
         this.storeToken(res);

@@ -1,15 +1,15 @@
-import { DatePipe } from "@angular/common";
-import type { OnInit } from "@angular/core";
-import { Component, inject, signal } from "@angular/core";
-import { RouterLink } from "@angular/router";
-import type { SubscriptionResponse, UserResponse } from "../../api/model";
-import { AuthService } from "../../services/auth.service";
+import { DatePipe } from '@angular/common';
+import type { OnInit } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import type { SubscriptionResponse, UserResponse } from '../../api/model';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   imports: [RouterLink, DatePipe],
-  selector: "app-premium",
-  styleUrl: "./premium.component.scss",
-  templateUrl: "./premium.component.html",
+  selector: 'app-premium',
+  styleUrl: './premium.component.scss',
+  templateUrl: './premium.component.html',
 })
 export class PremiumComponent implements OnInit {
   private readonly authService = inject(AuthService);
@@ -50,21 +50,21 @@ export class PremiumComponent implements OnInit {
   }
 
   isPremium(): boolean {
-    return this.user()?.tier === "premium";
+    return this.user()?.tier === 'premium';
   }
 
   tierDisplayName(): string {
     const tier = this.user()?.tier;
-    if (tier === "temporary") {
-      return "Temporary";
+    if (tier === 'temporary') {
+      return 'Temporary';
     }
-    if (tier === "free") {
-      return "Free";
+    if (tier === 'free') {
+      return 'Free';
     }
-    if (tier === "premium") {
-      return "Premium";
+    if (tier === 'premium') {
+      return 'Premium';
     }
-    return tier ?? "Unknown";
+    return tier ?? 'Unknown';
   }
 
   upgrade(): void {
@@ -72,12 +72,12 @@ export class PremiumComponent implements OnInit {
     this.error.set(null);
     this.authService.upgradeToPremium().subscribe({
       error: () => {
-        this.error.set("Failed to upgrade. Please try again.");
+        this.error.set('Failed to upgrade. Please try again.');
         this.processing.set(false);
       },
       next: (sub) => {
         this.subscription.set(sub);
-        this.user.update((u) => (u ? { ...u, tier: "premium" } : u));
+        this.user.update((u) => (u ? { ...u, tier: 'premium' } : u));
         this.processing.set(false);
       },
     });
@@ -88,12 +88,12 @@ export class PremiumComponent implements OnInit {
     this.error.set(null);
     this.authService.cancelSubscription().subscribe({
       error: () => {
-        this.error.set("Failed to cancel. Please try again.");
+        this.error.set('Failed to cancel. Please try again.');
         this.processing.set(false);
       },
       next: (sub) => {
         this.subscription.set(sub);
-        this.user.update((u) => (u ? { ...u, tier: "free" } : u));
+        this.user.update((u) => (u ? { ...u, tier: 'free' } : u));
         this.processing.set(false);
       },
     });

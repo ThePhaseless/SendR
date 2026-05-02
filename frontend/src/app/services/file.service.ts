@@ -1,9 +1,9 @@
-import type { HttpEvent } from "@angular/common/http";
-import { HttpClient } from "@angular/common/http";
-import { Injectable, inject } from "@angular/core";
-import type { Observable } from "rxjs";
-import { environment } from "../../environments/environment";
-import { FilesService as ApiFilesService } from "../api/endpoints/files/files.service";
+import type { HttpEvent } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import type { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
+import { FilesService as ApiFilesService } from '../api/endpoints/files/files.service';
 import type {
   AccessEditRequest,
   AccessInfoResponse,
@@ -16,7 +16,7 @@ import type {
   MultiFileUploadResponse,
   RecipientStatsResponse,
   UploadGroupInfoResponse,
-} from "../api/model";
+} from '../api/model';
 
 export type {
   AccessEditRequest,
@@ -44,7 +44,7 @@ export interface UploadAccessOptions {
 }
 
 @Injectable({
-  providedIn: "root",
+  providedIn: 'root',
 })
 export class FileService {
   private readonly api = inject(ApiFilesService);
@@ -75,7 +75,7 @@ export class FileService {
         show_email_stats: options?.showEmailStats ?? false,
         title: options?.title ?? undefined,
       },
-      { observe: "events", reportProgress: true },
+      { observe: 'events', reportProgress: true },
     );
   }
 
@@ -129,7 +129,7 @@ export class FileService {
         show_email_stats: options?.showEmailStats ?? false,
         title: options?.title ?? undefined,
       },
-      { observe: "events", reportProgress: true },
+      { observe: 'events', reportProgress: true },
     );
   }
 
@@ -140,7 +140,7 @@ export class FileService {
   addFilesToGroup(uploadGroup: string, files: File[]): Observable<MultiFileUploadResponse> {
     const formData = new FormData();
     for (const file of files) {
-      formData.append("files", file);
+      formData.append('files', file);
     }
     return this.http.post<MultiFileUploadResponse>(
       `${this.apiUrl}/api/files/group/${encodeURIComponent(uploadGroup)}/add`,

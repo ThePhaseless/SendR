@@ -1,6 +1,6 @@
-import { Injectable, inject } from "@angular/core";
-import type { Observable } from "rxjs";
-import { AdminService as ApiAdminService } from "../api/endpoints/admin/admin.service";
+import { Injectable, inject } from '@angular/core';
+import type { Observable } from 'rxjs';
+import { AdminService as ApiAdminService } from '../api/endpoints/admin/admin.service';
 import type {
   AdminUserListResponse,
   AdminUserLoginListResponse,
@@ -8,17 +8,17 @@ import type {
   AdminUserUpdateRequest,
   FileListResponse,
   UserResponse,
-} from "../api/model";
+} from '../api/model';
 
 export type AdminUser = UserResponse;
 
 @Injectable({
-  providedIn: "root",
+  providedIn: 'root',
 })
 export class AdminService {
   private readonly api = inject(ApiAdminService);
 
-  listUsers(page = 1, perPage = 20, search = ""): Observable<AdminUserListResponse> {
+  listUsers(page = 1, perPage = 20, search = ''): Observable<AdminUserListResponse> {
     return this.api.listUsersApiAdminUsersGet({
       page,
       per_page: perPage,

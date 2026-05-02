@@ -1,21 +1,21 @@
-import { DatePipe } from "@angular/common";
-import type { OnInit } from "@angular/core";
-import { Component, computed, inject, signal } from "@angular/core";
-import { FormsModule } from "@angular/forms";
-import type { UploadFileEntry } from "../../components/file-picker/file-picker.component";
-import { FilePickerComponent } from "../../components/file-picker/file-picker.component";
-import { UploadSettingsComponent } from "../../components/upload-settings/upload-settings.component";
-import { AuthService } from "../../services/auth.service";
+import { DatePipe } from '@angular/common';
+import type { OnInit } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import type { UploadFileEntry } from '../../components/file-picker/file-picker.component';
+import { FilePickerComponent } from '../../components/file-picker/file-picker.component';
+import { UploadSettingsComponent } from '../../components/upload-settings/upload-settings.component';
+import { AuthService } from '../../services/auth.service';
 import type {
   AccessEditRequest,
   AccessInfoResponse,
   DownloadStatsResponse,
   FileUploadResponse,
-} from "../../services/file.service";
-import { FileService } from "../../services/file.service";
-import { extractDownloadToken, formatFileSize, isExpired } from "../../utils/file.utils";
-import { getErrorDetail } from "../../utils/error.utils";
-import { resolveAppUrl } from "../../utils/url.utils";
+} from '../../services/file.service';
+import { FileService } from '../../services/file.service';
+import { extractDownloadToken, formatFileSize, isExpired } from '../../utils/file.utils';
+import { getErrorDetail } from '../../utils/error.utils';
+import { resolveAppUrl } from '../../utils/url.utils';
 
 export interface UploadGroup {
   key: string;
@@ -27,9 +27,9 @@ export interface UploadGroup {
 
 @Component({
   imports: [DatePipe, FormsModule, FilePickerComponent, UploadSettingsComponent],
-  selector: "app-dashboard",
-  styleUrl: "./dashboard.component.scss",
-  templateUrl: "./dashboard.component.html",
+  selector: 'app-dashboard',
+  styleUrl: './dashboard.component.scss',
+  templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent implements OnInit {
   private readonly fileService = inject(FileService);
@@ -40,13 +40,13 @@ export class DashboardComponent implements OnInit {
   error = signal<string | null>(null);
   copiedGroupKey = signal<string | null>(null);
   expandedGroupKey = signal<string | null>(null);
-  userTier = signal("temporary");
+  userTier = signal('temporary');
 
   // Unified panel settings (bound to upload-settings component)
   panelExpiryHours = signal(72);
   panelMaxDownloads = signal(0);
-  panelTitle = signal("");
-  panelDescription = signal("");
+  panelTitle = signal('');
+  panelDescription = signal('');
   // Download stats for the expanded group
   groupStats = signal<DownloadStatsResponse | null>(null);
   statsLoading = signal(false);
@@ -55,9 +55,9 @@ export class DashboardComponent implements OnInit {
   // Access control for the expanded group
   accessInfo = signal<AccessInfoResponse | null>(null);
   accessLoading = signal(false);
-  newPasswordLabel = signal("");
-  newPasswordValue = signal("");
-  newEmail = signal("");
+  newPasswordLabel = signal('');
+  newPasswordValue = signal('');
+  newEmail = signal('');
 
   // Staged new files for the expanded group
   newFiles = signal<UploadFileEntry[]>([]);
@@ -131,7 +131,7 @@ export class DashboardComponent implements OnInit {
     this.loading.set(true);
     this.fileService.listFiles().subscribe({
       error: (err: unknown) => {
-        this.error.set(getErrorDetail(err, "Failed to load uploads."));
+        this.error.set(getErrorDetail(err, 'Failed to load uploads.'));
         this.loading.set(false);
       },
       next: (res) => {
@@ -157,17 +157,17 @@ export class DashboardComponent implements OnInit {
   }
 
   canRefresh(group: UploadGroup): boolean {
-    if (this.userTier() === "temporary") {
+    if (this.userTier() === 'temporary') {
       return false;
     }
     if (this.isGroupExpired(group)) {
-      return this.userTier() === "premium" && this.isWithinGrace(group);
+      return this.userTier() === 'premium' && this.isWithinGrace(group);
     }
     return true;
   }
 
   canSave(): boolean {
-    return this.userTier() !== "temporary";
+    return this.userTier() !== 'temporary';
   }
 
   hasUnsavedFiles(): boolean {
@@ -227,9 +227,9 @@ export class DashboardComponent implements OnInit {
       this.groupStats.set(null);
       this.accessInfo.set(null);
       this.statsExpanded.set(false);
-      this.newPasswordLabel.set("");
-      this.newPasswordValue.set("");
-      this.newEmail.set("");
+      this.newPasswordLabel.set('');
+      this.newPasswordValue.set('');
+      this.newEmail.set('');
       // Pre-populate panel settings from the group
       const group = this.uploadGroups().find((g) => g.key === groupKey);
       if (group) {
@@ -276,7 +276,7 @@ export class DashboardComponent implements OnInit {
           })
           .subscribe({
             error: (err: unknown) => {
-              this.error.set(getErrorDetail(err, "Failed to save changes."));
+              this.error.set(getErrorDetail(err, 'Failed to save changes.'));
               this.isSaving.set(false);
             },
             next: (res) => {
@@ -298,7 +298,7 @@ export class DashboardComponent implements OnInit {
           })
           .subscribe({
             error: (err: unknown) => {
-              this.error.set(getErrorDetail(err, "Failed to save changes."));
+              this.error.set(getErrorDetail(err, 'Failed to save changes.'));
               this.isSaving.set(false);
             },
             next: (updated) => {
@@ -312,7 +312,7 @@ export class DashboardComponent implements OnInit {
     if (addFilesObs) {
       addFilesObs.subscribe({
         error: (err: unknown) => {
-          this.error.set(getErrorDetail(err, "Failed to add new files."));
+          this.error.set(getErrorDetail(err, 'Failed to add new files.'));
           this.isSaving.set(false);
         },
         next: (res) => {
@@ -367,7 +367,7 @@ export class DashboardComponent implements OnInit {
           })
           .subscribe({
             error: (err: unknown) => {
-              this.error.set(getErrorDetail(err, "Failed to refresh upload."));
+              this.error.set(getErrorDetail(err, 'Failed to refresh upload.'));
               this.isSaving.set(false);
             },
             next: (res) => {
@@ -384,7 +384,7 @@ export class DashboardComponent implements OnInit {
         const file = group.files[0];
         this.fileService.refreshFile(file.id, this.panelExpiryHours()).subscribe({
           error: (err: unknown) => {
-            this.error.set(getErrorDetail(err, "Failed to refresh upload."));
+            this.error.set(getErrorDetail(err, 'Failed to refresh upload.'));
             this.isSaving.set(false);
           },
           next: (updated) => {
@@ -399,7 +399,7 @@ export class DashboardComponent implements OnInit {
     if (addFilesObs) {
       addFilesObs.subscribe({
         error: (err: unknown) => {
-          this.error.set(getErrorDetail(err, "Failed to add new files."));
+          this.error.set(getErrorDetail(err, 'Failed to add new files.'));
           this.isSaving.set(false);
         },
         next: (res) => {
@@ -416,7 +416,7 @@ export class DashboardComponent implements OnInit {
   removeFile(file: FileUploadResponse, group: UploadGroup): void {
     this.fileService.deleteFile(file.id).subscribe({
       error: (err: unknown) => {
-        this.error.set(getErrorDetail(err, "Failed to delete file."));
+        this.error.set(getErrorDetail(err, 'Failed to delete file.'));
       },
       next: () => {
         this.files.update((files) => files.filter((f) => f.id !== file.id));
@@ -433,7 +433,7 @@ export class DashboardComponent implements OnInit {
     for (const file of group.files) {
       this.fileService.deleteFile(file.id).subscribe({
         error: (err: unknown) => {
-          this.error.set(getErrorDetail(err, "Failed to delete upload."));
+          this.error.set(getErrorDetail(err, 'Failed to delete upload.'));
         },
         next: () => {
           this.files.update((files) => files.filter((f) => f.id !== file.id));
@@ -458,8 +458,8 @@ export class DashboardComponent implements OnInit {
   private loadGroupInfo(uploadGroup: string): void {
     this.fileService.getGroupInfo(uploadGroup).subscribe({
       next: (info) => {
-        this.panelTitle.set(info.title ?? "");
-        this.panelDescription.set(info.description ?? "");
+        this.panelTitle.set(info.title ?? '');
+        this.panelDescription.set(info.description ?? '');
       },
     });
   }
@@ -485,7 +485,7 @@ export class DashboardComponent implements OnInit {
     this.accessLoading.set(true);
     this.fileService.editAccess(uploadGroup, body).subscribe({
       error: (err: unknown) => {
-        this.error.set(getErrorDetail(err, "Failed to update access control."));
+        this.error.set(getErrorDetail(err, 'Failed to update access control.'));
         this.accessLoading.set(false);
       },
       next: (info) => {
@@ -516,10 +516,10 @@ export class DashboardComponent implements OnInit {
       return;
     }
     this.editAccess(uploadGroup, {
-      passwords_to_add: [{ label: label || "Password", password }],
+      passwords_to_add: [{ label: label || 'Password', password }],
     });
-    this.newPasswordLabel.set("");
-    this.newPasswordValue.set("");
+    this.newPasswordLabel.set('');
+    this.newPasswordValue.set('');
   }
 
   removePassword(uploadGroup: string, passwordId: number): void {
@@ -532,7 +532,7 @@ export class DashboardComponent implements OnInit {
       return;
     }
     this.editAccess(uploadGroup, { emails_to_add: [email] });
-    this.newEmail.set("");
+    this.newEmail.set('');
   }
 
   removeEmail(uploadGroup: string, emailId: number): void {
@@ -559,9 +559,9 @@ export class DashboardComponent implements OnInit {
   private snapToNearestExpiry(hours: number): number {
     const tier = this.userTier();
     let options: number[];
-    if (tier === "premium") {
+    if (tier === 'premium') {
       options = [1, 24, 72, 168, 336, 720];
-    } else if (tier === "free") {
+    } else if (tier === 'free') {
       options = [1, 24, 72, 168];
     } else {
       options = [24, 72];

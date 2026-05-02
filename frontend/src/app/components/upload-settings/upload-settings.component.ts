@@ -1,5 +1,5 @@
-import { Component, computed, effect, input, model, output } from "@angular/core";
-import { FormsModule } from "@angular/forms";
+import { Component, computed, effect, input, model, output } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 
 export interface ExpiryOption {
   value: number;
@@ -13,13 +13,13 @@ export interface PasswordEntry {
 
 @Component({
   imports: [FormsModule],
-  selector: "app-upload-settings",
-  styleUrl: "./upload-settings.component.scss",
-  templateUrl: "./upload-settings.component.html",
+  selector: 'app-upload-settings',
+  styleUrl: './upload-settings.component.scss',
+  templateUrl: './upload-settings.component.html',
 })
 export class UploadSettingsComponent {
   /** User tier: 'temporary' | 'free' | 'premium'. */
-  tier = input("temporary");
+  tier = input('temporary');
 
   /** Selected expiry duration in hours. */
   expiryHours = model(168);
@@ -43,10 +43,10 @@ export class UploadSettingsComponent {
   separateDownloadCounts = model(false);
 
   /** Transfer title. */
-  title = model("");
+  title = model('');
 
   /** Transfer description. */
-  description = model("");
+  description = model('');
 
   /** Whether to show the heading. */
   showHeading = input(true);
@@ -112,12 +112,12 @@ export class UploadSettingsComponent {
   }
 
   private static readonly KNOWN_EXPIRY_LABELS: Record<number, string> = {
-    1: "1 hour",
-    24: "1 day",
-    72: "3 days",
-    168: "7 days",
-    336: "14 days",
-    720: "30 days",
+    1: '1 hour',
+    24: '1 day',
+    72: '3 days',
+    168: '7 days',
+    336: '14 days',
+    720: '30 days',
   };
 
   /** Available expiry duration options, driven by backend data. */
@@ -152,11 +152,11 @@ export class UploadSettingsComponent {
   maxDownloadsOptions = computed<{ value: number; label: string }[]>(() => {
     const opts = this.backendMaxDownloadsOptions();
     if (opts) {
-      return opts.map((v) => ({ label: v === 0 ? "Unlimited" : String(v), value: v }));
+      return opts.map((v) => ({ label: v === 0 ? 'Unlimited' : String(v), value: v }));
     }
     return [
-      { label: "Unlimited", value: 0 },
-      { label: "1", value: 1 },
+      { label: 'Unlimited', value: 0 },
+      { label: '1', value: 1 },
     ];
   });
 
@@ -167,7 +167,7 @@ export class UploadSettingsComponent {
   });
 
   /** Whether user can use email invites (not temp). */
-  canUseEmails = computed(() => this.tier() !== "temporary");
+  canUseEmails = computed(() => this.tier() !== 'temporary');
 
   /** Whether user can add more emails. */
   canAddEmail = computed(() => {
@@ -217,16 +217,16 @@ export class UploadSettingsComponent {
 
   private ensureTrailingPasswordEntry(): void {
     const list = this.passwords();
-    if ((list.length === 0 || list.at(-1)!.password !== "") && this.canAddPassword()) {
-      this.passwords.update((l) => [...l, { label: "", password: "" }]);
+    if ((list.length === 0 || list.at(-1)!.password !== '') && this.canAddPassword()) {
+      this.passwords.update((l) => [...l, { label: '', password: '' }]);
       this.passwordVisibility.push(false);
     }
   }
 
   private ensureTrailingEmailEntry(): void {
     const list = this.emails();
-    if ((list.length === 0 || list.at(-1) !== "") && this.canAddEmail()) {
-      this.emails.update((l) => [...l, ""]);
+    if ((list.length === 0 || list.at(-1) !== '') && this.canAddEmail()) {
+      this.emails.update((l) => [...l, '']);
     }
   }
 
@@ -248,7 +248,7 @@ export class UploadSettingsComponent {
       list.map((entry, i) => (i === index ? { ...entry, password } : entry)),
     );
     if (isLast && password && this.canAddPassword()) {
-      this.passwords.update((l) => [...l, { label: "", password: "" }]);
+      this.passwords.update((l) => [...l, { label: '', password: '' }]);
       this.passwordVisibility.push(false);
     }
   }
@@ -266,7 +266,7 @@ export class UploadSettingsComponent {
     const isLast = index === this.emails().length - 1;
     this.emails.update((list) => list.map((e, i) => (i === index ? email : e)));
     if (isLast && email.trim() && this.canAddEmail()) {
-      this.emails.update((l) => [...l, ""]);
+      this.emails.update((l) => [...l, '']);
     }
   }
 }

@@ -1,38 +1,38 @@
-import { DatePipe } from "@angular/common";
-import { httpResource } from "@angular/common/http";
-import { Component, computed, inject, signal } from "@angular/core";
-import { FormsModule } from "@angular/forms";
-import { ActivatedRoute } from "@angular/router";
-import type { FileUploadResponse, UploadGroupInfoResponse } from "../../api/model";
-import { AuthService } from "../../services/auth.service";
-import type { RecipientStatsResponse } from "../../services/file.service";
-import { FileService } from "../../services/file.service";
-import { filenameToEmoji, formatFileSize, isExpired } from "../../utils/file.utils";
+import { DatePipe } from '@angular/common';
+import { httpResource } from '@angular/common/http';
+import { Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
+import type { FileUploadResponse, UploadGroupInfoResponse } from '../../api/model';
+import { AuthService } from '../../services/auth.service';
+import type { RecipientStatsResponse } from '../../services/file.service';
+import { FileService } from '../../services/file.service';
+import { filenameToEmoji, formatFileSize, isExpired } from '../../utils/file.utils';
 
 @Component({
   imports: [DatePipe, FormsModule],
-  selector: "app-download",
-  styleUrl: "./download.component.scss",
-  templateUrl: "./download.component.html",
+  selector: 'app-download',
+  styleUrl: './download.component.scss',
+  templateUrl: './download.component.html',
 })
 export class DownloadComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly authService = inject(AuthService);
   private readonly fileService = inject(FileService);
 
-  private readonly token = this.route.snapshot.paramMap.get("token") ?? "";
-  private readonly group = this.route.snapshot.paramMap.get("group") ?? "";
+  private readonly token = this.route.snapshot.paramMap.get('token') ?? '';
+  private readonly group = this.route.snapshot.paramMap.get('group') ?? '';
 
   isGroup = Boolean(this.group);
 
   /** Password input by user. */
-  enteredPassword = signal("");
+  enteredPassword = signal('');
 
   /** Password token from query param (for email invite links). */
-  passwordToken = signal(this.route.snapshot.queryParamMap.get("password") ?? "");
+  passwordToken = signal(this.route.snapshot.queryParamMap.get('password') ?? '');
 
   /** Password verification error. */
-  passwordError = signal("");
+  passwordError = signal('');
 
   private readonly fileInfoResource = this.token
     ? httpResource<FileUploadResponse>(() => {
@@ -54,13 +54,13 @@ export class DownloadComponent {
   groupInfo = computed(() => this.groupInfoResource?.value() ?? null);
   error = computed(() => {
     if (this.token && this.fileInfoResource?.error()) {
-      return "File not found or has expired.";
+      return 'File not found or has expired.';
     }
     if (this.group && this.groupInfoResource?.error()) {
-      return "Files not found or have expired.";
+      return 'Files not found or have expired.';
     }
     if (!this.token && !this.group) {
-      return "Invalid download link.";
+      return 'Invalid download link.';
     }
     return null;
   });
@@ -148,7 +148,7 @@ export class DownloadComponent {
   }
 
   /** Download error message. */
-  downloadError = signal("");
+  downloadError = signal('');
 
   /** Whether a download is in progress. */
   downloading = signal(false);
@@ -172,7 +172,7 @@ export class DownloadComponent {
     }
     // Set the password token (it will be used in download URLs)
     this.passwordToken.set(pw);
-    this.passwordError.set("");
+    this.passwordError.set('');
   }
 
   private loadRecipientStats(token: string): void {
@@ -201,17 +201,17 @@ export class DownloadComponent {
 
   private async getDownloadErrorDetail(response: Response): Promise<string> {
     const body = (await response.json().catch(() => null)) as unknown;
-    if (typeof body === "object" && body !== null) {
-      const detail = Reflect.get(body, "detail");
-      if (typeof detail === "string") {
+    if (typeof body === 'object' && body !== null) {
+      const detail = Reflect.get(body, 'detail');
+      if (typeof detail === 'string') {
         return detail;
       }
     }
-    return "Download failed.";
+    return 'Download failed.';
   }
 
   async download(): Promise<void> {
-    this.downloadError.set("");
+    this.downloadError.set('');
     this.downloading.set(true);
     const url = this.fileService.getDownloadUrlWithPassword(
       this.token,
@@ -226,20 +226,20 @@ export class DownloadComponent {
         return;
       }
       const blob = await response.blob();
-      const disposition = response.headers.get("Content-Disposition");
+      const disposition = response.headers.get('Content-Disposition');
       const match = disposition?.match(/filename="?([^"]+)"?/);
-      const filename = match?.[1] ?? this.fileInfo()?.original_filename ?? "download";
+      const filename = match?.[1] ?? this.fileInfo()?.original_filename ?? 'download';
       this.triggerDownload(blob, filename);
       this.fileInfoResource?.reload();
     } catch {
-      this.downloadError.set("Download failed. Please try again.");
+      this.downloadError.set('Download failed. Please try again.');
     } finally {
       this.downloading.set(false);
     }
   }
 
   async downloadGroup(): Promise<void> {
-    this.downloadError.set("");
+    this.downloadError.set('');
     this.downloading.set(true);
     const url = this.fileService.getGroupDownloadUrlWithPassword(
       this.group,
@@ -254,25 +254,25 @@ export class DownloadComponent {
         return;
       }
       const blob = await response.blob();
-      const disposition = response.headers.get("Content-Disposition");
+      const disposition = response.headers.get('Content-Disposition');
       const match = disposition?.match(/filename="?([^"]+)"?/);
       const filename = match?.[1] ?? `sendr-${this.group.slice(0, 8)}.zip`;
       this.triggerDownload(blob, filename);
       this.groupInfoResource?.reload();
     } catch {
-      this.downloadError.set("Download failed. Please try again.");
+      this.downloadError.set('Download failed. Please try again.');
     } finally {
       this.downloading.set(false);
     }
   }
 
   async downloadSingleFile(downloadUrl: string, originalFilename?: string): Promise<void> {
-    this.downloadError.set("");
+    this.downloadError.set('');
     this.downloading.set(true);
     const pw = this.passwordToken();
     let url = downloadUrl;
     if (pw) {
-      const separator = downloadUrl.includes("?") ? "&" : "?";
+      const separator = downloadUrl.includes('?') ? '&' : '?';
       url = `${downloadUrl}${separator}password=${encodeURIComponent(pw)}`;
     }
     try {
@@ -284,20 +284,20 @@ export class DownloadComponent {
         return;
       }
       const blob = await response.blob();
-      const disposition = response.headers.get("Content-Disposition");
+      const disposition = response.headers.get('Content-Disposition');
       const match = disposition?.match(/filename="?([^"]+)"?/);
-      const filename = match?.[1] ?? originalFilename ?? "download";
+      const filename = match?.[1] ?? originalFilename ?? 'download';
       this.triggerDownload(blob, filename);
       this.groupInfoResource?.reload();
     } catch {
-      this.downloadError.set("Download failed. Please try again.");
+      this.downloadError.set('Download failed. Please try again.');
     } finally {
       this.downloading.set(false);
     }
   }
 
   private triggerDownload(blob: Blob, filename: string): void {
-    const a = document.createElement("a");
+    const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = filename;
     a.click();
