@@ -79,6 +79,11 @@ class Settings(BaseSettings):
     ALTCHA_EXPIRE_MINUTES: int = 5
     # Group download zip threshold (file count above which will_zip is true)
     GROUP_ZIP_THRESHOLD: int = 3
+    # Optional ClamAV upload scanning
+    VIRUS_SCANNING_ENABLED: bool = False
+    CLAMAV_HOST: str = "127.0.0.1"
+    CLAMAV_PORT: int = 3310
+    CLAMAV_UNIX_SOCKET: str = "/var/run/clamav/clamd.ctl"
 
     model_config = {"env_prefix": "SENDR_"}
 

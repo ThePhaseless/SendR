@@ -26,11 +26,14 @@ import {
 } from 'rxjs';
 
 import type {
+  ChangePasswordRequest,
   CodeVerificationRequest,
   EmailVerificationRequest,
   LimitsResponse,
+  PasswordLoginRequest,
   QuotaResponse,
   RequestCodeApiAuthRequestCodePost200,
+  SetPasswordRequest,
   TokenResponse,
   UserResponse
 } from '../../model';
@@ -156,6 +159,42 @@ export class AuthService {
     );
   }
 /**
+ * @summary Login Password
+ */
+ loginPasswordApiAuthLoginPasswordPost<TData = TokenResponse>(passwordLoginRequest: PasswordLoginRequest, options?: HttpClientBodyOptions): Observable<TData>;
+ loginPasswordApiAuthLoginPasswordPost<TData = TokenResponse>(passwordLoginRequest: PasswordLoginRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ loginPasswordApiAuthLoginPasswordPost<TData = TokenResponse>(passwordLoginRequest: PasswordLoginRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  loginPasswordApiAuthLoginPasswordPost<TData = TokenResponse>(
+    passwordLoginRequest: PasswordLoginRequest, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.post<TData>(
+      `/api/auth/login-password`,
+      passwordLoginRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.post<TData>(
+      `/api/auth/login-password`,
+      passwordLoginRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.post<TData>(
+      `/api/auth/login-password`,
+      passwordLoginRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+/**
  * @summary Get Me
  */
  getMeApiAuthMeGet<TData = UserResponse>( options?: HttpClientBodyOptions): Observable<TData>;
@@ -183,6 +222,78 @@ export class AuthService {
 
     return this.http.get<TData>(
       `/api/auth/me`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+/**
+ * @summary Set Password
+ */
+ setPasswordApiAuthSetPasswordPost<TData = UserResponse>(setPasswordRequest: SetPasswordRequest, options?: HttpClientBodyOptions): Observable<TData>;
+ setPasswordApiAuthSetPasswordPost<TData = UserResponse>(setPasswordRequest: SetPasswordRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ setPasswordApiAuthSetPasswordPost<TData = UserResponse>(setPasswordRequest: SetPasswordRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  setPasswordApiAuthSetPasswordPost<TData = UserResponse>(
+    setPasswordRequest: SetPasswordRequest, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.post<TData>(
+      `/api/auth/set-password`,
+      setPasswordRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.post<TData>(
+      `/api/auth/set-password`,
+      setPasswordRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.post<TData>(
+      `/api/auth/set-password`,
+      setPasswordRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+/**
+ * @summary Change Password
+ */
+ changePasswordApiAuthChangePasswordPost<TData = UserResponse>(changePasswordRequest: ChangePasswordRequest, options?: HttpClientBodyOptions): Observable<TData>;
+ changePasswordApiAuthChangePasswordPost<TData = UserResponse>(changePasswordRequest: ChangePasswordRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ changePasswordApiAuthChangePasswordPost<TData = UserResponse>(changePasswordRequest: ChangePasswordRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  changePasswordApiAuthChangePasswordPost<TData = UserResponse>(
+    changePasswordRequest: ChangePasswordRequest, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.post<TData>(
+      `/api/auth/change-password`,
+      changePasswordRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.post<TData>(
+      `/api/auth/change-password`,
+      changePasswordRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.post<TData>(
+      `/api/auth/change-password`,
+      changePasswordRequest,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }

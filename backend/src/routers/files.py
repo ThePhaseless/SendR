@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import aiofiles
+from fastapi.concurrency import run_in_threadpool
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
 from passlib.hash import pbkdf2_sha256
@@ -50,6 +51,7 @@ from schemas import (
     UploadGroupInfoResponse,
 )
 from security import get_current_user, get_optional_user
+from virus_scanner import scan_upload_content
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -172,6 +174,7 @@ def _to_response(
     password_count: int = 0,
     email_count: int = 0,
     viewer_is_owner: bool = False,
+    group_download_only: bool = False,
 ) -> FileUploadResponse:
     return FileUploadResponse(
         id=f.id,
@@ -190,7 +193,50 @@ def _to_response(
         has_passwords=password_count > 0,
         has_email_recipients=email_count > 0,
         viewer_is_owner=viewer_is_owner,
+        group_download_only=group_download_only,
     )
+
+
+async def _is_single_file_download_restricted(
+    session,
+    file_upload: FileUpload,
+) -> bool:
+    """Return whether a file can only be downloaded via the group ZIP flow."""
+    if not file_upload.max_downloads:
+        return False
+
+    result = await session.exec(
+        select(func.count(FileUpload.id)).where(
+            FileUpload.upload_group == file_upload.upload_group,
+            FileUpload.is_active == True,  # noqa: E712
+        )
+    )
+    return result.one() > 1
+
+
+async def _store_upload_content(session: AsyncSession, content: bytes) -> tuple[str, str]:
+    """Scan an upload and reuse an existing stored file when the checksum matches."""
+    await run_in_threadpool(scan_upload_content, content)
+
+    upload_dir = Path(settings.UPLOAD_DIR)
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    content_hash = sha256(content).hexdigest()
+    result = await session.exec(
+        select(FileUpload.stored_filename)
+        .where(FileUpload.content_hash == content_hash)
+        .order_by(FileUpload.created_at.desc())
+    )
+
+    for stored_filename in result.all():
+        if stored_filename and (upload_dir / stored_filename).exists():
+            return stored_filename, content_hash
+
+    stored_filename = str(uuid.uuid4())
+    async with aiofiles.open(upload_dir / stored_filename, "wb") as output_file:
+        await output_file.write(content)
+
+    return stored_filename, content_hash
 
 
 def _get_password_limit(tier: UserTier) -> int:
@@ -407,15 +453,7 @@ async def upload_file(
             detail=f"File too large. Max {max_size_mb}MB for {user.tier.value} tier.",
         )
 
-    # Save to disk
-    upload_dir = Path(settings.UPLOAD_DIR)
-    upload_dir.mkdir(parents=True, exist_ok=True)
-
-    stored_filename = str(uuid.uuid4())
-    file_path = upload_dir / stored_filename
-
-    async with aiofiles.open(file_path, "wb") as f:
-        await f.write(content)
+    stored_filename, content_hash = await _store_upload_content(session, content)
 
     # Create DB record
     download_token = secrets.token_urlsafe(32)
@@ -427,6 +465,7 @@ async def upload_file(
         user_id=user.id,
         original_filename=_sanitize_filename(file.filename or "unnamed"),
         stored_filename=stored_filename,
+        content_hash=content_hash,
         file_size_bytes=file_size,
         download_token=download_token,
         upload_group=upload_group,
@@ -532,24 +571,19 @@ async def upload_multiple_files(
             )
         file_contents.append((_sanitize_filename(f.filename or "unnamed"), content))
 
-    # Save all files
-    upload_dir = Path(settings.UPLOAD_DIR)
-    upload_dir.mkdir(parents=True, exist_ok=True)
     upload_group = secrets.token_urlsafe(32)
     expires_at = _utcnow() + _resolve_expiry(expiry_hours, user.tier)
     resolved_max_downloads = _resolve_max_downloads(max_downloads, user.tier)
     saved_uploads: list[FileUpload] = []
 
     for original_name, content in file_contents:
-        stored_filename = str(uuid.uuid4())
-        file_path = upload_dir / stored_filename
-        async with aiofiles.open(file_path, "wb") as out:
-            await out.write(content)
+        stored_filename, content_hash = await _store_upload_content(session, content)
 
         file_upload = FileUpload(
             user_id=user.id,
             original_filename=original_name,
             stored_filename=stored_filename,
+            content_hash=content_hash,
             file_size_bytes=len(content),
             download_token=secrets.token_urlsafe(32),
             upload_group=upload_group,
@@ -603,7 +637,16 @@ async def upload_multiple_files(
         await session.commit()
 
     return MultiFileUploadResponse(
-        files=[_to_response(fu, group_settings, pw_count, email_count) for fu in saved_uploads],
+        files=[
+            _to_response(
+                fu,
+                group_settings,
+                pw_count,
+                email_count,
+                group_download_only=resolved_max_downloads is not None and len(saved_uploads) > 1,
+            )
+            for fu in saved_uploads
+        ],
         upload_group=upload_group,
         total_size_bytes=total_size,
         title=group_settings.title,
@@ -654,6 +697,7 @@ async def get_group_info(
                     pw_count,
                     email_count,
                     viewer_is_owner=viewer_is_owner,
+                    group_download_only=len(files) > 1 and bool(f.max_downloads),
                 )
                 for f in files
             ]
@@ -847,6 +891,12 @@ async def download_file(
         current_user,
     )
 
+    if access_type != "owner" and await _is_single_file_download_restricted(session, file_upload):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Single-file downloads are disabled for multi-file transfers with download limits. Download the full transfer instead.",
+        )
+
     now = _utcnow()
     grace_end = file_upload.expires_at + timedelta(days=settings.FILE_GRACE_PERIOD_DAYS)
 
@@ -923,6 +973,7 @@ async def get_file_info(
     is_public = gs.is_public if gs else True
     pw_count = len(pws)
     viewer_is_owner = current_user is not None and file_upload.user_id == current_user.id
+    group_download_only = await _is_single_file_download_restricted(session, file_upload)
 
     # Hide details when is_public=false and no valid credential provided
     hide_details = (
@@ -943,9 +994,17 @@ async def get_file_info(
             has_passwords=True,
             has_email_recipients=len(ers) > 0,
             viewer_is_owner=False,
+            group_download_only=group_download_only,
         )
 
-    return _to_response(file_upload, gs, pw_count, len(ers), viewer_is_owner=viewer_is_owner)
+    return _to_response(
+        file_upload,
+        gs,
+        pw_count,
+        len(ers),
+        viewer_is_owner=viewer_is_owner,
+        group_download_only=group_download_only,
+    )
 
 
 @router.post("/{file_id}/refresh")
@@ -1121,21 +1180,16 @@ async def add_files_to_group(
             )
         file_contents.append((_sanitize_filename(f.filename or "unnamed"), content))
 
-    # Save new files
-    upload_dir = Path(settings.UPLOAD_DIR)
-    upload_dir.mkdir(parents=True, exist_ok=True)
     saved_uploads: list[FileUpload] = []
 
     for original_name, content in file_contents:
-        stored_filename = str(uuid.uuid4())
-        file_path = upload_dir / stored_filename
-        async with aiofiles.open(file_path, "wb") as out:
-            await out.write(content)
+        stored_filename, content_hash = await _store_upload_content(session, content)
 
         file_upload = FileUpload(
             user_id=user.id,
             original_filename=original_name,
             stored_filename=stored_filename,
+            content_hash=content_hash,
             file_size_bytes=len(content),
             download_token=secrets.token_urlsafe(32),
             upload_group=upload_group,

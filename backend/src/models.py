@@ -24,6 +24,7 @@ class SubscriptionPlan(enum.StrEnum):
 class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     email: str = Field(index=True, unique=True)
+    password_hash: str | None = Field(default=None)
     tier: UserTier = Field(default=UserTier.free)
     is_admin: bool = Field(default=False)
     is_banned: bool = Field(default=False)
@@ -60,6 +61,7 @@ class FileUpload(SQLModel, table=True):
     user_id: int | None = Field(default=None, foreign_key="user.id", index=True)
     original_filename: str
     stored_filename: str = Field(default_factory=lambda: str(uuid4()))
+    content_hash: str | None = Field(default=None, index=True)
     file_size_bytes: int
     download_token: str = Field(unique=True, index=True)
     download_count: int = Field(default=0)

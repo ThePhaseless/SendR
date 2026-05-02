@@ -253,6 +253,40 @@ async def test_group_password_protected_download(free_headers):
 
 
 @pytest.mark.asyncio
+async def test_limited_multi_file_group_disables_single_file_downloads(free_headers):
+    """Limited multi-file transfers can only be downloaded as the full group."""
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        upload_resp = await client.post(
+            "/api/files/upload-multiple",
+            files=[
+                ("files", ("a.txt", b"aaa", "text/plain")),
+                ("files", ("b.txt", b"bbb", "text/plain")),
+            ],
+            data={
+                "altcha": json.dumps({"mock": True}),
+                "is_public": "true",
+                "max_downloads": "1",
+            },
+            headers=free_headers,
+        )
+        assert upload_resp.status_code == 201
+        upload_data = upload_resp.json()
+        first_file = upload_data["files"][0]
+        assert first_file["group_download_only"] is True
+
+        info_resp = await client.get(f"/api/files/{first_file['download_url'].split('/')[-1]}/info")
+        assert info_resp.status_code == 200
+        assert info_resp.json()["group_download_only"] is True
+
+        single_file_resp = await client.get(first_file["download_url"])
+        assert single_file_resp.status_code == 403
+        assert "Download the full transfer instead" in single_file_resp.json()["detail"]
+
+        group_download_resp = await client.get(f"/api/files/group/{upload_data['upload_group']}/download")
+        assert group_download_resp.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_owner_can_download_password_protected_group_files_without_password(free_headers):
     """Owners can view and download password-protected group files without supplying a password."""
     passwords = [{"label": "Team", "password": "teampass"}]

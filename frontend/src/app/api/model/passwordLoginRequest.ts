@@ -6,11 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface UserResponse {
-  id: number;
+export interface PasswordLoginRequest {
   email: string;
-  tier: string;
-  is_admin?: boolean;
-  is_banned?: boolean;
-  has_password?: boolean;
+  password: string;
 }

@@ -24,4 +24,5 @@ export interface FileUploadResponse {
   has_passwords?: boolean;
   has_email_recipients?: boolean;
   viewer_is_owner?: boolean;
+  group_download_only?: boolean;
 }

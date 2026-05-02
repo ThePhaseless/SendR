@@ -10,10 +10,13 @@ from email_utils import send_verification_email
 from models import AuthToken, FileUpload, User, UserLogin, UserTier, VerificationCode, _utcnow
 from rate_limit import auth_rate_limiter, get_client_ip
 from schemas import (
+    ChangePasswordRequest,
     CodeVerificationRequest,
     EmailVerificationRequest,
     LimitsResponse,
+    PasswordLoginRequest,
     QuotaResponse,
+    SetPasswordRequest,
     TokenResponse,
     UserResponse,
 )
@@ -21,7 +24,9 @@ from security import (
     create_access_token,
     generate_verification_code,
     get_current_user,
+    hash_user_password,
     hash_token,
+    verify_user_password,
 )
 
 if TYPE_CHECKING:
@@ -34,6 +39,56 @@ async def _get_user_by_email(session: AsyncSession, email: str) -> User | None:
     stmt = select(User).where(User.email == email)
     result = await session.exec(stmt)
     return result.first()
+
+
+def _validate_account_password(password: str) -> str:
+    if len(password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters long.",
+        )
+    if len(password) > 128:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be 128 characters or fewer.",
+        )
+    return password
+
+
+async def _issue_auth_token(
+    session: AsyncSession,
+    user: User,
+    auth_method: str,
+    request: Request,
+) -> TokenResponse:
+    raw_token, expires_at = create_access_token(user.id)
+    session.add(
+        AuthToken(
+            user_id=user.id,
+            token=hash_token(raw_token),
+            expires_at=expires_at,
+        )
+    )
+    session.add(
+        UserLogin(
+            user_id=user.id,
+            auth_method=auth_method,
+            ip_address=get_client_ip(request),
+        )
+    )
+    await session.commit()
+    return TokenResponse(token=raw_token, expires_at=expires_at)
+
+
+def _to_user_response(user: User) -> UserResponse:
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        tier=user.tier.value,
+        is_admin=user.is_admin,
+        is_banned=user.is_banned,
+        has_password=bool(user.password_hash),
+    )
 
 
 def _get_max_file_size_for_tier(tier: UserTier) -> tuple[int, int]:
@@ -125,35 +180,65 @@ async def verify_code(
         user.tier = UserTier.free
         session.add(user)
 
-    # Create access token
-    raw_token, expires_at = create_access_token(user.id)
-    auth_token = AuthToken(
-        user_id=user.id,
-        token=hash_token(raw_token),
-        expires_at=expires_at,
-    )
-    session.add(auth_token)
-    session.add(
-        UserLogin(
-            user_id=user.id,
-            auth_method="verification_code",
-            ip_address=get_client_ip(request),
-        )
-    )
-    await session.commit()
+    return await _issue_auth_token(session, user, "verification_code", request)
 
-    return TokenResponse(token=raw_token, expires_at=expires_at)
+
+@router.post("/login-password")
+async def login_password(
+    body: PasswordLoginRequest,
+    request: Request,
+    session: AsyncSession = Depends(get_session),
+) -> TokenResponse:
+    auth_rate_limiter.check(get_client_ip(request))
+
+    user = await _get_user_by_email(session, body.email)
+    if not user or not verify_user_password(body.password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+    if user.is_banned:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is banned")
+
+    return await _issue_auth_token(session, user, "password", request)
 
 
 @router.get("/me")
 async def get_me(user: User = Depends(get_current_user)) -> UserResponse:
-    return UserResponse(
-        id=user.id,
-        email=user.email,
-        tier=user.tier.value,
-        is_admin=user.is_admin,
-        is_banned=user.is_banned,
-    )
+    return _to_user_response(user)
+
+
+@router.post("/set-password")
+async def set_password(
+    body: SetPasswordRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> UserResponse:
+    if user.password_hash:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password already set")
+
+    user.password_hash = hash_user_password(_validate_account_password(body.password))
+    user.updated_at = _utcnow()
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
+    return _to_user_response(user)
+
+
+@router.post("/change-password")
+async def change_password(
+    body: ChangePasswordRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> UserResponse:
+    if not user.password_hash:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No password set for this account")
+    if not verify_user_password(body.current_password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+
+    user.password_hash = hash_user_password(_validate_account_password(body.new_password))
+    user.updated_at = _utcnow()
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
+    return _to_user_response(user)
 
 
 @router.get("/limits")

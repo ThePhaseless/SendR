@@ -494,6 +494,47 @@
         }
       }
     },
+    "/api/auth/login-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login Password",
+        "operationId": "login_password_api_auth_login_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/me": {
       "get": {
         "tags": [
@@ -508,6 +549,98 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/api/auth/set-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Set Password",
+        "operationId": "set_password_api_auth_set_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/api/auth/change-password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Change Password",
+        "operationId": "change_password_api_auth_change_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -2129,6 +2262,24 @@
         ],
         "title": "Body_upload_multiple_files_api_files_upload_multiple_post"
       },
+      "ChangePasswordRequest": {
+        "properties": {
+          "current_password": {
+            "type": "string",
+            "title": "Current Password"
+          },
+          "new_password": {
+            "type": "string",
+            "title": "New Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "ChangePasswordRequest"
+      },
       "CodeVerificationRequest": {
         "properties": {
           "email": {
@@ -2414,6 +2565,11 @@
             "type": "boolean",
             "title": "Viewer Is Owner",
             "default": false
+          },
+          "group_download_only": {
+            "type": "boolean",
+            "title": "Group Download Only",
+            "default": false
           }
         },
         "type": "object",
@@ -2689,6 +2845,24 @@
         ],
         "title": "PasswordInfo"
       },
+      "PasswordLoginRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "PasswordLoginRequest"
+      },
       "QuotaResponse": {
         "properties": {
           "max_file_size_mb": {
@@ -2857,6 +3031,19 @@
         ],
         "title": "RecipientStatsResponse"
       },
+      "SetPasswordRequest": {
+        "properties": {
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "password"
+        ],
+        "title": "SetPasswordRequest"
+      },
       "SubscriptionResponse": {
         "properties": {
           "plan": {
@@ -3023,6 +3210,11 @@
           "is_banned": {
             "type": "boolean",
             "title": "Is Banned",
+            "default": false
+          },
+          "has_password": {
+            "type": "boolean",
+            "title": "Has Password",
             "default": false
           }
         },

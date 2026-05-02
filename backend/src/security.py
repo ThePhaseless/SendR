@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import APIKeyHeader
+from passlib.hash import pbkdf2_sha256
 from sqlmodel import select
 
 from config import settings
@@ -23,6 +24,16 @@ def generate_verification_code() -> str:
 
 def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
+
+
+def hash_user_password(password: str) -> str:
+    return pbkdf2_sha256.hash(password)
+
+
+def verify_user_password(password: str, password_hash: str | None) -> bool:
+    if not password_hash:
+        return False
+    return pbkdf2_sha256.verify(password, password_hash)
 
 
 def create_access_token(_user_id: int) -> tuple[str, datetime]:

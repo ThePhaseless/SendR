@@ -18,12 +18,27 @@ class TokenResponse(SQLModel):
     expires_at: datetime
 
 
+class PasswordLoginRequest(SQLModel):
+    email: str
+    password: str
+
+
+class SetPasswordRequest(SQLModel):
+    password: str
+
+
+class ChangePasswordRequest(SQLModel):
+    current_password: str
+    new_password: str
+
+
 class UserResponse(SQLModel):
     id: int
     email: str
     tier: str
     is_admin: bool = False
     is_banned: bool = False
+    has_password: bool = False
 
 
 class FileUploadResponse(SQLModel):
@@ -44,6 +59,7 @@ class FileUploadResponse(SQLModel):
     has_passwords: bool = False
     has_email_recipients: bool = False
     viewer_is_owner: bool = False
+    group_download_only: bool = False
 
 
 class FileListResponse(SQLModel):
