@@ -41,7 +41,8 @@ class ParamMapStream {
   }
 
   readonly observable = {
-    subscribe: (next: (value: ParamMap) => void) => {
+    subscribe: (observer: ((value: ParamMap) => void) | { next: (value: ParamMap) => void }) => {
+      const next = typeof observer === 'function' ? observer : observer.next.bind(observer);
       this.subscribers.add(next);
       next(this.value);
       return {

@@ -9,10 +9,10 @@ export interface ConfirmDialogOptions {
 }
 
 export interface ConfirmDialogState {
-  title: string;
-  message: string;
-  confirmLabel: string;
   cancelLabel: string;
+  confirmLabel: string;
+  message: string;
+  title: string;
   tone: 'danger' | 'primary';
 }
 
@@ -22,13 +22,10 @@ export interface ConfirmDialogState {
 export class ConfirmDialogService {
   readonly dialog = signal<ConfirmDialogState | null>(null);
 
-  private resolver: ((result: boolean) => void) | null = null;
+  private confirmAction: (() => void) | null = null;
 
-  confirm(options: ConfirmDialogOptions): Promise<boolean> {
-    if (this.resolver) {
-      this.resolver(false);
-      this.resolver = null;
-    }
+  confirm(options: ConfirmDialogOptions, onConfirm: () => void): void {
+    this.confirmAction = onConfirm;
 
     this.dialog.set({
       cancelLabel: options.cancelLabel ?? 'Cancel',
@@ -37,15 +34,14 @@ export class ConfirmDialogService {
       title: options.title,
       tone: options.tone ?? 'primary',
     });
-
-    return new Promise<boolean>((resolve) => {
-      this.resolver = resolve;
-    });
   }
 
   resolve(result: boolean): void {
     this.dialog.set(null);
-    this.resolver?.(result);
-    this.resolver = null;
+    const action = this.confirmAction;
+    this.confirmAction = null;
+    if (result) {
+      action?.();
+    }
   }
 }

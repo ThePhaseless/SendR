@@ -1,83 +1,16 @@
 /// <reference types="jasmine" />
 
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { AltchaService } from '../../api/endpoints/altcha/altcha.service';
-import type { LimitsResponse, QuotaResponse } from '../../api/model';
 import { AuthService } from '../../services/auth.service';
 import { FileService } from '../../services/file.service';
 import { HomeComponent } from './home.component';
 
-interface AltchaServiceStub {
-  getChallengeApiAltchaChallengeGet: jasmine.Spy;
-}
-
-interface TestSubscription {
-  unsubscribe: () => void;
-}
-
-interface TestObserver<T> {
-  error?: (error: unknown) => void;
-  next?: (value: T) => void;
-}
-
-interface TestStream<T> {
-  next: (value: T) => void;
-  subscribe: (observer: TestObserver<T> | ((value: T) => void)) => TestSubscription;
-}
-
-function createEmptyStream(): Pick<TestStream<unknown>, 'subscribe'> {
-  return {
-    subscribe: () => ({ unsubscribe: () => {} }),
-  };
-}
-
-function createTestStream<T>(): TestStream<T> {
-  const subscribers = new Set<TestObserver<T> | ((value: T) => void)>();
-
-  return {
-    next: (value: T) => {
-      for (const subscriber of subscribers) {
-        if (typeof subscriber === 'function') {
-          subscriber(value);
-        } else {
-          subscriber.next?.(value);
-        }
-      }
-    },
-    subscribe: (observer: TestObserver<T> | ((value: T) => void)) => {
-      subscribers.add(observer);
-
-      return {
-        unsubscribe: () => {
-          subscribers.delete(observer);
-        },
-      };
-    },
-  };
-}
-
-function createAltchaServiceStub(): AltchaServiceStub {
-  return {
-    getChallengeApiAltchaChallengeGet: jasmine
-      .createSpy('getChallengeApiAltchaChallengeGet')
-      .and.returnValue(createEmptyStream()),
-  };
-}
-
 class AuthServiceStub {
   readonly authenticated = signal(false);
-  readonly limitsStream = createTestStream<LimitsResponse>();
-  readonly quotaStream = createTestStream<QuotaResponse>();
-
-  getLimits() {
-    return this.limitsStream;
-  }
-
-  getQuota() {
-    return this.quotaStream;
-  }
 
   isAuthenticated(): boolean {
     return this.authenticated();
@@ -85,21 +18,18 @@ class AuthServiceStub {
 }
 
 describe('HomeComponent', () => {
-  let altchaService: AltchaServiceStub = createAltchaServiceStub();
   let authService: AuthServiceStub = new AuthServiceStub();
+  let httpTesting: HttpTestingController;
 
   beforeEach(async () => {
     authService = new AuthServiceStub();
-    altchaService = createAltchaServiceStub();
 
     await TestBed.configureTestingModule({
       imports: [HomeComponent],
       providers: [
         provideRouter([]),
-        {
-          provide: AltchaService,
-          useValue: altchaService,
-        },
+        provideHttpClient(),
+        provideHttpClientTesting(),
         {
           provide: AuthService,
           useValue: authService,
@@ -113,15 +43,22 @@ describe('HomeComponent', () => {
         },
       ],
     }).compileComponents();
+
+    httpTesting = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    httpTesting.verify();
   });
 
   it('refreshes quota when authentication changes after the page has loaded', async () => {
     const fixture = TestBed.createComponent(HomeComponent);
     const component = fixture.componentInstance;
 
-    await fixture.whenStable();
+    fixture.detectChanges();
 
-    authService.limitsStream.next({
+    httpTesting.expectOne('/api/altcha/challenge').flush({ challenge: 'challenge' });
+    httpTesting.expectOne('/api/auth/limits').flush({
       expiry_options_hours: [24, 72],
       max_downloads_options: [1, 10],
       max_file_size_mb: 100,
@@ -129,14 +66,15 @@ describe('HomeComponent', () => {
       weekly_uploads_limit: 3,
     });
     await fixture.whenStable();
+    fixture.detectChanges();
 
     expect(component.weeklyUploadsRemaining()).toBe(3);
     expect(component.isQuotaExhausted()).toBeFalse();
 
     authService.authenticated.set(true);
-    await fixture.whenStable();
+    fixture.detectChanges();
 
-    authService.quotaStream.next({
+    httpTesting.expectOne('/api/auth/quota').flush({
       expiry_options_hours: [24, 72],
       max_downloads_options: [1, 10],
       max_file_size_mb: 100,
@@ -149,6 +87,7 @@ describe('HomeComponent', () => {
       weekly_uploads_used: 0,
     });
     await fixture.whenStable();
+    fixture.detectChanges();
 
     expect(component.weeklyUploadsRemaining()).toBe(3);
     expect(component.isQuotaExhausted()).toBeFalse();
@@ -162,6 +101,17 @@ describe('HomeComponent', () => {
     const fixture = TestBed.createComponent(HomeComponent);
     const component = fixture.componentInstance;
 
+    fixture.detectChanges();
+
+    httpTesting.expectOne('/api/altcha/challenge').flush({ challenge: 'challenge' });
+    httpTesting.expectOne('/api/auth/limits').flush({
+      expiry_options_hours: [24, 72],
+      max_downloads_options: [1, 10],
+      max_file_size_mb: 100,
+      max_files_per_upload: 10,
+      weekly_uploads_limit: 3,
+    });
+
     component.onAltchaStateChange(
       new CustomEvent('statechange', {
         detail: { payload: 'verified-payload', state: 'verified' },
@@ -170,7 +120,6 @@ describe('HomeComponent', () => {
 
     expect(component.altchaVerified()).toBeTrue();
     expect(component.altchaState()).toBe('verified');
-    expect(altchaService.getChallengeApiAltchaChallengeGet).toHaveBeenCalledTimes(1);
 
     component.isUploading.set(true);
     component.onAltchaStateChange(
@@ -181,6 +130,6 @@ describe('HomeComponent', () => {
 
     expect(component.altchaVerified()).toBeTrue();
     expect(component.altchaState()).toBe('verified');
-    expect(altchaService.getChallengeApiAltchaChallengeGet).toHaveBeenCalledTimes(1);
+    httpTesting.expectNone('/api/altcha/challenge');
   });
 });

@@ -1590,7 +1590,13 @@ async def add_files_to_group(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> MultiFileUploadResponse:
-    """Add new files to an existing upload group. Requires ownership of the group."""
+    """Add new files to an existing upload group. Premium only."""
+    if user.tier != UserTier.premium:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only premium users can edit uploads.",
+        )
+
     if not files:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="No files provided"

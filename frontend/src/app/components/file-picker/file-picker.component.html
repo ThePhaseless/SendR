@@ -84,7 +84,11 @@
         </p>
       </div>
     } @else {
-      <div class="staged-file-list scroll-surface scroll-roomy">
+      <div
+        class="staged-file-list scroll-prominent scroll-roomy"
+        aria-label="Selected files list"
+        tabindex="0"
+      >
         <ng-template #treeNode let-nodes>
           @for (node of nodes; track node.fullPath) {
             @if (node.isFolder) {

@@ -26,14 +26,7 @@
     {
       "files": ["src/app/components/file-picker/file-picker.component.ts"],
       "rules": {
-        "avoid-new": "off",
-        "no-await-in-loop": "off"
-      }
-    },
-    {
-      "files": ["src/app/interceptors/api-error.interceptor.ts"],
-      "rules": {
-        "prefer-await-to-callbacks": "off"
+        "avoid-new": "off"
       }
     },
     {
@@ -62,6 +55,7 @@
     "@angular-eslint/prefer-inject": "warn",
     "@angular-eslint/prefer-standalone": "error",
     "@angular-eslint/use-lifecycle-interface": "warn",
+    "always-return": "off",
     "import/consistent-type-specifier-style": "off",
     "no-unused-vars": "warn",
     "no-console": "warn",
@@ -88,6 +82,7 @@
     "no-null": "off",
     "no-ternary": "off",
     "no-unassigned-import": "off",
+    "prefer-await-to-callbacks": "off",
     "prefer-await-to-then": "off",
     "prefer-default-export": "off",
     "prefer-global-this": "off",

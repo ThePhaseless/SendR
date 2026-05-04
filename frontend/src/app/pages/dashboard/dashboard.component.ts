@@ -1,8 +1,15 @@
 import { DatePipe } from '@angular/common';
-import type { OnInit } from '@angular/core';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { httpResource } from '@angular/common/http';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { QuotaResponse } from '../../api/model';
+import type { FileListResponse, QuotaResponse } from '../../api/model';
 import {
   FilePickerComponent,
   type UploadFileEntry,
@@ -13,6 +20,7 @@ import type {
   AccessInfoResponse,
   DownloadStatsResponse,
   FileUploadResponse,
+  UploadGroupInfoResponse,
 } from '../../services';
 import { AuthService, ConfirmDialogService, FileService } from '../../services';
 import {
@@ -41,26 +49,57 @@ export interface UploadGroup {
   styleUrl: './dashboard.component.scss',
   templateUrl: './dashboard.component.html',
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent {
   private readonly fileService = inject(FileService);
   private readonly authService = inject(AuthService);
   private readonly confirmDialog = inject(ConfirmDialogService);
+  private readonly filesResource = httpResource<FileListResponse>(() => '/api/files/');
+  private readonly quotaResource = httpResource<QuotaResponse>(() => '/api/auth/quota');
+  private readonly expandedUploadGroup = computed(
+    () =>
+      this.uploadGroups().find((group) => group.key === this.expandedGroupKey())?.uploadGroup ??
+      null,
+  );
+  private readonly groupStatsResource = httpResource<DownloadStatsResponse>(() => {
+    const uploadGroup = this.expandedUploadGroup();
+    if (!uploadGroup) {
+      return;
+    }
+
+    return `/api/files/group/${uploadGroup}/stats`;
+  });
+  private readonly groupInfoResource = httpResource<UploadGroupInfoResponse>(() => {
+    const uploadGroup = this.expandedUploadGroup();
+    if (!uploadGroup) {
+      return;
+    }
+
+    return `/api/files/group/${uploadGroup}`;
+  });
+  private readonly accessInfoResource = httpResource<AccessInfoResponse>(() => {
+    const uploadGroup = this.expandedUploadGroup();
+    if (!uploadGroup) {
+      return;
+    }
+
+    return `/api/files/group/${uploadGroup}/access-info`;
+  });
 
   files = signal<FileUploadResponse[]>([]);
-  loading = signal(true);
+  loading = computed(() => this.filesResource.isLoading() && this.files().length === 0);
   error = signal<string | null>(null);
-  userEmail = signal('');
-  userHasPassword = signal(false);
+  userEmail = computed(() => this.authService.currentUser()?.email ?? '');
+  userHasPassword = computed(() => Boolean(this.authService.currentUser()?.has_password));
   copiedGroupKey = signal<string | null>(null);
   expandedGroupKey = signal<string | null>(null);
-  userTier = signal('temporary');
+  userTier = computed(() => this.authService.currentUser()?.tier ?? 'temporary');
   accountSaving = signal(false);
   accountError = signal<string | null>(null);
   accountMessage = signal<string | null>(null);
   accountCurrentPassword = signal('');
   accountNewPassword = signal('');
   accountConfirmPassword = signal('');
-  quota = signal<QuotaResponse | null>(null);
+  quota = computed(() => (this.quotaResource.hasValue() ? this.quotaResource.value() : null));
 
   // Unified panel settings (bound to upload-settings component)
   panelExpiryHours = signal(72);
@@ -69,13 +108,24 @@ export class DashboardComponent implements OnInit {
   panelDescription = signal('');
   panelSettingsHasError = signal(false);
   // Download stats for the expanded group
-  groupStats = signal<DownloadStatsResponse | null>(null);
-  statsLoading = signal(false);
+  groupStats = computed(() =>
+    this.groupStatsResource.hasValue() ? this.groupStatsResource.value() : null,
+  );
+  statsLoading = computed(
+    () => Boolean(this.expandedUploadGroup()) && this.groupStatsResource.isLoading(),
+  );
   statsExpanded = signal(false);
 
   // Access control for the expanded group
-  accessInfo = signal<AccessInfoResponse | null>(null);
-  accessLoading = signal(false);
+  accessInfo = computed(() =>
+    this.accessInfoResource.hasValue() ? this.accessInfoResource.value() : null,
+  );
+  accessSaving = signal(false);
+  accessLoading = computed(
+    () =>
+      this.accessSaving() ||
+      (Boolean(this.expandedUploadGroup()) && this.accessInfoResource.isLoading()),
+  );
   newPasswordLabel = signal('');
   newPasswordValue = signal('');
   newPasswordLabelWithoutValue = computed(
@@ -154,22 +204,27 @@ export class DashboardComponent implements OnInit {
     () => this.quota()?.max_downloads_options ?? null,
   );
 
-  ngOnInit(): void {
-    this.loadFiles();
-    this.authService.getMe().subscribe({
-      next: (me) => {
-        this.userEmail.set(me.email);
-        this.userHasPassword.set(Boolean(me.has_password));
-        this.userTier.set(me.tier);
-      },
+  constructor() {
+    this.authService.syncSession();
+
+    effect(() => {
+      if (this.filesResource.hasValue()) {
+        this.files.set(this.filesResource.value().files);
+      }
     });
-    this.authService.getQuota().subscribe({
-      error: () => {
-        this.quota.set(null);
-      },
-      next: (quota) => {
-        this.quota.set(quota);
-      },
+
+    effect(() => {
+      if (this.filesResource.error()) {
+        this.error.set('Failed to load uploads.');
+      }
+    });
+
+    effect(() => {
+      if (this.groupInfoResource.hasValue()) {
+        const info = this.groupInfoResource.value();
+        this.panelTitle.set(info.title ?? '');
+        this.panelDescription.set(info.description ?? '');
+      }
     });
   }
 
@@ -215,8 +270,8 @@ export class DashboardComponent implements OnInit {
         this.accountSaving.set(false);
       },
       next: (me) => {
-        this.userEmail.set(me.email);
-        this.userHasPassword.set(Boolean(me.has_password));
+        this.authService.currentUser.set(me);
+        this.authService.authenticated.set(true);
         this.accountMessage.set(
           changingExistingPassword ? 'Password updated.' : 'Password created.',
         );
@@ -224,20 +279,6 @@ export class DashboardComponent implements OnInit {
         this.accountNewPassword.set('');
         this.accountConfirmPassword.set('');
         this.accountSaving.set(false);
-      },
-    });
-  }
-
-  private loadFiles(): void {
-    this.loading.set(true);
-    this.fileService.listFiles().subscribe({
-      error: (err: unknown) => {
-        this.error.set(getErrorDetail(err, 'Failed to load uploads.'));
-        this.loading.set(false);
-      },
-      next: (res) => {
-        this.files.set(res.files);
-        this.loading.set(false);
       },
     });
   }
@@ -267,8 +308,12 @@ export class DashboardComponent implements OnInit {
     return true;
   }
 
+  canEditUploads(): boolean {
+    return this.userTier() === 'premium';
+  }
+
   canSave(): boolean {
-    return this.userTier() !== 'temporary';
+    return this.canEditUploads();
   }
 
   hasUnsavedFiles(): boolean {
@@ -313,15 +358,11 @@ export class DashboardComponent implements OnInit {
     if (this.expandedGroupKey() === groupKey) {
       this.expandedGroupKey.set(null);
       this.newFiles.set([]);
-      this.groupStats.set(null);
-      this.accessInfo.set(null);
       this.statsExpanded.set(false);
       this.panelSettingsHasError.set(false);
     } else {
       this.expandedGroupKey.set(groupKey);
       this.newFiles.set([]);
-      this.groupStats.set(null);
-      this.accessInfo.set(null);
       this.statsExpanded.set(false);
       this.panelSettingsHasError.set(false);
       this.newPasswordLabel.set('');
@@ -338,18 +379,17 @@ export class DashboardComponent implements OnInit {
         // Snap to nearest valid expiry option so the select shows a valid value
         this.panelExpiryHours.set(this.snapToNearestExpiry(hoursLeft));
         this.panelMaxDownloads.set(ref.max_downloads ?? 0);
-        // Load download stats and group info (for title/description)
-        if (group.uploadGroup) {
-          this.loadGroupStats(group.uploadGroup);
-          this.loadGroupInfo(group.uploadGroup);
-          this.loadAccessInfo(group.uploadGroup);
-        }
       }
     }
   }
 
   /** Save group settings in-place (premium only, keeps download tokens). */
   saveGroup(group: UploadGroup): void {
+    if (!this.canEditUploads()) {
+      this.error.set('Upgrade to Premium to edit uploads without changing the link.');
+      return;
+    }
+
     this.isSaving.set(true);
 
     // First: if there are staged new files, add them to the group
@@ -419,28 +459,32 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  async confirmRefresh(group: UploadGroup): Promise<void> {
-    const confirmed = await this.confirmDialog.confirm({
-      confirmLabel: 'Refresh upload',
-      message:
-        'Refreshing creates new download links and expires the current ones. Anyone using the old links will need the new transfer URL.',
-      title: 'Refresh this upload?',
-    });
-
-    if (!confirmed) {
-      return;
-    }
-
-    this.executeRefresh(group);
+  confirmRefresh(group: UploadGroup): void {
+    this.confirmDialog.confirm(
+      {
+        confirmLabel: 'Refresh upload',
+        message:
+          'Refreshing creates new download links and expires the current ones. Anyone using the old links will need the new transfer URL.',
+        title: 'Refresh this upload?',
+      },
+      () => {
+        this.executeRefresh(group);
+      },
+    );
   }
 
   /** Execute refresh after confirmation. */
   executeRefresh(group: UploadGroup): void {
+    if (group.uploadGroup && this.newFiles().length > 0 && !this.canEditUploads()) {
+      this.error.set('Upgrade to Premium to add files to an existing upload.');
+      return;
+    }
+
     this.isSaving.set(true);
 
     // First: if there are staged new files, add them to the group
     const addFilesObs =
-      group.uploadGroup && this.newFiles().length > 0
+      group.uploadGroup && this.canEditUploads() && this.newFiles().length > 0
         ? this.fileService.addFilesToGroup(group.uploadGroup, this.newFiles())
         : null;
 
@@ -516,64 +560,28 @@ export class DashboardComponent implements OnInit {
   }
 
   /** Delete all files in a group. */
-  async deleteGroup(group: UploadGroup): Promise<void> {
-    const confirmed = await this.confirmDialog.confirm({
-      confirmLabel: 'Delete upload',
-      message: `This will remove ${group.files.length} ${group.files.length === 1 ? 'file' : 'files'} from this transfer. This cannot be undone.`,
-      title: 'Delete this upload?',
-      tone: 'danger',
-    });
-
-    if (!confirmed) {
-      return;
-    }
-
-    this.expandedGroupKey.set(null);
-    for (const file of group.files) {
-      this.fileService.deleteFile(file.id).subscribe({
-        error: (err: unknown) => {
-          this.error.set(getErrorDetail(err, 'Failed to delete upload.'));
-        },
-        next: () => {
-          this.files.update((files) => files.filter((f) => f.id !== file.id));
-        },
-      });
-    }
-  }
-
-  private loadGroupStats(uploadGroup: string): void {
-    this.statsLoading.set(true);
-    this.fileService.getGroupStats(uploadGroup).subscribe({
-      error: () => {
-        this.statsLoading.set(false);
+  deleteGroup(group: UploadGroup): void {
+    this.confirmDialog.confirm(
+      {
+        confirmLabel: 'Delete upload',
+        message: `This will remove ${group.files.length} ${group.files.length === 1 ? 'file' : 'files'} from this transfer. This cannot be undone.`,
+        title: 'Delete this upload?',
+        tone: 'danger',
       },
-      next: (stats) => {
-        this.groupStats.set(stats);
-        this.statsLoading.set(false);
+      () => {
+        this.expandedGroupKey.set(null);
+        for (const file of group.files) {
+          this.fileService.deleteFile(file.id).subscribe({
+            error: (err: unknown) => {
+              this.error.set(getErrorDetail(err, 'Failed to delete upload.'));
+            },
+            next: () => {
+              this.files.update((files) => files.filter((f) => f.id !== file.id));
+            },
+          });
+        }
       },
-    });
-  }
-
-  private loadGroupInfo(uploadGroup: string): void {
-    this.fileService.getGroupInfo(uploadGroup).subscribe({
-      next: (info) => {
-        this.panelTitle.set(info.title ?? '');
-        this.panelDescription.set(info.description ?? '');
-      },
-    });
-  }
-
-  private loadAccessInfo(uploadGroup: string): void {
-    this.accessLoading.set(true);
-    this.fileService.getAccessInfo(uploadGroup).subscribe({
-      error: () => {
-        this.accessLoading.set(false);
-      },
-      next: (info) => {
-        this.accessInfo.set(info);
-        this.accessLoading.set(false);
-      },
-    });
+    );
   }
 
   toggleStatsExpanded(): void {
@@ -581,15 +589,15 @@ export class DashboardComponent implements OnInit {
   }
 
   editAccess(uploadGroup: string, body: AccessEditRequest): void {
-    this.accessLoading.set(true);
+    this.accessSaving.set(true);
     this.fileService.editAccess(uploadGroup, body).subscribe({
       error: (err: unknown) => {
         this.error.set(getErrorDetail(err, 'Failed to update access control.'));
-        this.accessLoading.set(false);
+        this.accessSaving.set(false);
       },
       next: (info) => {
-        this.accessInfo.set(info);
-        this.accessLoading.set(false);
+        this.accessInfoResource.set(info);
+        this.accessSaving.set(false);
         // Update file list badges
         this.files.update((files) =>
           files.map((f) => {

@@ -1393,7 +1393,7 @@
           "files"
         ],
         "summary": "Add Files To Group",
-        "description": "Add new files to an existing upload group. Requires ownership of the group.",
+        "description": "Add new files to an existing upload group. Premium only.",
         "operationId": "add_files_to_group_api_files_group__upload_group__add_post",
         "security": [
           {

@@ -709,6 +709,32 @@ async def test_owner_group_mutation_endpoints(premium_headers: dict[str, str]):
 
 
 @pytest.mark.asyncio
+async def test_free_cannot_add_files_to_existing_group(
+    free_headers: dict[str, str],
+):
+    """Free users cannot add files to an existing upload group."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        upload_group = await _upload_with_access(client, free_headers)
+
+        add_resp = await client.post(
+            f"/api/files/group/{upload_group}/add",
+            files=[("files", ("extra.txt", b"extra", "text/plain"))],
+            headers=free_headers,
+        )
+        group_resp = await client.get(
+            f"/api/files/group/{upload_group}", headers=free_headers
+        )
+
+    assert add_resp.status_code == 403
+    assert get_error_message(add_resp) == "Only premium users can edit uploads."
+    assert group_resp.status_code == 200
+    assert len(group_resp.json()["files"]) == 1
+    assert group_resp.json()["files"][0]["original_filename"] == "edit.txt"
+
+
+@pytest.mark.asyncio
 async def test_recipient_stats_returns_email_download_counts(
     free_headers: dict[str, str],
 ):

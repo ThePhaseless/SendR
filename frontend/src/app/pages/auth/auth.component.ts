@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { of, switchMap } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { getErrorDetail } from '../../utils/error.utils';
@@ -17,7 +18,9 @@ export class AuthComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  private readonly destroyRef = inject(DestroyRef);
+  private readonly queryParamMap = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
 
   readonly isRegister = signal(this.route.snapshot.queryParamMap.get('mode') === 'register');
 
@@ -34,7 +37,8 @@ export class AuthComponent {
   private static readonly EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
   constructor() {
-    const subscription = this.route.queryParamMap.subscribe((queryParams) => {
+    effect(() => {
+      const queryParams = this.queryParamMap();
       const nextIsRegister = queryParams.get('mode') === 'register';
       const previousIsRegister = this.isRegister();
 
@@ -48,10 +52,6 @@ export class AuthComponent {
       if (nextIsRegister !== previousIsRegister) {
         this.resetFlow();
       }
-    });
-
-    this.destroyRef.onDestroy(() => {
-      subscription.unsubscribe();
     });
   }
 

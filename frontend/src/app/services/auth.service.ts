@@ -1,17 +1,11 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable, inject, signal } from '@angular/core';
+import { HttpClient, httpResource } from '@angular/common/http';
+import { Injectable, effect, inject, signal } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { AuthService as ApiAuthService } from '../api/endpoints/auth/auth.service';
 import { SubscriptionService as ApiSubscriptionService } from '../api/endpoints/subscription/subscription.service';
-import type {
-  LimitsResponse,
-  QuotaResponse,
-  SessionResponse,
-  SubscriptionResponse,
-  UserResponse,
-} from '../api/model';
+import type { SessionResponse, SubscriptionResponse, UserResponse } from '../api/model';
 
 export type VerifyCodeResponse = SessionResponse;
 export type MeResponse = UserResponse;
@@ -24,10 +18,26 @@ export class AuthService {
   private readonly api = inject(ApiAuthService);
   private readonly subscriptionApi = inject(ApiSubscriptionService);
   private readonly apiUrl = environment.apiUrl;
-  private syncingSession = false;
+
+  private readonly sessionResource = httpResource<MeResponse>(() => `${this.apiUrl}/api/auth/me`);
 
   readonly authenticated = signal(false);
   readonly currentUser = signal<MeResponse | null>(null);
+
+  constructor() {
+    effect(() => {
+      if (this.sessionResource.hasValue()) {
+        this.currentUser.set(this.sessionResource.value());
+        this.authenticated.set(true);
+        return;
+      }
+
+      if (this.sessionResource.error()) {
+        this.currentUser.set(null);
+        this.authenticated.set(false);
+      }
+    });
+  }
 
   requestCode(email: string): Observable<Record<string, string>> {
     return this.api.requestCodeApiAuthRequestCodePost({ email });
@@ -73,18 +83,6 @@ export class AuthService {
     });
   }
 
-  getQuota(): Observable<QuotaResponse> {
-    return this.api.getQuotaApiAuthQuotaGet();
-  }
-
-  getLimits(): Observable<LimitsResponse> {
-    return this.api.getLimitsApiAuthLimitsGet();
-  }
-
-  getSubscription(): Observable<SubscriptionResponse> {
-    return this.subscriptionApi.getSubscriptionApiSubscriptionGet();
-  }
-
   upgradeToPremium(): Observable<SubscriptionResponse> {
     return this.subscriptionApi.upgradeToPremiumApiSubscriptionUpgradePost();
   }
@@ -107,24 +105,7 @@ export class AuthService {
   }
 
   syncSession(): void {
-    if (this.syncingSession) {
-      return;
-    }
-
-    this.syncingSession = true;
-    this.api.getMeApiAuthMeGet().subscribe({
-      complete: () => {
-        this.syncingSession = false;
-      },
-      error: () => {
-        this.currentUser.set(null);
-        this.authenticated.set(false);
-      },
-      next: (user) => {
-        this.currentUser.set(user);
-        this.authenticated.set(true);
-      },
-    });
+    this.sessionResource.reload();
   }
 
   logout(): void {

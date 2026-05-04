@@ -42,7 +42,6 @@
           />
         </div>
       }
-
       <div class="account-form-grid">
         <div class="form-group">
           <label for="new-password">New password</label>
@@ -255,7 +254,7 @@
               </div>
 
               <!-- Add files (compact picker, auto-stages) -->
-              @if (group.uploadGroup) {
+              @if (group.uploadGroup && canEditUploads()) {
                 <div class="expanded-section">
                   <h4>Add Files</h4>
                   <app-file-picker

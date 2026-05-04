@@ -624,7 +624,7 @@ if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha !== undefined) {
     );
   }
 /**
- * Add new files to an existing upload group. Requires ownership of the group.
+ * Add new files to an existing upload group. Premium only.
  * @summary Add Files To Group
  */
  addFilesToGroupApiFilesGroupUploadGroupAddPost<TData = MultiFileUploadResponse>(uploadGroup: string,

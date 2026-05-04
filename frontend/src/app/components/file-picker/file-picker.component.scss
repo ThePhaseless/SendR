@@ -157,6 +157,7 @@
 .staged-folder {
   @apply overflow-hidden;
   border-radius: 0.375rem;
+  flex-shrink: 0;
 }
 
 .staged-folder-header {

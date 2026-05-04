@@ -3,8 +3,12 @@ import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import type { FileUploadResponse, UploadGroupInfoResponse } from '../../api/model';
-import { FileService, type RecipientStatsResponse } from '../../services';
+import type {
+  FileUploadResponse,
+  RecipientStatsResponse,
+  UploadGroupInfoResponse,
+} from '../../api/model';
+import { FileService } from '../../services';
 import {
   filenameToEmoji,
   formatFileSize,
@@ -18,6 +22,14 @@ interface DownloadRequestOptions {
   fallbackFilename: string;
   reload: () => void;
   url: string;
+}
+
+interface SuccessfulDownloadOptions {
+  filename: string;
+  onComplete: () => void;
+  reload: () => void;
+  response: Response;
+  writableStream: FileSystemWritableFileStreamLike | null;
 }
 
 type ResponseChunk = Uint8Array<ArrayBuffer>;
@@ -77,6 +89,20 @@ export class DownloadComponent {
         const pw = this.passwordToken();
         const base = `/api/files/group/${this.group}`;
         return pw ? { headers: { 'X-Access-Token': pw }, url: base } : { url: base };
+      })
+    : undefined;
+
+  private readonly recipientStatsResource = this.group
+    ? httpResource<RecipientStatsResponse>(() => {
+        const token = this.passwordToken();
+        if (!token) {
+          return;
+        }
+
+        return {
+          headers: { 'X-Access-Token': token },
+          url: `/api/files/group/${encodeURIComponent(this.group)}/recipient-stats`,
+        };
       })
     : undefined;
 
@@ -195,8 +221,10 @@ export class DownloadComponent {
   downloading = signal(false);
 
   /** Recipient download stats (for email recipients). */
-  recipientStats = signal<RecipientStatsResponse | null>(null);
-  recipientStatsLoading = signal(false);
+  recipientStats = computed(() =>
+    this.recipientStatsResource?.hasValue() ? this.recipientStatsResource.value() : null,
+  );
+  recipientStatsLoading = computed(() => this.recipientStatsResource?.isLoading() ?? false);
 
   otherRecipientDownloads = computed(() => {
     const stats = this.recipientStats();
@@ -217,14 +245,6 @@ export class DownloadComponent {
     return Boolean(group?.has_passwords && stats && stats.downloads.length > 0);
   });
 
-  constructor() {
-    // If a password token is present (email invite link), try to load recipient stats
-    const pwToken = this.passwordToken();
-    if (pwToken && this.group) {
-      this.loadRecipientStats(pwToken);
-    }
-  }
-
   submitPassword(): void {
     const pw = this.enteredPassword().trim();
     if (!pw) {
@@ -235,45 +255,33 @@ export class DownloadComponent {
     this.passwordError.set('');
   }
 
-  private loadRecipientStats(token: string): void {
-    if (!this.group) {
-      return;
-    }
-    this.recipientStatsLoading.set(true);
-    this.fileService.getRecipientStats(this.group, token).subscribe({
-      error: () => {
-        this.recipientStatsLoading.set(false);
-      },
-      next: (stats) => {
-        this.recipientStats.set(stats);
-        this.recipientStatsLoading.set(false);
-      },
-    });
-  }
-
-  private async getDownloadErrorDetail(response: Response): Promise<string> {
-    const body = (await response.json().catch(() => null)) as unknown;
-    if (typeof body === 'object' && body !== null) {
-      const detail: unknown = Reflect.get(body, 'detail');
-      if (typeof detail === 'object' && detail !== null) {
-        const message: unknown = Reflect.get(detail, 'message');
-        if (typeof message === 'string') {
-          return toUserFacingErrorMessage(message);
+  private getDownloadErrorDetail(response: Response): Promise<string> {
+    return response
+      .json()
+      .catch(() => null)
+      .then((body: unknown) => {
+        if (typeof body === 'object' && body !== null) {
+          const detail: unknown = Reflect.get(body, 'detail');
+          if (typeof detail === 'object' && detail !== null) {
+            const message: unknown = Reflect.get(detail, 'message');
+            if (typeof message === 'string') {
+              return toUserFacingErrorMessage(message);
+            }
+          }
+          if (typeof detail === 'string') {
+            return toUserFacingErrorMessage(detail);
+          }
         }
-      }
-      if (typeof detail === 'string') {
-        return toUserFacingErrorMessage(detail);
-      }
-    }
-    return 'Download failed.';
+        return 'Download failed.';
+      });
   }
 
-  async download(): Promise<void> {
+  download(): void {
     const url = this.fileService.getDownloadUrlWithPassword(
       this.token,
       this.passwordToken() || undefined,
     );
-    await this.downloadFromUrl({
+    this.downloadFromUrl({
       accessToken: this.passwordToken() || null,
       fallbackFilename: this.fileInfo()?.original_filename ?? 'download',
       reload: () => {
@@ -283,12 +291,12 @@ export class DownloadComponent {
     });
   }
 
-  async downloadGroup(): Promise<void> {
+  downloadGroup(): void {
     const url = this.fileService.getGroupDownloadUrlWithPassword(
       this.group,
       this.passwordToken() || undefined,
     );
-    await this.downloadFromUrl({
+    this.downloadFromUrl({
       accessToken: this.passwordToken() || null,
       fallbackFilename: this.groupDownloadFallbackFilename(),
       reload: () => {
@@ -298,52 +306,165 @@ export class DownloadComponent {
     });
   }
 
-  private async downloadFromUrl(options: DownloadRequestOptions): Promise<void> {
+  private downloadFromUrl(options: DownloadRequestOptions): void {
     this.downloadError.set('');
     this.downloading.set(true);
     let writableStream: FileSystemWritableFileStreamLike | null = null;
     let completed = false;
-    try {
-      if (!options.accessToken) {
-        this.startBrowserDownload(options.url);
-        return;
-      }
 
-      writableStream = await this.openWritableDownloadStream(options.fallbackFilename);
-      const response = await fetch(options.url, {
-        credentials: 'include',
-        headers: options.accessToken ? { 'X-Access-Token': options.accessToken } : undefined,
+    if (!options.accessToken) {
+      this.startBrowserDownload(options.url);
+      this.downloading.set(false);
+      return;
+    }
+
+    void this.openWritableDownloadStream(options.fallbackFilename)
+      .then((stream) => {
+        writableStream = stream;
+        return fetch(options.url, {
+          credentials: 'include',
+          headers: { 'X-Access-Token': options.accessToken ?? '' },
+        });
+      })
+      .then((response) => {
+        if (!response.ok) {
+          return this.handleDownloadErrorResponse(response, writableStream, options);
+        }
+
+        const filename =
+          this.getFilenameFromContentDisposition(response) ?? options.fallbackFilename;
+
+        return this.writeSuccessfulDownload({
+          filename,
+          onComplete: () => {
+            completed = true;
+          },
+          reload: options.reload,
+          response,
+          writableStream,
+        });
+      })
+      .then(undefined, (error: unknown) =>
+        this.handleDownloadFailure(error, completed, writableStream),
+      )
+      .finally(() => {
+        this.downloading.set(false);
       });
-      if (!response.ok) {
-        await this.abortWritableStream(writableStream);
-        const detail = await this.getDownloadErrorDetail(response);
+  }
+
+  private handleDownloadErrorResponse(
+    response: Response,
+    writableStream: FileSystemWritableFileStreamLike | null,
+    options: DownloadRequestOptions,
+  ): Promise<void> {
+    return this.abortWritableStream(writableStream)
+      .then(() => this.getDownloadErrorDetail(response))
+      .then((detail) => {
         this.downloadError.set(detail);
         options.reload();
-        return;
-      }
+      });
+  }
 
-      const filename = this.getFilenameFromContentDisposition(response) ?? options.fallbackFilename;
-
-      if (writableStream && response.body) {
-        await this.writeResponseToStream(response, writableStream);
-      } else {
-        const blob = await response.blob();
-        this.triggerDownload(blob, filename);
-      }
-
-      completed = true;
+  private writeSuccessfulDownload(options: SuccessfulDownloadOptions): Promise<void> {
+    return this.writeResponseToDestination(
+      options.response,
+      options.writableStream,
+      options.filename,
+    ).then(() => {
+      options.onComplete();
       options.reload();
-    } catch (error: unknown) {
-      if (!completed) {
-        await this.abortWritableStream(writableStream);
-      }
-      if (this.isUserCancelledDownload(error)) {
-        return;
-      }
-      this.downloadError.set('Download failed. Please try again.');
-    } finally {
-      this.downloading.set(false);
+    });
+  }
+
+  private handleDownloadFailure(
+    error: unknown,
+    completed: boolean,
+    writableStream: FileSystemWritableFileStreamLike | null,
+  ): Promise<void> {
+    if (completed || this.isUserCancelledDownload(error)) {
+      return Promise.resolve();
     }
+
+    return this.abortWritableStream(writableStream).then(() => {
+      this.downloadError.set('Download failed. Please try again.');
+    });
+  }
+
+  private writeResponseToDestination(
+    response: Response,
+    writableStream: FileSystemWritableFileStreamLike | null,
+    filename: string,
+  ): Promise<void> {
+    if (writableStream && response.body) {
+      return this.writeResponseToStream(response, writableStream);
+    }
+
+    return response.blob().then((blob) => {
+      this.triggerDownload(blob, filename);
+    });
+  }
+
+  private openWritableDownloadStream(
+    suggestedName: string,
+  ): Promise<FileSystemWritableFileStreamLike | null> {
+    const pickerWindow = window as SaveFilePickerWindow;
+    if (!window.isSecureContext || typeof pickerWindow.showSaveFilePicker !== 'function') {
+      return Promise.resolve(null);
+    }
+
+    return pickerWindow
+      .showSaveFilePicker({ suggestedName })
+      .then((handle) => handle.createWritable());
+  }
+
+  private writeResponseToStream(
+    response: Response,
+    writableStream: FileSystemWritableFileStreamLike,
+  ): Promise<void> {
+    if (!response.body) {
+      return response
+        .blob()
+        .then((blob) => writableStream.write(blob))
+        .then(() => writableStream.close());
+    }
+
+    return response.body
+      .pipeTo(writableStream)
+      .then(undefined, (error: unknown) => this.abortFailedPipe(writableStream, error));
+  }
+
+  private abortFailedPipe(
+    writableStream: FileSystemWritableFileStreamLike,
+    error: unknown,
+  ): Promise<never> {
+    return writableStream.abort(error).then(
+      () => {
+        throw error;
+      },
+      () => {
+        throw error;
+      },
+    );
+  }
+
+  private abortWritableStream(
+    writableStream: FileSystemWritableFileStreamLike | null,
+  ): Promise<void> {
+    if (!writableStream) {
+      return Promise.resolve();
+    }
+
+    if (typeof writableStream.abort === 'function') {
+      return writableStream.abort().then(undefined, DownloadComponent.ignoreWritableStreamError);
+    }
+
+    return writableStream.close().then(undefined, DownloadComponent.ignoreWritableStreamError);
+  }
+
+  private static ignoreWritableStreamError(this: void): void {}
+
+  private isUserCancelledDownload(error: unknown): boolean {
+    return error instanceof DOMException && error.name === 'AbortError';
   }
 
   private startBrowserDownload(url: string): void {
@@ -354,56 +475,6 @@ export class DownloadComponent {
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
-  }
-
-  private async openWritableDownloadStream(
-    suggestedName: string,
-  ): Promise<FileSystemWritableFileStreamLike | null> {
-    const pickerWindow = window as SaveFilePickerWindow;
-    if (!window.isSecureContext || typeof pickerWindow.showSaveFilePicker !== 'function') {
-      return null;
-    }
-
-    const handle = await pickerWindow.showSaveFilePicker({ suggestedName });
-    return handle.createWritable();
-  }
-
-  private async writeResponseToStream(
-    response: Response,
-    writableStream: FileSystemWritableFileStreamLike,
-  ): Promise<void> {
-    if (!response.body) {
-      const blob = await response.blob();
-      await writableStream.write(blob);
-      await writableStream.close();
-      return;
-    }
-
-    try {
-      await response.body.pipeTo(writableStream);
-    } catch (error: unknown) {
-      await writableStream.abort?.(error).catch(() => {});
-      throw error;
-    }
-  }
-
-  private async abortWritableStream(
-    writableStream: FileSystemWritableFileStreamLike | null,
-  ): Promise<void> {
-    if (!writableStream) {
-      return;
-    }
-
-    if (typeof writableStream.abort === 'function') {
-      await writableStream.abort().catch(() => {});
-      return;
-    }
-
-    await writableStream.close().catch(() => {});
-  }
-
-  private isUserCancelledDownload(error: unknown): boolean {
-    return error instanceof DOMException && error.name === 'AbortError';
   }
 
   private getFilenameFromContentDisposition(response: Response): string | null {

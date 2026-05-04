@@ -10,12 +10,10 @@ import type {
   AccessInfoResponse,
   DownloadStatsResponse,
   FileEditRequest,
-  FileListResponse,
   FileUploadResponse,
   GroupEditRequest,
   GroupRefreshRequest,
   MultiFileUploadResponse,
-  RecipientStatsResponse,
   UploadGroupInfoResponse,
 } from '../api/model';
 
@@ -28,7 +26,6 @@ export type {
   GroupEditRequest,
   GroupRefreshRequest,
   MultiFileUploadResponse,
-  RecipientStatsResponse,
   UploadGroupInfoResponse,
 };
 
@@ -80,14 +77,6 @@ export class FileService {
     );
   }
 
-  getFileInfo(downloadToken: string): Observable<FileUploadResponse> {
-    return this.api.getFileInfoApiFilesDownloadTokenInfoGet(downloadToken);
-  }
-
-  listFiles(): Observable<FileListResponse> {
-    return this.api.listFilesApiFilesGet();
-  }
-
   refreshFile(fileId: number, expiryHours?: number): Observable<FileUploadResponse> {
     return this.api.refreshDownloadLinkApiFilesFileIdRefreshPost(fileId, {
       expiry_hours: expiryHours,
@@ -126,10 +115,6 @@ export class FileService {
     );
   }
 
-  getGroupInfo(uploadGroup: string): Observable<UploadGroupInfoResponse> {
-    return this.api.getGroupInfoApiFilesGroupUploadGroupGet(uploadGroup);
-  }
-
   addFilesToGroup(
     uploadGroup: string,
     files: UploadFileEntry[],
@@ -159,23 +144,8 @@ export class FileService {
     return this.api.editGroupApiFilesGroupUploadGroupPatch(uploadGroup, body);
   }
 
-  getAccessInfo(uploadGroup: string): Observable<AccessInfoResponse> {
-    return this.api.getAccessInfoApiFilesGroupUploadGroupAccessInfoGet(uploadGroup);
-  }
-
   editAccess(uploadGroup: string, body: AccessEditRequest): Observable<AccessInfoResponse> {
     return this.api.editAccessApiFilesGroupUploadGroupAccessPatch(uploadGroup, body);
-  }
-
-  getGroupStats(uploadGroup: string): Observable<DownloadStatsResponse> {
-    return this.api.getGroupStatsApiFilesGroupUploadGroupStatsGet(uploadGroup);
-  }
-
-  getRecipientStats(uploadGroup: string, token: string): Observable<RecipientStatsResponse> {
-    return this.http.get<RecipientStatsResponse>(
-      `${this.apiUrl}/api/files/group/${encodeURIComponent(uploadGroup)}/recipient-stats`,
-      { headers: { 'X-Access-Token': token } },
-    );
   }
 
   getDownloadUrlWithPassword(downloadToken: string, _password?: string): string {

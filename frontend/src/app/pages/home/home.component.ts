@@ -1,4 +1,4 @@
-import { HttpEventType } from '@angular/common/http';
+import { HttpEventType, httpResource } from '@angular/common/http';
 import {
   CUSTOM_ELEMENTS_SCHEMA,
   ChangeDetectionStrategy,
@@ -10,8 +10,11 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { AltchaService } from '../../api/endpoints/altcha/altcha.service';
-import type { LimitsResponse, QuotaResponse } from '../../api/model';
+import type {
+  GetChallengeApiAltchaChallengeGet200,
+  LimitsResponse,
+  QuotaResponse,
+} from '../../api/model';
 import {
   FilePickerComponent,
   type UploadFileEntry,
@@ -42,12 +45,6 @@ interface AltchaStateChangeDetail {
 
 type AltchaState = 'unverified' | 'verifying' | 'verified' | 'expired' | 'error' | 'code';
 type UploadLimits = LimitsResponse | QuotaResponse;
-
-interface UploadLimitsRequest {
-  subscribe: (observer: { error: () => void; next: (limits: UploadLimits) => void }) => {
-    unsubscribe: () => void;
-  };
-}
 
 const PREMIUM_MAX_EXPIRY_HOURS = 720;
 
@@ -98,8 +95,16 @@ function isAltchaState(value: string | undefined): value is AltchaState {
 export class HomeComponent {
   private readonly fileService = inject(FileService);
   private readonly authService = inject(AuthService);
-  private readonly altchaService = inject(AltchaService);
   private readonly router = inject(Router);
+  private readonly limitsResource = httpResource<LimitsResponse>(() =>
+    this.authService.authenticated() ? undefined : '/api/auth/limits',
+  );
+  private readonly quotaResource = httpResource<QuotaResponse>(() =>
+    this.authService.authenticated() ? '/api/auth/quota' : undefined,
+  );
+  private readonly altchaChallengeResource = httpResource<GetChallengeApiAltchaChallengeGet200>(
+    () => '/api/altcha/challenge',
+  );
 
   isUploading = signal(false);
   uploadProgress = signal(0);
@@ -190,32 +195,26 @@ export class HomeComponent {
   private lastProgressTime = 0;
   private lastProgressBytes = 0;
 
-  private readonly limitsData = signal<UploadLimits | null>(null);
-  private readonly limitsRefreshNonce = signal(0);
+  private readonly limitsData = computed<UploadLimits | null>(() => {
+    if (this.authService.authenticated()) {
+      return this.quotaResource.hasValue() ? this.quotaResource.value() : null;
+    }
+
+    return this.limitsResource.hasValue() ? this.limitsResource.value() : null;
+  });
 
   constructor() {
-    this.loadAltchaChallenge();
+    effect(() => {
+      if (this.altchaChallengeResource.hasValue()) {
+        this.altchaChallenge.set(JSON.stringify(this.altchaChallengeResource.value()));
+      }
+    });
 
-    effect((onCleanup) => {
-      const authenticated = this.authService.authenticated();
-      this.limitsRefreshNonce();
-
-      const request$: UploadLimitsRequest = authenticated
-        ? this.authService.getQuota()
-        : this.authService.getLimits();
-
-      const request = request$.subscribe({
-        error: () => {
-          this.limitsData.set(null);
-        },
-        next: (limits: UploadLimits) => {
-          this.limitsData.set(limits);
-        },
-      });
-
-      onCleanup(() => {
-        request.unsubscribe();
-      });
+    effect(() => {
+      if (this.altchaChallengeResource.error()) {
+        this.altchaChallenge.set(null);
+        this.error.set('Unable to load CAPTCHA challenge. Please try again later.');
+      }
     });
   }
 
@@ -617,17 +616,17 @@ export class HomeComponent {
   }
 
   copyLink(): void {
-    void (async () => {
-      try {
-        await navigator.clipboard.writeText(this.getShareableLink());
+    void navigator.clipboard
+      .writeText(this.getShareableLink())
+      .then(() => {
         this.copied.set(true);
-        setTimeout(() => {
+        return setTimeout(() => {
           this.copied.set(false);
         }, 2000);
-      } catch {
+      })
+      .catch(() => {
         this.error.set('Failed to copy link to clipboard.');
-      }
-    })();
+      });
   }
 
   formatSize(bytes: number): string {
@@ -727,19 +726,17 @@ export class HomeComponent {
   }
 
   private loadAltchaChallenge(): void {
-    this.altchaService.getChallengeApiAltchaChallengeGet().subscribe({
-      error: () => {
-        this.altchaChallenge.set(null);
-        this.error.set('Unable to load CAPTCHA challenge. Please try again later.');
-      },
-      next: (challenge) => {
-        this.altchaChallenge.set(JSON.stringify(challenge));
-      },
-    });
+    this.altchaChallenge.set(null);
+    this.altchaChallengeResource.reload();
   }
 
   private reloadLimits(): void {
-    this.limitsRefreshNonce.update((value) => value + 1);
+    if (this.authService.authenticated()) {
+      this.quotaResource.reload();
+      return;
+    }
+
+    this.limitsResource.reload();
   }
 
   private getAltchaStateDetail(event: Event): AltchaStateChangeDetail | null {

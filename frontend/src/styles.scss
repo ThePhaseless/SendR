@@ -264,6 +264,37 @@ button {
   }
 }
 
+.scroll-prominent {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable both-edges;
+  scrollbar-width: auto;
+  padding-right: 0.5rem;
+
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
+    outline-offset: 0.2rem;
+  }
+
+  &::-webkit-scrollbar {
+    width: 0.9rem;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: color-mix(in srgb, var(--color-primary-light) 60%, transparent);
+    border-radius: 999px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--color-primary) 58%, var(--color-card-bg));
+    border-radius: 999px;
+    border: 0.2rem solid transparent;
+    background-clip: padding-box;
+  }
+}
+
 .scroll-compact {
   max-height: min(14rem, 38vh);
 }

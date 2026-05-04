@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import type { OnInit } from '@angular/core';
+import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { SubscriptionResponse, UserResponse } from '../../api/model';
@@ -13,40 +13,27 @@ import { AuthService } from '../../services/auth.service';
   styleUrl: './premium.component.scss',
   templateUrl: './premium.component.html',
 })
-export class PremiumComponent implements OnInit {
+export class PremiumComponent {
   private readonly authService = inject(AuthService);
 
-  user = signal<UserResponse | null>(null);
-  subscription = signal<SubscriptionResponse | null>(null);
-  loading = signal(true);
-  error = signal<string | null>(null);
+  private readonly userResource = httpResource<UserResponse>(() => '/api/auth/me');
+  private readonly subscriptionResource = httpResource<SubscriptionResponse>(() =>
+    this.userResource.hasValue() ? '/api/subscription' : undefined,
+  );
+  private readonly mutationError = signal<string | null>(null);
+
+  user = computed(() => (this.userResource.hasValue() ? this.userResource.value() : null));
+  subscription = computed(() =>
+    this.subscriptionResource.hasValue() ? this.subscriptionResource.value() : null,
+  );
+  loading = computed(() => this.userResource.isLoading() || this.subscriptionResource.isLoading());
+  error = computed(
+    () =>
+      this.mutationError() ??
+      (this.subscriptionResource.error() ? 'Failed to load subscription info.' : null),
+  );
   processing = signal(false);
-  readonly isAuthenticated = computed(() => this.authService.authenticated());
-
-  ngOnInit(): void {
-    this.authService.getMe().subscribe({
-      error: () => {
-        this.user.set(null);
-        this.loading.set(false);
-      },
-      next: (me) => {
-        this.user.set(me);
-        this.loadSubscription();
-      },
-    });
-  }
-
-  private loadSubscription(): void {
-    this.authService.getSubscription().subscribe({
-      error: () => {
-        this.loading.set(false);
-      },
-      next: (sub) => {
-        this.subscription.set(sub);
-        this.loading.set(false);
-      },
-    });
-  }
+  readonly isAuthenticated = computed(() => this.userResource.hasValue());
 
   isPremium(): boolean {
     return this.user()?.tier === 'premium';
@@ -68,15 +55,16 @@ export class PremiumComponent implements OnInit {
 
   upgrade(): void {
     this.processing.set(true);
-    this.error.set(null);
+    this.mutationError.set(null);
     this.authService.upgradeToPremium().subscribe({
       error: () => {
-        this.error.set('Failed to upgrade. Please try again.');
+        this.mutationError.set('Failed to upgrade. Please try again.');
         this.processing.set(false);
       },
       next: (sub) => {
-        this.subscription.set(sub);
-        this.user.update((u) => (u ? { ...u, tier: 'premium' } : u));
+        this.subscriptionResource.set(sub);
+        this.userResource.update((user) => (user ? { ...user, tier: 'premium' } : user));
+        this.authService.currentUser.update((user) => (user ? { ...user, tier: 'premium' } : user));
         this.processing.set(false);
       },
     });
@@ -84,15 +72,16 @@ export class PremiumComponent implements OnInit {
 
   cancel(): void {
     this.processing.set(true);
-    this.error.set(null);
+    this.mutationError.set(null);
     this.authService.cancelSubscription().subscribe({
       error: () => {
-        this.error.set('Failed to cancel. Please try again.');
+        this.mutationError.set('Failed to cancel. Please try again.');
         this.processing.set(false);
       },
       next: (sub) => {
-        this.subscription.set(sub);
-        this.user.update((u) => (u ? { ...u, tier: 'free' } : u));
+        this.subscriptionResource.set(sub);
+        this.userResource.update((user) => (user ? { ...user, tier: 'free' } : user));
+        this.authService.currentUser.update((user) => (user ? { ...user, tier: 'free' } : user));
         this.processing.set(false);
       },
     });
