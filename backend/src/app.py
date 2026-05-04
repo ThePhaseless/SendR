@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import logging
 from contextlib import asynccontextmanager
 from hmac import compare_digest
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from alembic.config import Config
 from fastapi import FastAPI, HTTPException, Request, status
@@ -21,12 +23,17 @@ logger = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).resolve().parent.parent.parent.parent / "static"
 _ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
 
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from starlette.responses import Response as StarletteResponse
+
 
 def _sync_database_url(url: str) -> str:
     return url.replace("+aiosqlite", "").replace("+asyncpg", "")
 
 
-def _run_migrations() -> None:
+def run_migrations() -> None:
     logger.info("Running database migrations...")
     cfg = Config(str(_ALEMBIC_INI))
     sync_url = _sync_database_url(settings.DATABASE_URL)
@@ -54,7 +61,7 @@ def _run_migrations() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    _run_migrations()
+    run_migrations()
     yield
 
 
@@ -82,7 +89,9 @@ app.add_exception_handler(StarletteHTTPException, _http_exception_handler)
 
 
 @app.middleware("http")
-async def enforce_cookie_csrf(request: Request, call_next):
+async def enforce_cookie_csrf(
+    request: Request, call_next: Callable[[Request], Awaitable[StarletteResponse]]
+) -> StarletteResponse:
     if (
         request.method in {"POST", "PATCH", "PUT", "DELETE"}
         and request.url.path.startswith("/api/")

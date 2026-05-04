@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -13,7 +13,8 @@ from models import (
     UserLogin,
     UserTier,
     VerificationCode,
-    _utcnow,
+    require_id,
+    utcnow,
 )
 from security import create_access_token, hash_token
 from tests.utils import get_error_message
@@ -31,13 +32,16 @@ async def _create_user(
         user = User(email=email, tier=tier, is_admin=is_admin, is_banned=is_banned)
         session.add(user)
         await session.flush()
+        user_id = require_id(user.id, "User")
         raw_token, expires_at = create_access_token(user.id)
         auth_token = AuthToken(
-            user_id=user.id, token=hash_token(raw_token), expires_at=expires_at
+            user_id=user_id,
+            token=hash_token(raw_token),
+            expires_at=expires_at,
         )
         session.add(auth_token)
         await session.commit()
-    return user.id, {"Authorization": f"Bearer {raw_token}"}
+    return user_id, {"Authorization": f"Bearer {raw_token}"}
 
 
 async def _create_upload(
@@ -47,7 +51,7 @@ async def _create_upload(
     download_token: str,
     name: str,
     download_count: int = 0,
-    expires_at=None,
+    expires_at: datetime | None = None,
     file_size_bytes: int = 123,
 ) -> None:
     session_factory = database.async_session
@@ -61,7 +65,7 @@ async def _create_upload(
                 download_token=download_token,
                 download_count=download_count,
                 upload_group=upload_group,
-                expires_at=expires_at or (_utcnow() + timedelta(days=2)),
+                expires_at=expires_at or (utcnow() + timedelta(days=2)),
             )
         )
         await session.commit()
@@ -72,7 +76,7 @@ async def _create_login(
     user_id: int,
     auth_method: str,
     ip_address: str,
-    logged_in_at=None,
+    logged_in_at: datetime | None = None,
 ) -> None:
     session_factory = database.async_session
     async with session_factory() as session:
@@ -81,7 +85,7 @@ async def _create_login(
                 user_id=user_id,
                 auth_method=auth_method,
                 ip_address=ip_address,
-                logged_in_at=logged_in_at or _utcnow(),
+                logged_in_at=logged_in_at or utcnow(),
             )
         )
         await session.commit()
@@ -146,7 +150,7 @@ async def test_banned_user_cannot_request_or_verify_code():
             VerificationCode(
                 email=banned_email,
                 code="123456",
-                expires_at=_utcnow() + timedelta(minutes=5),
+                expires_at=utcnow() + timedelta(minutes=5),
             )
         )
         await session.commit()
@@ -179,7 +183,7 @@ async def test_verify_code_records_login_event():
             VerificationCode(
                 email=email,
                 code="654321",
-                expires_at=_utcnow() + timedelta(minutes=5),
+                expires_at=utcnow() + timedelta(minutes=5),
             )
         )
         await session.commit()
@@ -198,12 +202,13 @@ async def test_verify_code_records_login_event():
     async with session_factory() as session:
         user_result = await session.exec(select(User).where(User.email == email))
         user = user_result.first()
+        assert user is not None
+        user_id = require_id(user.id, "User")
         login_result = await session.exec(
-            select(UserLogin).where(UserLogin.user_id == user.id)
+            select(UserLogin).where(UserLogin.user_id == user_id)
         )
         login = login_result.first()
 
-    assert user is not None
     assert login is not None
     assert login.auth_method == "verification_code"
     assert login.ip_address == "203.0.113.10"
@@ -273,7 +278,7 @@ async def test_admin_can_list_user_logins_and_stats():
         is_admin=True,
     )
     user_id, _ = await _create_user(email="stats-user@sendr.local")
-    now = _utcnow()
+    now = utcnow()
     active_upload_token = "stats-active-file"
     expired_upload_token = "stats-expired-file"
 

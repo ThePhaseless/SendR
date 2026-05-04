@@ -11,10 +11,10 @@ from sqlmodel import select
 
 from config import settings
 from database import get_session
-from models import AuthToken, User, _utcnow
+from models import AuthToken, User, utcnow
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlmodel.ext.asyncio.session import AsyncSession
 
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
 password_context = CryptContext(schemes=["argon2"], deprecated="auto")
@@ -49,9 +49,9 @@ def verify_user_password(password: str, password_hash: str | None) -> bool:
     return verify_secret(password, password_hash)
 
 
-def create_access_token(_user_id: int) -> tuple[str, datetime]:
+def create_access_token(_user_id: int | None) -> tuple[str, datetime]:
     raw_token = secrets.token_urlsafe(32)
-    expires_at = _utcnow() + timedelta(minutes=settings.TOKEN_EXPIRE_MINUTES)
+    expires_at = utcnow() + timedelta(minutes=settings.TOKEN_EXPIRE_MINUTES)
     return raw_token, expires_at
 
 
@@ -59,7 +59,7 @@ async def verify_token(token: str, session: AsyncSession) -> User | None:
     hashed = hash_token(token)
     stmt = select(AuthToken).where(
         AuthToken.token == hashed,
-        AuthToken.expires_at > _utcnow(),
+        AuthToken.expires_at > utcnow(),
     )
     result = await session.exec(stmt)
     auth_token = result.first()

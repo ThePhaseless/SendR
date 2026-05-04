@@ -9,7 +9,6 @@ Create Date: 2026-05-04 00:00:00.000000
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-import sqlmodel
 
 from alembic import op
 
@@ -23,8 +22,8 @@ def upgrade() -> None:
     op.create_table(
         "user",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("email", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("password_hash", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column("email", sa.String(), nullable=False),
+        sa.Column("password_hash", sa.String(), nullable=True),
         sa.Column(
             "tier",
             sa.Enum("temporary", "free", "premium", name="usertier"),
@@ -40,12 +39,12 @@ def upgrade() -> None:
 
     op.create_table(
         "uploadgroupsettings",
-        sa.Column("upload_group", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("upload_group", sa.String(), nullable=False),
         sa.Column("is_public", sa.Boolean(), nullable=False),
         sa.Column("show_email_stats", sa.Boolean(), nullable=False),
         sa.Column("separate_download_counts", sa.Boolean(), nullable=False),
-        sa.Column("title", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-        sa.Column("description", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column("title", sa.String(), nullable=True),
+        sa.Column("description", sa.String(), nullable=True),
         sa.PrimaryKeyConstraint("upload_group"),
     )
     op.create_index(
@@ -58,9 +57,9 @@ def upgrade() -> None:
     op.create_table(
         "uploadpassword",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("upload_group", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("label", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("password_hash", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("upload_group", sa.String(), nullable=False),
+        sa.Column("label", sa.String(), nullable=False),
+        sa.Column("password_hash", sa.String(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -74,9 +73,9 @@ def upgrade() -> None:
     op.create_table(
         "uploademailrecipient",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("upload_group", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("email", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("token_hash", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("upload_group", sa.String(), nullable=False),
+        sa.Column("email", sa.String(), nullable=False),
+        sa.Column("token_hash", sa.String(), nullable=False),
         sa.Column("notified", sa.Boolean(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
@@ -97,8 +96,8 @@ def upgrade() -> None:
     op.create_table(
         "verificationcode",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("email", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("code", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("email", sa.String(), nullable=False),
+        sa.Column("code", sa.String(), nullable=False),
         sa.Column("expires_at", sa.DateTime(), nullable=False),
         sa.Column("used", sa.Boolean(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
@@ -111,7 +110,7 @@ def upgrade() -> None:
         "authtoken",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.Column("token", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("token", sa.String(), nullable=False),
         sa.Column("expires_at", sa.DateTime(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["user.id"]),
@@ -126,20 +125,16 @@ def upgrade() -> None:
         "fileupload",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=True),
-        sa.Column(
-            "original_filename", sqlmodel.sql.sqltypes.AutoString(), nullable=False
-        ),
-        sa.Column(
-            "stored_filename", sqlmodel.sql.sqltypes.AutoString(), nullable=False
-        ),
-        sa.Column("content_hash", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column("original_filename", sa.String(), nullable=False),
+        sa.Column("stored_filename", sa.String(), nullable=False),
+        sa.Column("content_hash", sa.String(), nullable=True),
         sa.Column("file_size_bytes", sa.Integer(), nullable=False),
-        sa.Column("download_token", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("download_token", sa.String(), nullable=False),
         sa.Column("download_count", sa.Integer(), nullable=False),
         sa.Column("public_download_count", sa.Integer(), nullable=False),
         sa.Column("restricted_download_count", sa.Integer(), nullable=False),
         sa.Column("max_downloads", sa.Integer(), nullable=True),
-        sa.Column("upload_group", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("upload_group", sa.String(), nullable=False),
         sa.Column("expires_at", sa.DateTime(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("is_active", sa.Boolean(), nullable=False),
@@ -183,12 +178,10 @@ def upgrade() -> None:
         "transfer",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=True),
-        sa.Column("upload_group", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("message", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-        sa.Column(
-            "recipient_emails", sqlmodel.sql.sqltypes.AutoString(), nullable=True
-        ),
-        sa.Column("password_hash", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column("upload_group", sa.String(), nullable=False),
+        sa.Column("message", sa.String(), nullable=True),
+        sa.Column("recipient_emails", sa.String(), nullable=True),
+        sa.Column("password_hash", sa.String(), nullable=True),
         sa.Column("notify_on_download", sa.Boolean(), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("expires_at", sa.DateTime(), nullable=False),
@@ -204,8 +197,8 @@ def upgrade() -> None:
         "userlogin",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.Column("auth_method", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("ip_address", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+        sa.Column("auth_method", sa.String(), nullable=False),
+        sa.Column("ip_address", sa.String(), nullable=True),
         sa.Column("logged_in_at", sa.DateTime(), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["user.id"]),
         sa.PrimaryKeyConstraint("id"),
@@ -217,9 +210,9 @@ def upgrade() -> None:
     op.create_table(
         "downloadlog",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("upload_group", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("upload_group", sa.String(), nullable=False),
         sa.Column("file_upload_id", sa.Integer(), nullable=True),
-        sa.Column("access_type", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("access_type", sa.String(), nullable=False),
         sa.Column("upload_password_id", sa.Integer(), nullable=True),
         sa.Column("email_recipient_id", sa.Integer(), nullable=True),
         sa.Column("downloaded_at", sa.DateTime(), nullable=False),

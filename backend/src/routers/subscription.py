@@ -2,16 +2,24 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends
-from sqlmodel import select
+from sqlmodel import col, select
 
 from config import settings
 from database import get_session
-from models import FileUpload, Subscription, SubscriptionPlan, User, UserTier, _utcnow
+from models import (
+    FileUpload,
+    Subscription,
+    SubscriptionPlan,
+    User,
+    UserTier,
+    require_id,
+    utcnow,
+)
 from schemas import SubscriptionResponse
 from security import get_current_user
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlmodel.ext.asyncio.session import AsyncSession
 
 router = APIRouter(prefix="/api/subscription", tags=["subscription"])
 
@@ -23,7 +31,7 @@ async def get_subscription(
 ) -> SubscriptionResponse:
     stmt = select(Subscription).where(
         Subscription.user_id == user.id,
-        Subscription.is_active == True,  # noqa: E712
+        col(Subscription.is_active).is_(True),
     )
     result = await session.exec(stmt)
     sub = result.first()
@@ -47,16 +55,17 @@ async def upgrade_to_premium(
     # Deactivate existing subscriptions
     stmt = select(Subscription).where(
         Subscription.user_id == user.id,
-        Subscription.is_active == True,  # noqa: E712
+        col(Subscription.is_active).is_(True),
     )
     result = await session.exec(stmt)
     for old_sub in result.all():
         old_sub.is_active = False
         session.add(old_sub)
 
-    now = _utcnow()
+    now = utcnow()
+    user_id = require_id(user.id, "User")
     sub = Subscription(
-        user_id=user.id,
+        user_id=user_id,
         plan=SubscriptionPlan.premium,
         started_at=now,
         expires_at=now + timedelta(days=30),
@@ -75,7 +84,7 @@ async def upgrade_to_premium(
     expired_uploads_result = await session.exec(
         select(FileUpload).where(
             FileUpload.user_id == user.id,
-            FileUpload.is_active == True,  # noqa: E712
+            col(FileUpload.is_active).is_(True),
             FileUpload.expires_at <= now,
             FileUpload.expires_at > premium_grace_cutoff,
         )
@@ -103,7 +112,7 @@ async def cancel_subscription(
     """Cancel premium subscription. Downgrades user to free tier."""
     stmt = select(Subscription).where(
         Subscription.user_id == user.id,
-        Subscription.is_active == True,  # noqa: E712
+        col(Subscription.is_active).is_(True),
     )
     result = await session.exec(stmt)
     sub = result.first()
@@ -113,7 +122,7 @@ async def cancel_subscription(
         session.add(sub)
 
     user.tier = UserTier.free
-    user.updated_at = _utcnow()
+    user.updated_at = utcnow()
     session.add(user)
     await session.commit()
 

@@ -2,6 +2,7 @@
 
 import json
 from hashlib import sha256
+from typing import cast
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -16,6 +17,7 @@ from models import (
     UploadGroupSettings,
     User,
     UserTier,
+    require_id,
 )
 from routers.altcha import verify_altcha_payload
 from security import create_access_token, hash_token
@@ -27,7 +29,7 @@ def _noop_altcha():
 
 
 @pytest.fixture(autouse=True)
-def _override_altcha():
+def override_altcha():
     app.dependency_overrides[verify_altcha_payload] = _noop_altcha
     yield
     app.dependency_overrides.pop(verify_altcha_payload, None)
@@ -42,7 +44,9 @@ async def _create_user(tier: UserTier = UserTier.free) -> dict[str, str]:
         await session.flush()
         raw_token, expires_at = create_access_token(user.id)
         auth_token = AuthToken(
-            user_id=user.id, token=hash_token(raw_token), expires_at=expires_at
+            user_id=require_id(user.id, "User"),
+            token=hash_token(raw_token),
+            expires_at=expires_at,
         )
         session.add(auth_token)
         await session.commit()
@@ -50,17 +54,17 @@ async def _create_user(tier: UserTier = UserTier.free) -> dict[str, str]:
 
 
 @pytest.fixture
-async def free_headers():
+async def free_headers() -> dict[str, str]:
     return await _create_user(UserTier.free)
 
 
 @pytest.fixture
-async def premium_headers():
+async def premium_headers() -> dict[str, str]:
     return await _create_user(UserTier.premium)
 
 
 @pytest.fixture
-async def temp_headers():
+async def temp_headers() -> dict[str, str]:
     return await _create_user(UserTier.temporary)
 
 
@@ -68,7 +72,7 @@ async def temp_headers():
 
 
 @pytest.mark.asyncio
-async def test_upload_public(free_headers):
+async def test_upload_public(free_headers: dict[str, str]):
     """Upload a public file (default)."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -87,7 +91,7 @@ async def test_upload_public(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_upload_with_passwords(free_headers):
+async def test_upload_with_passwords(free_headers: dict[str, str]):
     """Upload a file with passwords."""
     passwords = [
         {"label": "Team A", "password": "secret1"},
@@ -113,7 +117,9 @@ async def test_upload_with_passwords(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_upload_rejects_password_label_without_password(free_headers):
+async def test_upload_rejects_password_label_without_password(
+    free_headers: dict[str, str],
+):
     """Upload password labels must include a password value."""
     passwords = [{"label": "Team A", "password": ""}]
     async with AsyncClient(
@@ -134,7 +140,7 @@ async def test_upload_rejects_password_label_without_password(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_upload_with_emails(free_headers):
+async def test_upload_with_emails(free_headers: dict[str, str]):
     """Upload a file with email recipients."""
     emails = ["alice@example.com", "bob@example.com"]
     async with AsyncClient(
@@ -156,7 +162,7 @@ async def test_upload_with_emails(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_upload_exceeds_password_limit(free_headers):
+async def test_upload_exceeds_password_limit(free_headers: dict[str, str]):
     """Free tier: max 3 passwords. Uploading 4 should fail."""
     passwords = [{"label": f"pw{i}", "password": f"pass{i}"} for i in range(4)]
     async with AsyncClient(
@@ -175,7 +181,7 @@ async def test_upload_exceeds_password_limit(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_temporary_user_cannot_use_emails(temp_headers):
+async def test_temporary_user_cannot_use_emails(temp_headers: dict[str, str]):
     """Temporary users have 0 email limit."""
     emails = ["alice@example.com"]
     async with AsyncClient(
@@ -198,7 +204,7 @@ async def test_temporary_user_cannot_use_emails(temp_headers):
 
 
 @pytest.mark.asyncio
-async def test_password_protected_download(free_headers):
+async def test_password_protected_download(free_headers: dict[str, str]):
     """Non-public file with password: must provide correct password to download."""
     passwords = [{"label": "Main", "password": "mypass"}]
     async with AsyncClient(
@@ -233,7 +239,7 @@ async def test_password_protected_download(free_headers):
 
 @pytest.mark.asyncio
 async def test_public_flag_hides_details_but_requires_password_to_download(
-    free_headers,
+    free_headers: dict[str, str],
 ):
     """Public password files show info but require a password to download."""
     passwords = [{"label": "Extra", "password": "bonus"}]
@@ -271,7 +277,7 @@ async def test_public_flag_hides_details_but_requires_password_to_download(
 
 
 @pytest.mark.asyncio
-async def test_group_password_protected_download(free_headers):
+async def test_group_password_protected_download(free_headers: dict[str, str]):
     """Group download with password protection."""
     passwords = [{"label": "Team", "password": "teampass"}]
     async with AsyncClient(
@@ -305,7 +311,9 @@ async def test_group_password_protected_download(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_limited_multi_file_group_disables_single_file_downloads(free_headers):
+async def test_limited_multi_file_group_disables_single_file_downloads(
+    free_headers: dict[str, str],
+):
     """Limited multi-file transfers can only be downloaded as the full group."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -348,7 +356,7 @@ async def test_limited_multi_file_group_disables_single_file_downloads(free_head
 
 @pytest.mark.asyncio
 async def test_owner_can_download_password_protected_group_files_without_password(
-    free_headers,
+    free_headers: dict[str, str],
 ):
     """Owners can download password-protected group files without a password."""
     passwords = [{"label": "Team", "password": "teampass"}]
@@ -369,10 +377,15 @@ async def test_owner_can_download_password_protected_group_files_without_passwor
             headers=free_headers,
         )
         assert upload_resp.status_code == 201
-        upload_data = upload_resp.json()
+        upload_data = cast("dict[str, object]", upload_resp.json())
         group = upload_data["upload_group"]
-        file_id = upload_data["files"][0]["id"]
-        download_url = upload_data["files"][0]["download_url"]
+        assert isinstance(group, str)
+        files = cast("list[dict[str, object]]", upload_data["files"])
+        first_file = files[0]
+        file_id = first_file["id"]
+        assert isinstance(file_id, int)
+        download_url = first_file["download_url"]
+        assert isinstance(download_url, str)
 
         info_resp = await client.get(f"/api/files/group/{group}", headers=free_headers)
         assert info_resp.status_code == 200
@@ -402,7 +415,7 @@ async def test_owner_can_download_password_protected_group_files_without_passwor
 
 
 @pytest.mark.asyncio
-async def test_access_info(free_headers):
+async def test_access_info(free_headers: dict[str, str]):
     """Owner can view access info for their upload."""
     passwords = [{"label": "A", "password": "pw1"}]
     emails = ["viewer@example.com"]
@@ -439,7 +452,9 @@ async def test_access_info(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_access_info_unauthorized(free_headers, temp_headers):
+async def test_access_info_unauthorized(
+    free_headers: dict[str, str], temp_headers: dict[str, str]
+):
     """Non-owner cannot view access info."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -464,7 +479,7 @@ async def test_access_info_unauthorized(free_headers, temp_headers):
 
 
 @pytest.mark.asyncio
-async def test_download_stats(free_headers):
+async def test_download_stats(free_headers: dict[str, str]):
     """Owner can view download stats after downloads."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -494,7 +509,9 @@ async def test_download_stats(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_download_stats_unauthorized(free_headers, temp_headers):
+async def test_download_stats_unauthorized(
+    free_headers: dict[str, str], temp_headers: dict[str, str]
+):
     """Non-owner cannot view download stats."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -517,7 +534,7 @@ async def test_download_stats_unauthorized(free_headers, temp_headers):
 
 
 @pytest.mark.asyncio
-async def test_multi_upload_with_passwords(free_headers):
+async def test_multi_upload_with_passwords(free_headers: dict[str, str]):
     """Multi-file upload with password access."""
     passwords = [{"label": "Dev", "password": "devpass"}]
     async with AsyncClient(
@@ -547,7 +564,7 @@ async def test_multi_upload_with_passwords(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_quota_includes_access_limits(free_headers):
+async def test_quota_includes_access_limits(free_headers: dict[str, str]):
     """Quota endpoint should return password/email limits."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -566,8 +583,13 @@ async def test_quota_includes_access_limits(free_headers):
 
 
 async def _upload_with_access(
-    client, headers, *, is_public=True, passwords=None, emails=None
-):
+    client: AsyncClient,
+    headers: dict[str, str],
+    *,
+    is_public: bool = True,
+    passwords: list[dict[str, str]] | None = None,
+    emails: list[str] | None = None,
+) -> str:
     """Helper: upload a file with access settings and return upload_group."""
     data = {"altcha": json.dumps({"mock": True}), "is_public": str(is_public).lower()}
     if passwords:
@@ -581,11 +603,14 @@ async def _upload_with_access(
         headers=headers,
     )
     assert resp.status_code == 201
-    return resp.json()["upload_group"]
+    payload = cast("dict[str, object]", resp.json())
+    upload_group = payload["upload_group"]
+    assert isinstance(upload_group, str)
+    return upload_group
 
 
 @pytest.mark.asyncio
-async def test_owner_file_mutation_endpoints(premium_headers):
+async def test_owner_file_mutation_endpoints(premium_headers: dict[str, str]):
     """Owners can refresh, edit, and deactivate a file."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -621,7 +646,7 @@ async def test_owner_file_mutation_endpoints(premium_headers):
 
 
 @pytest.mark.asyncio
-async def test_owner_group_mutation_endpoints(premium_headers):
+async def test_owner_group_mutation_endpoints(premium_headers: dict[str, str]):
     """Owners can add files, refresh links, and edit group metadata."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -684,7 +709,9 @@ async def test_owner_group_mutation_endpoints(premium_headers):
 
 
 @pytest.mark.asyncio
-async def test_recipient_stats_returns_email_download_counts(free_headers):
+async def test_recipient_stats_returns_email_download_counts(
+    free_headers: dict[str, str],
+):
     """Email recipients can view stats when the owner enables them."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -713,7 +740,7 @@ async def test_recipient_stats_returns_email_download_counts(free_headers):
             DownloadLog(
                 upload_group=upload_group,
                 access_type="email",
-                email_recipient_id=recipient.id,
+                email_recipient_id=require_id(recipient.id, "UploadEmailRecipient"),
             )
         )
         await session.commit()
@@ -733,7 +760,7 @@ async def test_recipient_stats_returns_email_download_counts(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_edit_access_toggle_public(free_headers):
+async def test_edit_access_toggle_public(free_headers: dict[str, str]):
     """Can toggle is_public on an existing group."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -762,7 +789,7 @@ async def test_edit_access_toggle_public(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_edit_access_add_password(free_headers):
+async def test_edit_access_add_password(free_headers: dict[str, str]):
     """Can add a new password to an existing group."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -780,7 +807,9 @@ async def test_edit_access_add_password(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_edit_access_rejects_password_label_without_password(free_headers):
+async def test_edit_access_rejects_password_label_without_password(
+    free_headers: dict[str, str],
+):
     """Access edits must not accept a password label without a password value."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -797,7 +826,7 @@ async def test_edit_access_rejects_password_label_without_password(free_headers)
 
 
 @pytest.mark.asyncio
-async def test_edit_access_remove_password(free_headers):
+async def test_edit_access_remove_password(free_headers: dict[str, str]):
     """Can remove a password from an existing group."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -823,7 +852,7 @@ async def test_edit_access_remove_password(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_edit_access_add_email(free_headers):
+async def test_edit_access_add_email(free_headers: dict[str, str]):
     """Can add email recipients to an existing group."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -841,7 +870,7 @@ async def test_edit_access_add_email(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_edit_access_remove_email(free_headers):
+async def test_edit_access_remove_email(free_headers: dict[str, str]):
     """Can remove email recipients from an existing group."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -865,7 +894,7 @@ async def test_edit_access_remove_email(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_edit_access_exceeds_password_limit(free_headers):
+async def test_edit_access_exceeds_password_limit(free_headers: dict[str, str]):
     """Adding passwords beyond tier limit should fail."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -886,7 +915,9 @@ async def test_edit_access_exceeds_password_limit(free_headers):
 
 
 @pytest.mark.asyncio
-async def test_edit_access_unauthorized(free_headers, temp_headers):
+async def test_edit_access_unauthorized(
+    free_headers: dict[str, str], temp_headers: dict[str, str]
+):
     """Non-owner cannot edit access control."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -902,7 +933,7 @@ async def test_edit_access_unauthorized(free_headers, temp_headers):
 
 
 @pytest.mark.asyncio
-async def test_edit_access_toggle_show_email_stats(free_headers):
+async def test_edit_access_toggle_show_email_stats(free_headers: dict[str, str]):
     """Can toggle show_email_stats."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"

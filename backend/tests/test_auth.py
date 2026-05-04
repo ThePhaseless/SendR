@@ -5,13 +5,13 @@ from sqlmodel import select
 import database
 from app import app
 from config import settings
-from models import AuthToken, User, UserLogin, UserTier, VerificationCode
+from models import AuthToken, User, UserLogin, UserTier, VerificationCode, require_id
 from rate_limit import auth_rate_limiter
 from security import create_access_token, hash_token, hash_user_password
 
 
 @pytest.fixture(autouse=True)
-def _reset_auth_rate_limiter():
+def reset_auth_rate_limiter():
     auth_rate_limiter.reset()
     yield
     auth_rate_limiter.reset()
@@ -110,9 +110,12 @@ async def test_logout_deletes_token_and_clears_session_cookie():
         await session.flush()
 
         raw_token, expires_at = create_access_token(user.id)
+        user_id = require_id(user.id, "User")
         session.add(
             AuthToken(
-                user_id=user.id, token=hash_token(raw_token), expires_at=expires_at
+                user_id=user_id,
+                token=hash_token(raw_token),
+                expires_at=expires_at,
             )
         )
         await session.commit()
@@ -138,7 +141,7 @@ async def test_logout_deletes_token_and_clears_session_cookie():
 
 
 @pytest.mark.asyncio
-async def test_set_password_allows_future_password_login(auth_headers):
+async def test_set_password_allows_future_password_login(auth_headers: dict[str, str]):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
@@ -166,13 +169,17 @@ async def test_change_password_replaces_existing_password():
             select(User).where(User.email == "test@sendr.local")
         )
         user = result.first()
+        assert user is not None
+        user_id = require_id(user.id, "User")
         user.password_hash = hash_user_password("CurrentPass123")
         session.add(user)
 
         raw_token, expires_at = create_access_token(user.id)
         session.add(
             AuthToken(
-                user_id=user.id, token=hash_token(raw_token), expires_at=expires_at
+                user_id=user_id,
+                token=hash_token(raw_token),
+                expires_at=expires_at,
             )
         )
         await session.commit()

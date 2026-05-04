@@ -8,7 +8,7 @@ from sqlmodel import select
 import database
 from app import app
 from config import settings
-from models import AuthToken, FileUpload, User, UserTier, _utcnow
+from models import AuthToken, FileUpload, User, UserTier, require_id, utcnow
 from security import create_access_token, hash_token
 from tasks import cleanup_expired_files
 
@@ -19,13 +19,16 @@ async def _create_user(tier: UserTier = UserTier.free) -> tuple[int, dict[str, s
         user = User(email=f"test-{tier}-subscription@sendr.local", tier=tier)
         session.add(user)
         await session.flush()
+        user_id = require_id(user.id, "User")
         raw_token, expires_at = create_access_token(user.id)
         auth_token = AuthToken(
-            user_id=user.id, token=hash_token(raw_token), expires_at=expires_at
+            user_id=user_id,
+            token=hash_token(raw_token),
+            expires_at=expires_at,
         )
         session.add(auth_token)
         await session.commit()
-    return user.id, {"Authorization": f"Bearer {raw_token}"}
+    return user_id, {"Authorization": f"Bearer {raw_token}"}
 
 
 async def _create_upload(
@@ -57,13 +60,13 @@ async def _create_upload(
         session.add(file_upload)
         await session.commit()
         await session.refresh(file_upload)
-    return file_upload.id
+    return require_id(file_upload.id, "FileUpload")
 
 
 @pytest.mark.asyncio
 async def test_upgrade_to_premium_restores_recently_expired_upload():
     user_id, headers = await _create_user(UserTier.free)
-    now = _utcnow()
+    now = utcnow()
     download_token = "expired-upgrade-token"
     await _create_upload(
         user_id=user_id,
@@ -99,7 +102,7 @@ async def test_upgrade_to_premium_restores_recently_expired_upload():
 @pytest.mark.asyncio
 async def test_list_files_includes_premium_uploads_within_refresh_grace():
     user_id, headers = await _create_user(UserTier.premium)
-    now = _utcnow()
+    now = utcnow()
     premium_grace_upload = "premium-grace-upload"
     upload_id = await _create_upload(
         user_id=user_id,
@@ -120,7 +123,7 @@ async def test_list_files_includes_premium_uploads_within_refresh_grace():
 @pytest.mark.asyncio
 async def test_cleanup_expired_files_keeps_owned_uploads_for_premium_recovery_window():
     user_id, _ = await _create_user(UserTier.free)
-    now = _utcnow()
+    now = utcnow()
     owned_token = "owned-recovery-token"
     anonymous_token = "anonymous-cleanup-token"
     owned_upload_id = await _create_upload(

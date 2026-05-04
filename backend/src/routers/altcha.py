@@ -3,6 +3,7 @@ import binascii
 import json
 import time
 from datetime import UTC, datetime, timedelta
+from typing import Protocol, cast
 from urllib.parse import parse_qs
 
 from altcha import ChallengeOptions, create_challenge, verify_solution
@@ -13,21 +14,27 @@ from config import settings
 router = APIRouter(prefix="/api/altcha", tags=["altcha"])
 
 
+class _AltchaChallenge(Protocol):
+    def to_dict(self) -> dict[str, object]: ...
+
+
 @router.get("/challenge")
-async def get_challenge() -> dict:
+async def get_challenge() -> dict[str, object]:
     """Generate a new Altcha proof-of-work challenge."""
     options = ChallengeOptions(
         max_number=settings.ALTCHA_MAX_NUMBER,
         hmac_key=settings.ALTCHA_HMAC_KEY,
         expires=datetime.now(UTC) + timedelta(minutes=settings.ALTCHA_EXPIRE_MINUTES),
     )
-    challenge = create_challenge(options)
+    challenge = cast("_AltchaChallenge", create_challenge(options))
     return challenge.to_dict()
 
 
 def _decode_altcha_payload(payload: str) -> dict[str, object]:
     try:
-        payload_data = json.loads(base64.b64decode(payload, validate=True).decode())
+        payload_data = cast(
+            "object", json.loads(base64.b64decode(payload, validate=True).decode())
+        )
     except binascii.Error, json.JSONDecodeError, UnicodeDecodeError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -40,7 +47,7 @@ def _decode_altcha_payload(payload: str) -> dict[str, object]:
             detail="Invalid Altcha payload.",
         )
 
-    return payload_data
+    return cast("dict[str, object]", payload_data)
 
 
 def _ensure_altcha_within_upload_grace(payload_data: dict[str, object]) -> None:
@@ -82,9 +89,7 @@ def verify_altcha_payload(payload: str = Form("", alias="altcha")) -> None:
 
     payload_data = _decode_altcha_payload(payload)
 
-    ok, err = verify_solution(
-        payload_data, settings.ALTCHA_HMAC_KEY, check_expires=False
-    )
+    ok, err = verify_solution(payload, settings.ALTCHA_HMAC_KEY, check_expires=False)
     if not ok:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

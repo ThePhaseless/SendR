@@ -4,12 +4,20 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlmodel import func, select
+from sqlmodel import col, func, select
 
 from config import settings
 from database import get_session
-from models import FileUpload, User, UserLogin, UserTier, _utcnow
-from routers.files import _load_group_access, _to_response
+from models import (
+    FileUpload,
+    UploadGroupSettings,
+    User,
+    UserLogin,
+    UserTier,
+    require_id,
+    utcnow,
+)
+from routers.files import load_group_access, to_file_response
 from schemas import (
     AdminUserListResponse,
     AdminUserLoginEntry,
@@ -22,7 +30,7 @@ from schemas import (
 from security import get_admin_user
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlmodel.ext.asyncio.session import AsyncSession
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -49,21 +57,21 @@ async def list_users(
     count_stmt = select(func.count()).select_from(User)
 
     if search:
-        stmt = stmt.where(User.email.contains(search))
-        count_stmt = count_stmt.where(User.email.contains(search))
+        stmt = stmt.where(col(User.email).contains(search))
+        count_stmt = count_stmt.where(col(User.email).contains(search))
 
     result = await session.exec(count_stmt)
     total = result.one()
 
     offset = (page - 1) * per_page
-    stmt = stmt.order_by(User.created_at.desc()).offset(offset).limit(per_page)
+    stmt = stmt.order_by(col(User.created_at).desc()).offset(offset).limit(per_page)
     result = await session.exec(stmt)
     users = result.all()
 
     return AdminUserListResponse(
         users=[
             UserResponse(
-                id=u.id,
+                id=require_id(u.id, "User"),
                 email=u.email,
                 tier=u.tier.value,
                 is_admin=u.is_admin,
@@ -122,7 +130,7 @@ async def update_user(
     await session.refresh(user)
 
     return UserResponse(
-        id=user.id,
+        id=require_id(user.id, "User"),
         email=user.email,
         tier=user.tier.value,
         is_admin=user.is_admin,
@@ -164,7 +172,7 @@ async def list_user_uploads(
     session: AsyncSession = Depends(get_session),
 ) -> FileListResponse:
     await _get_user_or_404(session, user_id)
-    now = _utcnow()
+    now = utcnow()
     grace_cutoff = now - timedelta(
         days=max(settings.FILE_GRACE_PERIOD_DAYS, settings.PREMIUM_REFRESH_GRACE_DAYS)
     )
@@ -172,18 +180,18 @@ async def list_user_uploads(
         select(FileUpload)
         .where(
             FileUpload.user_id == user_id,
-            FileUpload.is_active == True,  # noqa: E712
+            col(FileUpload.is_active).is_(True),
             FileUpload.expires_at > grace_cutoff,
         )
-        .order_by(FileUpload.created_at.desc())
+        .order_by(col(FileUpload.created_at).desc())
     )
     result = await session.exec(stmt)
     files = list(result.all())
 
-    group_access_cache: dict[str, tuple[object | None, int, int]] = {}
+    group_access_cache: dict[str, tuple[UploadGroupSettings | None, int, int]] = {}
     for file_upload in files:
         if file_upload.upload_group not in group_access_cache:
-            group_settings, passwords, email_recipients = await _load_group_access(
+            group_settings, passwords, email_recipients = await load_group_access(
                 session, file_upload.upload_group
             )
             group_access_cache[file_upload.upload_group] = (
@@ -194,7 +202,7 @@ async def list_user_uploads(
 
     return FileListResponse(
         files=[
-            _to_response(file_upload, *group_access_cache[file_upload.upload_group])
+            to_file_response(file_upload, *group_access_cache[file_upload.upload_group])
             for file_upload in files
         ],
     )
@@ -210,7 +218,7 @@ async def list_user_logins(
     result = await session.exec(
         select(UserLogin)
         .where(UserLogin.user_id == user_id)
-        .order_by(UserLogin.logged_in_at.desc())
+        .order_by(col(UserLogin.logged_in_at).desc())
         .limit(50)
     )
     logins = list(result.all())
@@ -218,7 +226,7 @@ async def list_user_logins(
     return AdminUserLoginListResponse(
         logins=[
             AdminUserLoginEntry(
-                id=login.id,
+                id=require_id(login.id, "UserLogin"),
                 auth_method=login.auth_method,
                 ip_address=login.ip_address,
                 logged_in_at=login.logged_in_at,
@@ -235,38 +243,40 @@ async def get_user_stats(
     session: AsyncSession = Depends(get_session),
 ) -> AdminUserStatsResponse:
     await _get_user_or_404(session, user_id)
-    now = _utcnow()
+    now = utcnow()
 
     total_transfers_result = await session.exec(
-        select(func.count(func.distinct(FileUpload.upload_group))).where(
+        select(func.count(func.distinct(col(FileUpload.upload_group)))).where(
             FileUpload.user_id == user_id
         )
     )
     active_transfers_result = await session.exec(
-        select(func.count(func.distinct(FileUpload.upload_group))).where(
+        select(func.count(func.distinct(col(FileUpload.upload_group)))).where(
             FileUpload.user_id == user_id,
-            FileUpload.is_active == True,  # noqa: E712
+            col(FileUpload.is_active).is_(True),
             FileUpload.expires_at > now,
         )
     )
     total_files_result = await session.exec(
-        select(func.count(FileUpload.id)).where(FileUpload.user_id == user_id)
+        select(func.count(col(FileUpload.id))).where(FileUpload.user_id == user_id)
     )
     total_uploaded_bytes_result = await session.exec(
-        select(func.coalesce(func.sum(FileUpload.file_size_bytes), 0)).where(
+        select(func.coalesce(func.sum(col(FileUpload.file_size_bytes)), 0)).where(
             FileUpload.user_id == user_id
         )
     )
     total_downloads_result = await session.exec(
-        select(func.coalesce(func.sum(FileUpload.download_count), 0)).where(
+        select(func.coalesce(func.sum(col(FileUpload.download_count)), 0)).where(
             FileUpload.user_id == user_id
         )
     )
     login_count_result = await session.exec(
-        select(func.count(UserLogin.id)).where(UserLogin.user_id == user_id)
+        select(func.count(col(UserLogin.id))).where(UserLogin.user_id == user_id)
     )
     last_login_result = await session.exec(
-        select(func.max(UserLogin.logged_in_at)).where(UserLogin.user_id == user_id)
+        select(func.max(col(UserLogin.logged_in_at))).where(
+            UserLogin.user_id == user_id
+        )
     )
 
     return AdminUserStatsResponse(
@@ -292,7 +302,7 @@ async def delete_user_transfer(
     stmt = select(FileUpload).where(
         FileUpload.user_id == user_id,
         FileUpload.upload_group == upload_group,
-        FileUpload.is_active == True,  # noqa: E712
+        col(FileUpload.is_active).is_(True),
     )
     result = await session.exec(stmt)
     files = list(result.all())

@@ -321,8 +321,8 @@ export class FilePickerComponent {
   ): Promise<UploadFileEntry[]> {
     const result: UploadFileEntry[] = [];
     for (const entry of entries) {
-      if (entry.isFile) {
-        const file = await this.getFile(entry as FileSystemFileEntry);
+      if (this.isFileEntry(entry)) {
+        const file = await this.getFile(entry);
         const relativePath = basePath ? `${basePath}/${file.name}` : '';
         result.push({
           file,
@@ -331,9 +331,8 @@ export class FilePickerComponent {
           relativePath: relativePath || undefined,
           size: file.size,
         });
-      } else if (entry.isDirectory) {
-        const dirEntry = entry as FileSystemDirectoryEntry;
-        const dirReader = dirEntry.createReader();
+      } else if (this.isDirectoryEntry(entry)) {
+        const dirReader = entry.createReader();
         const childEntries = await this.readAllDirectoryEntries(dirReader);
         const prefix = basePath ? `${basePath}/${entry.name}` : entry.name;
         const childFiles = await this.readEntries(childEntries, prefix);
@@ -341,6 +340,14 @@ export class FilePickerComponent {
       }
     }
     return result;
+  }
+
+  private isFileEntry(entry: FileSystemEntry): entry is FileSystemFileEntry {
+    return entry.isFile;
+  }
+
+  private isDirectoryEntry(entry: FileSystemEntry): entry is FileSystemDirectoryEntry {
+    return entry.isDirectory;
   }
 
   private readAllDirectoryEntries(reader: FileSystemDirectoryReader): Promise<FileSystemEntry[]> {
@@ -430,36 +437,35 @@ export class FilePickerComponent {
           name: entry.name,
           size: entry.size,
         });
-        continue;
-      }
+      } else {
+        const parts = entry.relativePath.split('/');
+        let currentChildren = rootChildren;
+        let currentPath = '';
 
-      const parts = entry.relativePath.split('/');
-      let currentChildren = rootChildren;
-      let currentPath = '';
-
-      for (let p = 0; p < parts.length - 1; p++) {
-        currentPath = currentPath ? `${currentPath}/${parts[p]}` : parts[p];
-        if (!currentChildren.has(parts[p])) {
-          currentChildren.set(parts[p], {
-            children: new Map(),
-            files: [],
-            fullPath: currentPath,
-            name: parts[p],
-            totalFileCount: 0,
-            totalSize: 0,
-          });
+        for (let p = 0; p < parts.length - 1; p++) {
+          currentPath = currentPath ? `${currentPath}/${parts[p]}` : parts[p];
+          if (!currentChildren.has(parts[p])) {
+            currentChildren.set(parts[p], {
+              children: new Map(),
+              files: [],
+              fullPath: currentPath,
+              name: parts[p],
+              totalFileCount: 0,
+              totalSize: 0,
+            });
+          }
+          const node = currentChildren.get(parts[p])!;
+          node.totalSize += entry.size;
+          node.totalFileCount += 1;
+          if (p === parts.length - 2) {
+            node.files.push({ entry, index: i });
+          }
+          currentChildren = node.children;
         }
-        const node = currentChildren.get(parts[p])!;
-        node.totalSize += entry.size;
-        node.totalFileCount += 1;
-        if (p === parts.length - 2) {
-          node.files.push({ entry, index: i });
-        }
-        currentChildren = node.children;
-      }
 
-      if ((i + 1) % FilePickerComponent.TREE_BUILD_CHUNK_SIZE === 0) {
-        await this.yieldToBrowser();
+        if ((i + 1) % FilePickerComponent.TREE_BUILD_CHUNK_SIZE === 0) {
+          await this.yieldToBrowser();
+        }
       }
     }
 

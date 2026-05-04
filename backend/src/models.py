@@ -5,9 +5,15 @@ from uuid import uuid4
 from sqlmodel import Field, SQLModel
 
 
-def _utcnow() -> datetime:
+def utcnow() -> datetime:
     """Return current UTC time as a naive datetime for SQLite storage."""
     return datetime.now(UTC).replace(tzinfo=None)
+
+
+def require_id(value: int | None, model_name: str) -> int:
+    if value is None:
+        raise RuntimeError(f"{model_name} must be persisted before its id is used")
+    return value
 
 
 class UserTier(enum.StrEnum):
@@ -28,8 +34,8 @@ class User(SQLModel, table=True):
     tier: UserTier = Field(default=UserTier.free)
     is_admin: bool = Field(default=False)
     is_banned: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=_utcnow)
-    updated_at: datetime = Field(default_factory=_utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
 
 
 class VerificationCode(SQLModel, table=True):
@@ -45,7 +51,7 @@ class AuthToken(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id", index=True)
     token: str = Field(unique=True, index=True)
     expires_at: datetime
-    created_at: datetime = Field(default_factory=_utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
 
 
 class UserLogin(SQLModel, table=True):
@@ -53,7 +59,7 @@ class UserLogin(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id", index=True)
     auth_method: str
     ip_address: str | None = Field(default=None)
-    logged_in_at: datetime = Field(default_factory=_utcnow)
+    logged_in_at: datetime = Field(default_factory=utcnow)
 
 
 class FileUpload(SQLModel, table=True):
@@ -70,7 +76,7 @@ class FileUpload(SQLModel, table=True):
     max_downloads: int | None = Field(default=None)
     upload_group: str = Field(default_factory=lambda: str(uuid4()), index=True)
     expires_at: datetime
-    created_at: datetime = Field(default_factory=_utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
     is_active: bool = Field(default=True)
 
 
@@ -88,7 +94,7 @@ class UploadPassword(SQLModel, table=True):
     upload_group: str = Field(index=True)
     label: str
     password_hash: str
-    created_at: datetime = Field(default_factory=_utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
 
 
 class UploadEmailRecipient(SQLModel, table=True):
@@ -97,7 +103,7 @@ class UploadEmailRecipient(SQLModel, table=True):
     email: str
     token_hash: str = Field(index=True)
     notified: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=_utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
 
 
 class DownloadLog(SQLModel, table=True):
@@ -111,7 +117,7 @@ class DownloadLog(SQLModel, table=True):
     email_recipient_id: int | None = Field(
         default=None, foreign_key="uploademailrecipient.id"
     )
-    downloaded_at: datetime = Field(default_factory=_utcnow)
+    downloaded_at: datetime = Field(default_factory=utcnow)
 
 
 class Transfer(SQLModel, table=True):
@@ -122,7 +128,7 @@ class Transfer(SQLModel, table=True):
     recipient_emails: str | None = Field(default=None)  # JSON list of emails
     password_hash: str | None = Field(default=None)
     notify_on_download: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=_utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
     expires_at: datetime
 
 
@@ -130,6 +136,6 @@ class Subscription(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", index=True)
     plan: SubscriptionPlan
-    started_at: datetime = Field(default_factory=_utcnow)
+    started_at: datetime = Field(default_factory=utcnow)
     expires_at: datetime
     is_active: bool = Field(default=True)

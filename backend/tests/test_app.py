@@ -1,16 +1,27 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from sqlalchemy import create_engine, inspect
 
-from app import _run_migrations
+from app import run_migrations
 from config import settings
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
-def test_migrations_create_current_schema(tmp_path, monkeypatch):
+    import pytest
+
+
+def test_migrations_create_current_schema(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     db_path = tmp_path / "migration-schema.db"
     sync_url = f"sqlite:///{db_path}"
     async_url = f"sqlite+aiosqlite:///{db_path}"
 
     monkeypatch.setattr(settings, "DATABASE_URL", async_url)
-    _run_migrations()
+    run_migrations()
 
     sync_engine = create_engine(sync_url)
     try:

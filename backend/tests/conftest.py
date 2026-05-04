@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 # Add the src directory to the path so tests can import backend modules
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
@@ -11,27 +14,31 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 import database  # noqa: E402
 from config import settings  # noqa: E402
-from models import (  # noqa: E402  # pyright: ignore[reportMissingImports]
+from models import (  # noqa: E402
     AuthToken,
     User,
     UserTier,
+    require_id,
 )
 from security import create_access_token, hash_token  # noqa: E402
 
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
 # Use a temp file for the test database (aiosqlite needs a file path or :memory:)
 _test_engine = create_async_engine("sqlite+aiosqlite://", echo=False)
-_test_session_factory = async_sessionmaker(
+_test_session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
     _test_engine, class_=AsyncSession, expire_on_commit=False
 )
 
 
-async def _get_test_session():
+async def _get_test_session() -> AsyncIterator[AsyncSession]:
     async with _test_session_factory() as session:
         yield session
 
 
 @pytest.fixture(autouse=True, scope="session")
-def _patch_db():
+def patch_db() -> None:
     """Replace the database engine/session with test versions for all tests."""
     database.engine = _test_engine
     database.async_session = _test_session_factory
@@ -39,10 +46,8 @@ def _patch_db():
 
 
 @pytest.fixture(autouse=True)
-async def _init_tables(tmp_path):
+async def init_tables(tmp_path: Path) -> AsyncIterator[None]:
     """Create all tables before each test and drop them after."""
-    import models  # noqa: F401
-
     async with _test_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
@@ -59,7 +64,7 @@ async def _init_tables(tmp_path):
 
 
 @pytest.fixture
-async def auth_headers():
+async def auth_headers() -> dict[str, str]:
     """Create a test user and return auth headers with a valid token."""
     async with _test_session_factory() as session:
         user = User(email="test@sendr.local", tier=UserTier.temporary)
@@ -68,7 +73,7 @@ async def auth_headers():
 
         raw_token, expires_at = create_access_token(user.id)
         auth_token = AuthToken(
-            user_id=user.id,
+            user_id=require_id(user.id, "User"),
             token=hash_token(raw_token),
             expires_at=expires_at,
         )

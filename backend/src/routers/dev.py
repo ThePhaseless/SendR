@@ -5,13 +5,13 @@ from sqlmodel import select
 
 from config import settings
 from database import get_session
-from models import AuthToken, User, UserLogin, UserTier
+from models import AuthToken, User, UserLogin, UserTier, require_id
 from rate_limit import get_client_ip
 from schemas import SessionResponse
 from security import create_access_token, hash_token, set_session_cookie
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlmodel.ext.asyncio.session import AsyncSession
 
 router = APIRouter(prefix="/api/dev", tags=["dev"])
 
@@ -57,16 +57,17 @@ async def dev_login(
         await session.flush()
 
     # Create access token
-    raw_token, expires_at = create_access_token(user.id)
+    user_id = require_id(user.id, "User")
+    raw_token, expires_at = create_access_token(user_id)
     auth_token = AuthToken(
-        user_id=user.id,
+        user_id=user_id,
         token=hash_token(raw_token),
         expires_at=expires_at,
     )
     session.add(auth_token)
     session.add(
         UserLogin(
-            user_id=user.id,
+            user_id=user_id,
             auth_method="dev_login",
             ip_address=get_client_ip(request),
         )

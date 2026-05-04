@@ -1,5 +1,6 @@
 import re
-from typing import TYPE_CHECKING
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, cast
 
 from fastapi.responses import JSONResponse
 
@@ -37,9 +38,10 @@ def _derive_error_code(message: str) -> str:
 
 
 def normalize_http_exception_detail(detail: object) -> dict[str, str]:
-    if isinstance(detail, dict):
-        code = detail.get("code")
-        message = detail.get("message")
+    if isinstance(detail, Mapping):
+        detail_mapping = cast("Mapping[str, object]", detail)
+        code = detail_mapping.get("code")
+        message = detail_mapping.get("message")
         if isinstance(code, str) and isinstance(message, str):
             return {"code": code, "message": message}
 

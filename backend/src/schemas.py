@@ -1,4 +1,4 @@
-from datetime import UTC, datetime  # noqa: TC003
+from datetime import UTC, datetime
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer

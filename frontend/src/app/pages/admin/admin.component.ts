@@ -1,11 +1,11 @@
 import { DatePipe } from '@angular/common';
+import type { OnInit } from '@angular/core';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { OnInit } from '@angular/core';
 import type { AdminUserLoginEntry, AdminUserStatsResponse } from '../../api/model';
-import { ConfirmDialogService } from '../../services/confirm-dialog.service';
-import { AdminService } from '../../services/admin.service';
 import type { AdminUser } from '../../services/admin.service';
+import { AdminService } from '../../services/admin.service';
+import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 import type { FileUploadResponse } from '../../services/file.service';
 import { getApiDateTime } from '../../utils/date.utils';
 import { getErrorDetail } from '../../utils/error.utils';
@@ -232,10 +232,26 @@ export class AdminComponent implements OnInit {
       }),
     );
 
-    transferGroups.sort(
-      (left, right) => getApiDateTime(right.latestExpiry) - getApiDateTime(left.latestExpiry),
-    );
-    return transferGroups;
+    return this.sortTransferGroupsByLatestExpiry(transferGroups);
+  }
+
+  private sortTransferGroupsByLatestExpiry(
+    transferGroups: AdminTransferGroup[],
+  ): AdminTransferGroup[] {
+    const sortedTransferGroups: AdminTransferGroup[] = [];
+    for (const transferGroup of transferGroups) {
+      const insertIndex = sortedTransferGroups.findIndex(
+        (existingTransferGroup) =>
+          getApiDateTime(transferGroup.latestExpiry) >
+          getApiDateTime(existingTransferGroup.latestExpiry),
+      );
+      if (insertIndex === -1) {
+        sortedTransferGroups.push(transferGroup);
+      } else {
+        sortedTransferGroups.splice(insertIndex, 0, transferGroup);
+      }
+    }
+    return sortedTransferGroups;
   }
 
   async deleteTransfer(group: AdminTransferGroup): Promise<void> {

@@ -20,8 +20,9 @@ interface DownloadRequestOptions {
   url: string;
 }
 
-interface FileSystemWritableFileStreamLike {
-  abort?: (reason?: unknown) => Promise<void>;
+type ResponseChunk = Uint8Array<ArrayBuffer>;
+
+interface FileSystemWritableFileStreamLike extends WritableStream<ResponseChunk> {
   close: () => Promise<void>;
   write: (data: BufferSource | Blob | string) => Promise<void>;
 }
@@ -371,8 +372,7 @@ export class DownloadComponent {
     response: Response,
     writableStream: FileSystemWritableFileStreamLike,
   ): Promise<void> {
-    const reader = response.body?.getReader();
-    if (!reader) {
+    if (!response.body) {
       const blob = await response.blob();
       await writableStream.write(blob);
       await writableStream.close();
@@ -380,18 +380,9 @@ export class DownloadComponent {
     }
 
     try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-        if (value) {
-          await writableStream.write(value);
-        }
-      }
-      await writableStream.close();
+      await response.body.pipeTo(writableStream);
     } catch (error: unknown) {
-      await reader.cancel(error).catch(() => {});
+      await writableStream.abort?.(error).catch(() => {});
       throw error;
     }
   }

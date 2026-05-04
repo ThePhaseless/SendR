@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, cast
 
 import pytest
 from altcha import ChallengeOptions, Payload, create_challenge, solve_challenge
@@ -9,6 +10,9 @@ from app import app
 from config import settings
 from routers.altcha import verify_altcha_payload
 from tests.utils import get_error_message
+
+if TYPE_CHECKING:
+    from altcha.altcha import AlgoType
 
 
 def _create_altcha_payload(*, expires_at: datetime) -> str:
@@ -23,7 +27,7 @@ def _create_altcha_payload(*, expires_at: datetime) -> str:
     assert solution is not None
 
     return Payload(
-        algorithm=challenge.algorithm,
+        algorithm=cast("AlgoType", challenge.algorithm),
         challenge=challenge.challenge,
         number=solution.number,
         salt=challenge.salt,
@@ -45,7 +49,9 @@ def test_verify_altcha_payload_allows_recently_expired_payload_within_upload_gra
 
 
 @pytest.mark.asyncio
-async def test_upload_accepts_recently_expired_altcha_while_within_grace(auth_headers):
+async def test_upload_accepts_recently_expired_altcha_while_within_grace(
+    auth_headers: dict[str, str],
+):
     payload = _create_altcha_payload(
         expires_at=datetime.now(UTC) - timedelta(minutes=1)
     )
@@ -64,7 +70,7 @@ async def test_upload_accepts_recently_expired_altcha_while_within_grace(auth_he
 
 
 @pytest.mark.asyncio
-async def test_upload_rejects_altcha_past_upload_grace(auth_headers):
+async def test_upload_rejects_altcha_past_upload_grace(auth_headers: dict[str, str]):
     payload = _create_altcha_payload(
         expires_at=datetime.now(UTC)
         - timedelta(minutes=settings.ALTCHA_UPLOAD_GRACE_MINUTES + 1)

@@ -2,7 +2,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlmodel import func, select
+from sqlmodel import col, func, select
 
 from config import settings
 from database import get_session
@@ -14,7 +14,8 @@ from models import (
     UserLogin,
     UserTier,
     VerificationCode,
-    _utcnow,
+    require_id,
+    utcnow,
 )
 from rate_limit import auth_rate_limiter, get_client_ip
 from schemas import (
@@ -42,7 +43,7 @@ from security import (
 )
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlmodel.ext.asyncio.session import AsyncSession
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -74,17 +75,18 @@ async def _issue_auth_token(
     request: Request,
     response: Response,
 ) -> SessionResponse:
-    raw_token, expires_at = create_access_token(user.id)
+    user_id = require_id(user.id, "User")
+    raw_token, expires_at = create_access_token(user_id)
     session.add(
         AuthToken(
-            user_id=user.id,
+            user_id=user_id,
             token=hash_token(raw_token),
             expires_at=expires_at,
         )
     )
     session.add(
         UserLogin(
-            user_id=user.id,
+            user_id=user_id,
             auth_method=auth_method,
             ip_address=get_client_ip(request),
         )
@@ -96,7 +98,7 @@ async def _issue_auth_token(
 
 def _to_user_response(user: User) -> UserResponse:
     return UserResponse(
-        id=user.id,
+        id=require_id(user.id, "User"),
         email=user.email,
         tier=user.tier.value,
         is_admin=user.is_admin,
@@ -145,9 +147,7 @@ async def request_code(
         )
 
     code = generate_verification_code()
-    expires_at = _utcnow() + timedelta(
-        minutes=settings.VERIFICATION_CODE_EXPIRE_MINUTES
-    )
+    expires_at = utcnow() + timedelta(minutes=settings.VERIFICATION_CODE_EXPIRE_MINUTES)
 
     verification = VerificationCode(
         email=body.email,
@@ -174,8 +174,8 @@ async def verify_code(
     stmt = select(VerificationCode).where(
         VerificationCode.email == body.email,
         VerificationCode.code == body.code,
-        VerificationCode.used == False,  # noqa: E712
-        VerificationCode.expires_at > _utcnow(),
+        col(VerificationCode.used).is_(False),
+        VerificationCode.expires_at > utcnow(),
     )
     result = await session.exec(stmt)
     vc = result.first()
@@ -268,7 +268,7 @@ async def set_password(
         )
 
     user.password_hash = hash_user_password(_validate_account_password(body.password))
-    user.updated_at = _utcnow()
+    user.updated_at = utcnow()
     session.add(user)
     await session.commit()
     await session.refresh(user)
@@ -295,7 +295,7 @@ async def change_password(
     user.password_hash = hash_user_password(
         _validate_account_password(body.new_password)
     )
-    user.updated_at = _utcnow()
+    user.updated_at = utcnow()
     session.add(user)
     await session.commit()
     await session.refresh(user)
@@ -323,10 +323,11 @@ async def get_quota(
     max_file_size_mb, max_files_per_upload = _get_max_file_size_for_tier(user.tier)
 
     # Count uploads in the last 7 days
-    one_week_ago = _utcnow() - timedelta(days=7)
+    one_week_ago = utcnow() - timedelta(days=7)
+    user_id = require_id(user.id, "User")
     result = await session.exec(
-        select(func.count(FileUpload.id)).where(
-            FileUpload.user_id == user.id,
+        select(func.count(col(FileUpload.id))).where(
+            FileUpload.user_id == user_id,
             FileUpload.created_at >= one_week_ago,
         )
     )

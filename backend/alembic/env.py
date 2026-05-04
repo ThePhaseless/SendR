@@ -2,11 +2,14 @@ import asyncio
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
+from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlmodel import SQLModel
 
 import models  # noqa: F401
 from alembic import context
+
+_models = models
 
 config = context.config
 
@@ -33,7 +36,11 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection):
+def _config_section() -> dict[str, str]:
+    return config.get_section(config.config_ini_section) or {}
+
+
+def do_run_migrations(connection: Connection) -> None:
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
@@ -46,7 +53,7 @@ def do_run_migrations(connection):
 
 def run_migrations_online_sync() -> None:
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        _config_section(),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
@@ -59,7 +66,7 @@ def run_migrations_online_sync() -> None:
 
 async def run_async_migrations() -> None:
     connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        _config_section(),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

@@ -15,7 +15,7 @@ def _noop_altcha():
 
 
 @pytest.fixture(autouse=True)
-def _override_altcha():
+def override_altcha():
     """Override altcha verification for all tests in this module."""
     app.dependency_overrides[verify_altcha_payload] = _noop_altcha
     yield
@@ -23,7 +23,7 @@ def _override_altcha():
 
 
 @pytest.mark.asyncio
-async def test_upload_multiple_no_files_returns_400(auth_headers):
+async def test_upload_multiple_no_files_returns_400(auth_headers: dict[str, str]):
     """POST /api/files/upload-multiple with no files should return 400."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -38,7 +38,7 @@ async def test_upload_multiple_no_files_returns_400(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_upload_multiple_success(auth_headers):
+async def test_upload_multiple_success(auth_headers: dict[str, str]):
     """POST /api/files/upload-multiple should upload multiple files."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -66,7 +66,7 @@ async def test_upload_multiple_success(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_group_info(auth_headers):
+async def test_group_info(auth_headers: dict[str, str]):
     """GET /api/files/group/{group} should return group info."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -95,7 +95,7 @@ async def test_group_info(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_group_download(auth_headers):
+async def test_group_download(auth_headers: dict[str, str]):
     """GET /api/files/group/{group}/download should return file or zip."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -121,7 +121,9 @@ async def test_group_download(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_group_download_uses_upload_title_for_zip_name(auth_headers):
+async def test_group_download_uses_upload_title_for_zip_name(
+    auth_headers: dict[str, str],
+):
     """Group ZIP downloads should use the upload title as the archive name."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -155,7 +157,9 @@ async def test_group_download_uses_upload_title_for_zip_name(auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_group_download_preserves_folder_paths_in_zip(auth_headers):
+async def test_group_download_preserves_folder_paths_in_zip(
+    auth_headers: dict[str, str],
+):
     """Folder uploads preserve relative paths in the ZIP flow."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"

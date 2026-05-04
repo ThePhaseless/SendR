@@ -3,30 +3,33 @@ from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from sqlmodel import and_, func, or_, select
+from sqlmodel import and_, col, func, or_, select
 
 from config import settings
-from models import FileUpload, _utcnow
+from models import FileUpload, utcnow
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlmodel.ext.asyncio.session import AsyncSession
 
 logger = logging.getLogger(__name__)
 
 
 async def cleanup_expired_files(session: AsyncSession) -> int:
     """Delete files past the grace period and return the cleanup count."""
-    now = _utcnow()
+    now = utcnow()
     cutoff = now - timedelta(days=settings.FILE_GRACE_PERIOD_DAYS)
     owned_cutoff = now - timedelta(
         days=max(settings.FILE_GRACE_PERIOD_DAYS, settings.PREMIUM_REFRESH_GRACE_DAYS)
     )
 
     stmt = select(FileUpload).where(
-        FileUpload.is_active == True,  # noqa: E712
+        col(FileUpload.is_active).is_(True),
         or_(
-            and_(FileUpload.user_id.is_(None), FileUpload.expires_at < cutoff),
-            and_(FileUpload.user_id.is_not(None), FileUpload.expires_at < owned_cutoff),
+            and_(col(FileUpload.user_id).is_(None), FileUpload.expires_at < cutoff),
+            and_(
+                col(FileUpload.user_id).is_not(None),
+                FileUpload.expires_at < owned_cutoff,
+            ),
         ),
     )
     result = await session.exec(stmt)
@@ -46,10 +49,10 @@ async def cleanup_expired_files(session: AsyncSession) -> int:
         cleaned += 1
 
         result = await session.exec(
-            select(func.count(FileUpload.id)).where(
+            select(func.count(col(FileUpload.id))).where(
                 FileUpload.stored_filename == file_upload.stored_filename,
-                FileUpload.is_active == True,  # noqa: E712
-                FileUpload.id.notin_(cleaned_ids),
+                col(FileUpload.is_active).is_(True),
+                col(FileUpload.id).notin_(cleaned_ids),
             )
         )
         if result.one() == 0:
