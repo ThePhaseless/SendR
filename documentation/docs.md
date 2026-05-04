@@ -2,12 +2,12 @@
 
 ## Authors
 
-| Name | Student ID |
-| ---- | ---------- |
-| Franciszek Przybyłowski | s223346 |
-| Jakub Orchowski | s223281 |
-| Kamil Pizon | s223434 |
-| Filip Obuchowicz | s223421 |
+| Name                    | Student ID |
+| ----------------------- | ---------- |
+| Franciszek Przybyłowski | s223346    |
+| Jakub Orchowski         | s223281    |
+| Kamil Pizon             | s223434    |
+| Filip Obuchowicz        | s223421    |
 
 ## Contents
 
@@ -24,7 +24,7 @@
 
 SendR is a file-sharing web application inspired by services such as WeTransfer. The goal of the project was to create a convenient and functional platform that allows users to upload, share, and manage files through download links — while meeting the security standards.
 
-> **Key Design Decision**  
+> **Key Design Decision**
 > The most significant decision made during the project was to **shift from a convenience-first approach to a security-first approach**. This meant introducing mandatory user authentication, even at the cost of the frictionless experience that services like WeTransfer are known for. A user now must authenticate via email before uploading or managing files.
 
 This decision shaped the entire architecture of the application: authentication, tier-based access, quota enforcement, and file expiry are all consequences of prioritizing a secure environment over anonymous access.
@@ -50,7 +50,7 @@ SendR follows a classic client-server architecture, split into two independently
 
 The two services communicate exclusively through a well-defined HTTP API. The frontend never accesses the database directly. In both local development and Docker-based deployments, the frontend nginx instance acts as a reverse proxy, forwarding all `/api/*` requests to the backend service.
 
-> **Architecture Summary**  
+> **Architecture Summary**
 > **Frontend** (Angular + nginx) → **/api/\* proxy** → **Backend** (FastAPI) → **Database** (SQLite)
 
 ### Frontend

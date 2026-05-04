@@ -1,7 +1,7 @@
 /// <reference types="jasmine" />
 
-import { By } from '@angular/platform-browser';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { ActivatedRoute, type ParamMap, Router, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthService } from '../../services/auth.service';

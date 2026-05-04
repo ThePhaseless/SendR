@@ -4,7 +4,6 @@ import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { FilesService as ApiFilesService } from '../api/endpoints/files/files.service';
-import type { UploadFileEntry } from '../components/file-picker/file-picker.component';
 import type {
   AccessEditRequest,
   AccessInfoResponse,
@@ -16,6 +15,7 @@ import type {
   MultiFileUploadResponse,
   UploadGroupInfoResponse,
 } from '../api/model';
+import type { UploadFileEntry } from '../components/file-picker/file-picker.component';
 
 export type {
   AccessEditRequest,
