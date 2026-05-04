@@ -179,7 +179,7 @@ export class DownloadComponent {
 
   singleFileGroupDownloadOnly = computed(() => {
     const file = this.fileInfo();
-    return Boolean(file && file.group_download_only && !file.viewer_is_owner);
+    return Boolean(file && file.group_download_only);
   });
 
   /** Whether the download limit has been reached for the group. */

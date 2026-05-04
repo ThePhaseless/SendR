@@ -65,10 +65,6 @@
           @if (!file.is_active || isExpired(file.expires_at)) {
             <div class="alert alert-error">This file has expired and is no longer available.</div>
           } @else if (singleFileGroupDownloadOnly()) {
-            <div class="alert alert-info">
-              Individual downloads are disabled for this limited multi-file transfer. Download the
-              full transfer instead.
-            </div>
             @if (file.upload_group) {
               <a class="btn btn-primary btn-lg" [href]="getGroupPageUrl(file.upload_group)">
                 Open Transfer Download
@@ -119,17 +115,7 @@
               <span>{{ group.file_count }} {{ group.file_count === 1 ? "file" : "files" }}</span>
             }
           </div>
-          @if (group.will_zip) {
-            <div class="alert alert-info zip-info">
-              📦 This transfer will be delivered as a ZIP archive.
-            </div>
-          }
-          @if (groupRestrictsSingleFileDownloads()) {
-            <div class="alert alert-info zip-info">
-              Individual file downloads are disabled for limited multi-file transfers. Use the full
-              transfer download.
-            </div>
-          }
+          @if (groupRestrictsSingleFileDownloads()) {}
           <div class="group-file-list scroll-surface scroll-medium">
             @for (file of group.files; track file.id) {
               <div class="group-file-item">

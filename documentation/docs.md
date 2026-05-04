@@ -149,7 +149,7 @@ Files uploaded to SendR are not stored indefinitely. Each file has a configurabl
 
 ### Upload Quota Management
 
-The system tracks upload usage per user on a rolling weekly basis. When a user reaches their tier's weekly file limit, further uploads are rejected until quota resets. This ensures fair resource usage across all accounts.
+The system tracks upload usage per user on a rolling weekly basis. When a user reaches their tier's weekly upload limit, further transfers are rejected until quota resets. This ensures fair resource usage across all accounts.
 
 ### API Documentation
 

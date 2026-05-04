@@ -121,6 +121,30 @@ async def test_group_download(auth_headers: dict[str, str]):
 
 
 @pytest.mark.asyncio
+async def test_single_file_group_download_returns_raw_file(
+    auth_headers: dict[str, str],
+):
+    """A one-file grouped upload should download the raw file, not a ZIP."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        upload_resp = await client.post(
+            "/api/files/upload-multiple",
+            files=[("files", ("solo.txt", b"solo", "text/plain"))],
+            headers=auth_headers,
+            data={"altcha": json.dumps({"mock": True})},
+        )
+        assert upload_resp.status_code == 201
+        upload_group = upload_resp.json()["upload_group"]
+
+        download_resp = await client.get(f"/api/files/group/{upload_group}/download")
+
+    assert download_resp.status_code == 200
+    assert "application/zip" not in download_resp.headers.get("content-type", "")
+    assert download_resp.content == b"solo"
+
+
+@pytest.mark.asyncio
 async def test_group_download_uses_upload_title_for_zip_name(
     auth_headers: dict[str, str],
 ):

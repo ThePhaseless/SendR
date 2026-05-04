@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -130,6 +130,18 @@ def _weekly_size_limit_for_tier(tier: UserTier) -> int:
     if tier == UserTier.free:
         return settings.FREE_MAX_WEEKLY_UPLOAD_SIZE_MB * 1024 * 1024
     return settings.TEMPORARY_MAX_WEEKLY_UPLOAD_SIZE_MB * 1024 * 1024
+
+
+async def _count_weekly_uploads(
+    session: AsyncSession, user_id: int, one_week_ago: datetime
+) -> int:
+    result = await session.exec(
+        select(func.count(func.distinct(col(FileUpload.upload_group)))).where(
+            FileUpload.user_id == user_id,
+            FileUpload.created_at >= one_week_ago,
+        )
+    )
+    return result.one()
 
 
 @router.post("/request-code", status_code=status.HTTP_200_OK)
@@ -322,16 +334,10 @@ async def get_quota(
 ) -> QuotaResponse:
     max_file_size_mb, max_files_per_upload = _get_max_file_size_for_tier(user.tier)
 
-    # Count uploads in the last 7 days
+    # Count transfers in the last 7 days
     one_week_ago = utcnow() - timedelta(days=7)
     user_id = require_id(user.id, "User")
-    result = await session.exec(
-        select(func.count(col(FileUpload.id))).where(
-            FileUpload.user_id == user_id,
-            FileUpload.created_at >= one_week_ago,
-        )
-    )
-    weekly_used = result.one()
+    weekly_used = await _count_weekly_uploads(session, user_id, one_week_ago)
 
     weekly_limit = _weekly_limit_for_tier(user.tier)
     weekly_remaining = (

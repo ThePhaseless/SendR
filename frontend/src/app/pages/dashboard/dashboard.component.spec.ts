@@ -246,6 +246,21 @@ describe('DashboardComponent', () => {
     expect(actions).toContain('Refresh');
   });
 
+  it('hides account security for temporary users', async () => {
+    authService.currentUser.set(createUser('temporary'));
+    const fixture = TestBed.createComponent(DashboardComponent);
+
+    fixture.detectChanges();
+    flushInitialRequests(httpTesting);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(root.textContent).not.toContain('Account Security');
+    expect(root.querySelector('.account-panel')).toBeNull();
+  });
+
   it('refuses staged file additions during refresh for free users', async () => {
     authService.currentUser.set(createUser('free'));
     const fixture = TestBed.createComponent(DashboardComponent);

@@ -311,10 +311,10 @@ async def test_group_password_protected_download(free_headers: dict[str, str]):
 
 
 @pytest.mark.asyncio
-async def test_limited_multi_file_group_disables_single_file_downloads(
+async def test_multi_file_group_disables_single_file_downloads(
     free_headers: dict[str, str],
 ):
-    """Limited multi-file transfers can only be downloaded as the full group."""
+    """Grouped archive-style transfers can only be downloaded as the full group."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
@@ -327,7 +327,6 @@ async def test_limited_multi_file_group_disables_single_file_downloads(
             data={
                 "altcha": json.dumps({"mock": True}),
                 "is_public": "true",
-                "max_downloads": "1",
             },
             headers=free_headers,
         )
@@ -355,10 +354,10 @@ async def test_limited_multi_file_group_disables_single_file_downloads(
 
 
 @pytest.mark.asyncio
-async def test_owner_can_download_password_protected_group_files_without_password(
+async def test_owner_can_download_password_protected_group_without_password(
     free_headers: dict[str, str],
 ):
-    """Owners can download password-protected group files without a password."""
+    """Owners must use the group download for password-protected grouped transfers."""
     passwords = [{"label": "Team", "password": "teampass"}]
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -392,23 +391,67 @@ async def test_owner_can_download_password_protected_group_files_without_passwor
         info_data = info_resp.json()
         assert info_data["viewer_is_owner"] is True
         assert len(info_data["files"]) == 2
+        assert all(
+            file_info["group_download_only"] is True for file_info in info_data["files"]
+        )
 
         file_info_resp = await client.get(f"{download_url}/info", headers=free_headers)
         assert file_info_resp.status_code == 200
         assert file_info_resp.json()["viewer_is_owner"] is True
+        assert file_info_resp.json()["group_download_only"] is True
 
         download_resp = await client.get(download_url, headers=free_headers)
-        assert download_resp.status_code == 200
+        assert download_resp.status_code == 403
+        assert "Download the full transfer instead" in get_error_message(download_resp)
+
+        group_download_resp = await client.get(
+            f"/api/files/group/{group}/download", headers=free_headers
+        )
+        assert group_download_resp.status_code == 200
 
     session_factory = database.async_session
     async with session_factory() as session:
         result = await session.exec(
-            select(DownloadLog).where(DownloadLog.file_upload_id == file_id)
+            select(DownloadLog).where(
+                DownloadLog.upload_group == group,
+                DownloadLog.access_type == "owner",
+            )
         )
-        log_entry = result.first()
+        log_entries = list(result.all())
 
-    assert log_entry is not None
-    assert log_entry.access_type == "owner"
+    assert len(log_entries) == 1
+    assert log_entries[0].file_upload_id is None
+
+
+@pytest.mark.asyncio
+async def test_single_file_group_allows_direct_file_download(
+    free_headers: dict[str, str],
+):
+    """A grouped upload with one plain file still allows direct file downloads."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        upload_resp = await client.post(
+            "/api/files/upload-multiple",
+            files=[("files", ("solo.txt", b"solo", "text/plain"))],
+            data={"altcha": json.dumps({"mock": True}), "is_public": "true"},
+            headers=free_headers,
+        )
+        assert upload_resp.status_code == 201
+        upload_data = cast("dict[str, object]", upload_resp.json())
+        files = cast("list[dict[str, object]]", upload_data["files"])
+        first_file = files[0]
+
+        file_info_resp = await client.get(
+            f"{first_file['download_url']}/info", headers=free_headers
+        )
+        assert file_info_resp.status_code == 200
+        assert file_info_resp.json()["group_download_only"] is False
+
+        download_resp = await client.get(
+            cast("str", first_file["download_url"]), headers=free_headers
+        )
+        assert download_resp.status_code == 200
 
 
 # ── Access info endpoint ─────────────────────────────────────────────
@@ -509,6 +552,46 @@ async def test_download_stats(free_headers: dict[str, str]):
 
 
 @pytest.mark.asyncio
+async def test_group_zip_download_counts_as_single_download_in_stats(
+    free_headers: dict[str, str],
+):
+    """A ZIP transfer should appear as one download event in group stats."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        upload_resp = await client.post(
+            "/api/files/upload-multiple",
+            files=[
+                ("files", ("first.txt", b"first", "text/plain")),
+                ("files", ("second.txt", b"second", "text/plain")),
+            ],
+            data={"altcha": json.dumps({"mock": True}), "is_public": "true"},
+            headers=free_headers,
+        )
+        assert upload_resp.status_code == 201
+        group = upload_resp.json()["upload_group"]
+
+        download_resp = await client.get(f"/api/files/group/{group}/download")
+        assert download_resp.status_code == 200
+
+        stats_resp = await client.get(
+            f"/api/files/group/{group}/stats", headers=free_headers
+        )
+
+    assert stats_resp.status_code == 200
+    data = stats_resp.json()
+    assert data["total_downloads"] == 1
+    assert data["stats"] == [
+        {
+            "access_type": "public",
+            "identifier": None,
+            "download_count": 1,
+            "last_download": data["stats"][0]["last_download"],
+        }
+    ]
+
+
+@pytest.mark.asyncio
 async def test_download_stats_unauthorized(
     free_headers: dict[str, str], temp_headers: dict[str, str]
 ):
@@ -577,6 +660,40 @@ async def test_quota_includes_access_limits(free_headers: dict[str, str]):
     # Free tier should have limits > 0 for passwords
     assert data["max_passwords_per_upload"] == 3
     assert data["max_emails_per_upload"] == 5
+
+
+@pytest.mark.asyncio
+async def test_multi_file_upload_counts_as_single_weekly_upload(
+    free_headers: dict[str, str],
+):
+    """A grouped multi-file upload should consume one weekly upload slot."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        quota_before_resp = await client.get("/api/auth/quota", headers=free_headers)
+        assert quota_before_resp.status_code == 200
+        quota_before = quota_before_resp.json()
+
+        upload_resp = await client.post(
+            "/api/files/upload-multiple",
+            files=[
+                ("files", ("first.txt", b"first", "text/plain")),
+                ("files", ("second.txt", b"second", "text/plain")),
+            ],
+            data={"altcha": json.dumps({"mock": True})},
+            headers=free_headers,
+        )
+        assert upload_resp.status_code == 201
+
+        quota_after_resp = await client.get("/api/auth/quota", headers=free_headers)
+
+    assert quota_after_resp.status_code == 200
+    quota_after = quota_after_resp.json()
+    assert quota_after["weekly_uploads_used"] == quota_before["weekly_uploads_used"] + 1
+    assert (
+        quota_after["weekly_uploads_remaining"]
+        == quota_before["weekly_uploads_remaining"] - 1
+    )
 
 
 # ── Access edit endpoint ─────────────────────────────────────────────
@@ -774,6 +891,65 @@ async def test_recipient_stats_returns_email_download_counts(
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
+        response = await client.get(
+            f"/api/files/group/{upload_group}/recipient-stats?password={raw_token}"
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "downloads": [{"email": "recipient@example.com", "download_count": 1}],
+        "total_downloads": 1,
+    }
+
+
+@pytest.mark.asyncio
+async def test_group_zip_recipient_stats_count_one_download_event(
+    free_headers: dict[str, str],
+):
+    """A recipient ZIP download should count once in recipient-visible stats."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        upload_resp = await client.post(
+            "/api/files/upload-multiple",
+            files=[
+                ("files", ("first.txt", b"first", "text/plain")),
+                ("files", ("second.txt", b"second", "text/plain")),
+            ],
+            data={"altcha": json.dumps({"mock": True}), "is_public": "false"},
+            headers=free_headers,
+        )
+        assert upload_resp.status_code == 201
+        upload_group = upload_resp.json()["upload_group"]
+
+    raw_token = "group-recipient-token"
+    async with database.async_session() as session:
+        settings_result = await session.exec(
+            select(UploadGroupSettings).where(
+                UploadGroupSettings.upload_group == upload_group
+            )
+        )
+        group_settings = settings_result.one()
+        group_settings.show_email_stats = True
+        session.add(group_settings)
+
+        recipient = UploadEmailRecipient(
+            upload_group=upload_group,
+            email="recipient@example.com",
+            token_hash=sha256(raw_token.encode()).hexdigest(),
+        )
+        session.add(recipient)
+        await session.commit()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        download_resp = await client.get(
+            f"/api/files/group/{upload_group}/download",
+            headers={"X-Access-Token": raw_token},
+        )
+        assert download_resp.status_code == 200
+
         response = await client.get(
             f"/api/files/group/{upload_group}/recipient-stats?password={raw_token}"
         )

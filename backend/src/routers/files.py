@@ -237,11 +237,23 @@ def _weekly_size_limit_for_tier(tier: UserTier) -> int:
     return settings.TEMPORARY_MAX_WEEKLY_UPLOAD_SIZE_MB * 1024 * 1024
 
 
+async def _count_weekly_uploads(
+    session: AsyncSession, user_id: int, one_week_ago: datetime
+) -> int:
+    result = await session.exec(
+        select(func.count(func.distinct(col(FileUpload.upload_group)))).where(
+            FileUpload.user_id == user_id,
+            FileUpload.created_at >= one_week_ago,
+        )
+    )
+    return result.one()
+
+
 async def _check_weekly_quota(
     user: User,
     session: AsyncSession,
     *,
-    incoming_files: int = 0,
+    incoming_uploads: int = 0,
     incoming_bytes: int = 0,
 ) -> None:
     """Raise HTTP 429 if the user has exceeded their weekly upload quota."""
@@ -250,14 +262,8 @@ async def _check_weekly_quota(
     one_week_ago = utcnow() - timedelta(days=7)
 
     if weekly_limit > 0:
-        result = await session.exec(
-            select(func.count(col(FileUpload.id))).where(
-                FileUpload.user_id == user_id,
-                FileUpload.created_at >= one_week_ago,
-            )
-        )
-        weekly_used = result.one()
-        if weekly_used + incoming_files > weekly_limit:
+        weekly_used = await _count_weekly_uploads(session, user_id, one_week_ago)
+        if weekly_used + incoming_uploads > weekly_limit:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=(
@@ -435,21 +441,22 @@ def to_file_response(
     )
 
 
+def _requires_group_archive_download(files: list[FileUpload]) -> bool:
+    return _group_downloads_as_archive(files)
+
+
 async def _is_single_file_download_restricted(
     session: AsyncSession,
     file_upload: FileUpload,
 ) -> bool:
     """Return whether a file can only be downloaded via the group ZIP flow."""
-    if not file_upload.max_downloads:
-        return False
-
     result = await session.exec(
-        select(func.count(col(FileUpload.id))).where(
+        select(FileUpload).where(
             FileUpload.upload_group == file_upload.upload_group,
             col(FileUpload.is_active).is_(True),
         )
     )
-    return result.one() > 1
+    return _requires_group_archive_download(list(result.all()))
 
 
 async def _store_upload_content(
@@ -803,7 +810,12 @@ async def upload_file(
             detail=f"File too large. Max {max_size_mb}MB for {user.tier.value} tier.",
         )
 
-    await _check_weekly_quota(user, session, incoming_files=1, incoming_bytes=file_size)
+    await _check_weekly_quota(
+        user,
+        session,
+        incoming_uploads=1,
+        incoming_bytes=file_size,
+    )
 
     stored_filename, content_hash = await _store_upload_content(session, content)
 
@@ -933,7 +945,7 @@ async def upload_multiple_files(
     await _check_weekly_quota(
         user,
         session,
-        incoming_files=len(file_contents),
+        incoming_uploads=1,
         incoming_bytes=total_size,
     )
 
@@ -1008,8 +1020,7 @@ async def upload_multiple_files(
                 group_settings,
                 pw_count,
                 email_count,
-                group_download_only=resolved_max_downloads is not None
-                and len(saved_uploads) > 1,
+                group_download_only=_requires_group_archive_download(saved_uploads),
             )
             for fu in saved_uploads
         ],
@@ -1061,6 +1072,7 @@ async def get_group_info(
     )
 
     total_size = sum(f.file_size_bytes for f in files)
+    requires_archive_download = _requires_group_archive_download(files)
     return UploadGroupInfoResponse(
         files=(
             []
@@ -1072,7 +1084,7 @@ async def get_group_info(
                     pw_count,
                     email_count,
                     viewer_is_owner=viewer_is_owner,
-                    group_download_only=len(files) > 1 and bool(f.max_downloads),
+                    group_download_only=requires_archive_download,
                 )
                 for f in files
             ]
@@ -1205,15 +1217,17 @@ async def download_group(
             access_type,
             bool(group_settings and group_settings.separate_download_counts),
         )
-        session.add(
-            DownloadLog(
-                upload_group=upload_group,
-                file_upload_id=f.id,
-                access_type=access_type,
-                upload_password_id=pw_id,
-                email_recipient_id=er_id,
-            )
+
+    # Archive downloads are one transfer event even though each file consumes its
+    # own download slot for per-file limit enforcement.
+    session.add(
+        DownloadLog(
+            upload_group=upload_group,
+            access_type=access_type,
+            upload_password_id=pw_id,
+            email_recipient_id=er_id,
         )
+    )
 
     await session.commit()
 
@@ -1293,12 +1307,9 @@ async def download_file(
         current_user,
     )
 
-    if access_type != "owner" and await _is_single_file_download_restricted(
-        session, file_upload
-    ):
+    if await _is_single_file_download_restricted(session, file_upload):
         detail = (
-            "Single-file downloads are disabled for multi-file transfers "
-            "with download limits. "
+            "Single-file downloads are disabled for grouped transfers. "
             "Download the full transfer instead."
         )
         raise HTTPException(
@@ -1510,7 +1521,15 @@ async def refresh_download_link(
     await session.refresh(file_upload)
 
     gs, pws, ers = await load_group_access(session, file_upload.upload_group)
-    return to_file_response(file_upload, gs, len(pws), len(ers))
+    return to_file_response(
+        file_upload,
+        gs,
+        len(pws),
+        len(ers),
+        group_download_only=await _is_single_file_download_restricted(
+            session, file_upload
+        ),
+    )
 
 
 @router.patch("/{file_id}")
@@ -1555,7 +1574,15 @@ async def edit_file(
     await session.refresh(file_upload)
 
     gs, pws, ers = await load_group_access(session, file_upload.upload_group)
-    return to_file_response(file_upload, gs, len(pws), len(ers))
+    return to_file_response(
+        file_upload,
+        gs,
+        len(pws),
+        len(ers),
+        group_download_only=await _is_single_file_download_restricted(
+            session, file_upload
+        ),
+    )
 
 
 @router.delete("/{file_id}", status_code=status.HTTP_200_OK)
@@ -1654,7 +1681,7 @@ async def add_files_to_group(
     await _check_weekly_quota(
         user,
         session,
-        incoming_files=len(file_contents),
+        incoming_uploads=0,
         incoming_bytes=sum(len(content) for _, content in file_contents),
     )
 
@@ -1683,8 +1710,20 @@ async def add_files_to_group(
 
     gs, pws, ers = await load_group_access(session, upload_group)
     new_total = sum(len(c) for _, c in file_contents)
+    requires_archive_download = _requires_group_archive_download(
+        [f for f in existing_files if f.is_active] + saved_uploads
+    )
     return MultiFileUploadResponse(
-        files=[to_file_response(fu, gs, len(pws), len(ers)) for fu in saved_uploads],
+        files=[
+            to_file_response(
+                fu,
+                gs,
+                len(pws),
+                len(ers),
+                group_download_only=requires_archive_download,
+            )
+            for fu in saved_uploads
+        ],
         upload_group=upload_group,
         total_size_bytes=new_total,
         title=gs.title if gs else None,
@@ -1782,8 +1821,18 @@ async def refresh_group(
 
     gs, pws, ers = await load_group_access(session, upload_group)
     active_files = [f for f in files if f.is_active]
+    requires_archive_download = _requires_group_archive_download(active_files)
     return MultiFileUploadResponse(
-        files=[to_file_response(f, gs, len(pws), len(ers)) for f in active_files],
+        files=[
+            to_file_response(
+                f,
+                gs,
+                len(pws),
+                len(ers),
+                group_download_only=requires_archive_download,
+            )
+            for f in active_files
+        ],
         upload_group=upload_group,
         total_size_bytes=sum(f.file_size_bytes for f in active_files),
         title=gs.title if gs else None,
@@ -1844,8 +1893,18 @@ async def edit_group(
         await session.refresh(f)
 
     gs, pws, ers = await load_group_access(session, upload_group)
+    requires_archive_download = _requires_group_archive_download(files)
     return MultiFileUploadResponse(
-        files=[to_file_response(f, gs, len(pws), len(ers)) for f in files],
+        files=[
+            to_file_response(
+                f,
+                gs,
+                len(pws),
+                len(ers),
+                group_download_only=requires_archive_download,
+            )
+            for f in files
+        ],
         upload_group=upload_group,
         total_size_bytes=sum(f.file_size_bytes for f in files),
         title=gs.title if gs else None,
