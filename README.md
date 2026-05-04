@@ -14,7 +14,7 @@ A WeTransfer-like file sharing service built with Angular and FastAPI.
 ## Tech Stack
 
 - **Frontend**: Angular 19, SCSS, OpenAPI-generated client
-- **Backend**: FastAPI, SQLModel, Alembic (migrations), SQLite
+- **Backend**: FastAPI, SQLModel, Alembic migrations, SQLite
 - **Tooling**: uv (Python), bun (JS runtime and package manager), ruff (Python linter), oxlint (TS linter)
 - **Deployment**: Single Docker image
 

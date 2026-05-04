@@ -1,60 +1,27 @@
 # SendR – Project Documentation
-<div align="center">
-  <h3>Authors</h3>
-  <hr style="width: 200px; margin-bottom: 20px;">
-  
-  <table style="border: none;">
-    <tr style="border: none;">
-      <td style="border: none; padding: 0 20px;">
-        <strong>Franciszek Przybyłowski</strong><br>
-        s223346<br>
-      </td>
-      <td style="border: none; padding: 0 20px;">
-        <strong>Jakub Orchowski</strong><br>
-        s223281<br>
-      </td>
-      <td style="border: none; padding: 0 20px;">
-        <strong>Kamil Pizon</strong><br>
-        s223434<br>
-      </td>
-      <td style="border: none; padding: 0 20px;">
-        <strong>Filip Obuchowicz</strong><br>
-        s223421<br>
-      </td>
-    </tr>
-  </table>
-</div>
 
-## Introduction- [SendR – Project Documentation](#sendr--project-documentation)
-- [SendR – Project Documentation](#sendr--project-documentation)
-  - [Introduction- SendR – Project Documentation](#introduction--sendr--project-documentation)
-    - [Overview](#overview)
-    - [Project Goals](#project-goals)
-  - [System Architecture](#system-architecture)
-    - [High-Level Overview](#high-level-overview)
-    - [Frontend](#frontend)
-    - [Backend](#backend)
-    - [Database](#database)
-    - [Deployment Model](#deployment-model)
-  - [Technology Stack](#technology-stack)
-    - [Frontend Technologies](#frontend-technologies)
-    - [Backend Technologies](#backend-technologies)
-    - [Tooling and Infrastructure](#tooling-and-infrastructure)
-  - [Key Features](#key-features)
-    - [Email-Based Authentication](#email-based-authentication)
-    - [File Sharing](#file-sharing)
-    - [CAPTCHA Protection](#captcha-protection)
-    - [Tier-Based Access Control](#tier-based-access-control)
-    - [File Expiry and Refresh](#file-expiry-and-refresh)
-    - [Upload Quota Management](#upload-quota-management)
-    - [API Documentation](#api-documentation)
-  - [Environment Configuration](#environment-configuration)
-  - [Development Process](#development-process)
-    - [Version Control and Workflow](#version-control-and-workflow)
-    - [Quick Start](#quick-start)
+## Authors
 
+| Name | Student ID |
+| ---- | ---------- |
+| Franciszek Przybyłowski | s223346 |
+| Jakub Orchowski | s223281 |
+| Kamil Pizon | s223434 |
+| Filip Obuchowicz | s223421 |
+
+## Contents
+
+- [Introduction](#introduction)
+- [System Architecture](#system-architecture)
+- [Technology Stack](#technology-stack)
+- [Key Features](#key-features)
+- [Environment Configuration](#environment-configuration)
+- [Development Process](#development-process)
+
+## Introduction
 
 ### Overview
+
 SendR is a file-sharing web application inspired by services such as WeTransfer. The goal of the project was to create a convenient and functional platform that allows users to upload, share, and manage files through download links — while meeting the security standards.
 
 > **Key Design Decision**  
@@ -63,6 +30,7 @@ SendR is a file-sharing web application inspired by services such as WeTransfer.
 This decision shaped the entire architecture of the application: authentication, tier-based access, quota enforcement, and file expiry are all consequences of prioritizing a secure environment over anonymous access.
 
 ### Project Goals
+
 The primary objectives of the project were:
 
 - Build a functional file-sharing service with a modern web interface
@@ -70,7 +38,6 @@ The primary objectives of the project were:
 - Enforce per-user upload limits and file expiry policies
 - Package the application for containerized deployment using Docker
 - Deploy the application to a cloud environment
-
 
 ## System Architecture
 
@@ -88,7 +55,7 @@ The two services communicate exclusively through a well-defined HTTP API. The fr
 
 ### Frontend
 
-The frontend is a single-page application (SPA) built with Angular 19. It is responsible for all user-facing interactions: uploading files, authenticating via email, browsing upload history, and managing file links.
+The frontend is a single-page application (SPA) built with Angular 21. It is responsible for all user-facing interactions: uploading files, authenticating via email, browsing upload history, and managing file links.
 
 A notable aspect of the frontend setup is the use of an **auto-generated API client**. The OpenAPI specification is exported from the running FastAPI backend, and the Angular client code is generated from it automatically. This ensures that the frontend and backend are always in sync with respect to request and response shapes, without requiring manual maintenance of API interfaces.
 
@@ -100,9 +67,9 @@ The backend is a RESTful API built with **FastAPI**, a modern Python web framewo
 - File upload, storage, and retrieval
 - Quota enforcement per user tier
 - File expiry and link management
-- Subscription tier management (Basic, Free, Premium)
+- Subscription tier management (Temporary, Free, Premium)
 
-Database interactions are handled through **SQLModel**, which combines SQLAlchemy and Pydantic into a single model definition. Database schema migrations are managed with **Alembic**, allowing the schema to evolve over time without data loss.
+Database interactions are handled through **SQLModel**, which combines SQLAlchemy and Pydantic into a single model definition. Database schema changes are managed with **Alembic** migrations.
 
 ### Database
 
@@ -118,7 +85,7 @@ Both the frontend and backend are packaged as **Docker containers**. Each servic
 
 | Technology        | Purpose                                                  |
 | ----------------- | -------------------------------------------------------- |
-| Angular 19        | Main frontend framework (SPA)                            |
+| Angular 21        | Main frontend framework (SPA)                            |
 | TypeScript        | Programming language for the frontend                    |
 | SCSS              | Styling                                                  |
 | OpenAPI Generator | Auto-generates the HTTP client from the backend API spec |
@@ -160,29 +127,29 @@ In production mode, verification codes are sent via SMTP. During local developme
 The core feature of SendR is file upload and sharing. After authenticating, users can upload files which are then accessible via unique download links. The system supports file expiry, after which links become invalid and files are eventually purged.
 
 ### CAPTCHA Protection
-To prevent automated abuse of the authentication and upload endpoints, SendR integrates CAPTCHA verification. CAPTCHA is enabled by default in production mode (SENDR_ENVIRONMENT=production) and is relaxed in local development mode (SENDR_ENVIRONMENT=local) to streamline the development workflow.
 
+To prevent automated abuse of the authentication and upload endpoints, SendR integrates CAPTCHA verification. CAPTCHA is enabled by default in production mode (SENDR_ENVIRONMENT=production) and is relaxed in local development mode (SENDR_ENVIRONMENT=local) to streamline the development workflow.
 
 ### Tier-Based Access Control
 
 SendR implements a three-tier user system that controls upload limits and available features:
 
-| Feature                | Basic  | Free | Premium |
-| ---------------------- | ------ | ---- | ------- |
-| Email required         | Yes    | Yes  | Yes     |
-| Files per week         | 3      | 5    | 50      |
-| Max file size          | 100 MB | 1 GB | 10 GB   |
-| Browse history         | No     | Yes  | Yes     |
-| Edit files             | No     | No   | Yes     |
-| Retrieve expired files | No     | No   | Yes     |
+| Feature                | Temporary | Free | Premium |
+| ---------------------- | --------- | ---- | ------- |
+| Email required         | Yes       | Yes  | Yes     |
+| Files per week         | 3         | 5    | 50      |
+| Max file size          | 100 MB    | 1 GB | 10 GB   |
+| Browse history         | No        | Yes  | Yes     |
+| Edit files             | No        | No   | Yes     |
+| Retrieve expired files | No        | No   | Yes     |
 
 ### File Expiry and Refresh
 
 Files uploaded to SendR are not stored indefinitely. Each file has a configurable expiry period. Users with a Premium tier can retrieve files even after expiry within a grace period, as well as generate new download links for existing files.
 
 ### Upload Quota Management
-The system tracks upload usage per user on a rolling weekly basis. When a user reaches their tier's weekly file limit, further uploads are rejected until quota resets. This ensures fair resource usage across all accounts.
 
+The system tracks upload usage per user on a rolling weekly basis. When a user reaches their tier's weekly file limit, further uploads are rejected until quota resets. This ensures fair resource usage across all accounts.
 
 ### API Documentation
 
@@ -205,7 +172,6 @@ SendR uses environment variables to control runtime behaviour. The table below d
 
 > **💡 In local development mode (`SENDR_ENVIRONMENT=local`), verification codes are printed to the server log instead of being sent by email, and CAPTCHA verification is relaxed.**
 
-
 ## Development Process
 
 ### Version Control and Workflow
@@ -214,7 +180,7 @@ The project was developed using Git with the repository hosted on GitHub. All so
 
 ### Quick Start
 
-**Backend**
+#### Backend Quick Start
 
 ```bash
 cd backend
@@ -223,18 +189,19 @@ uv run alembic upgrade head
 SENDR_ENVIRONMENT=local uv run uvicorn src.app:app --host 0.0.0.0 --port 8000
 ```
 
-**Frontend**
+#### Frontend Quick Start
 
 ```bash
 cd frontend
 bun install
-bun start                   
-bun run start     
+bun run start
 ```
-**Docker**
+
+#### Docker Quick Start
+
 ```bash
 docker build -t sendr-api ./backend
 docker build -t sendr-frontend ./frontend
 docker run -p 8000:8000 sendr-api
-docker run -p 8080:80 -e API_URL=http://sendr-api:8000 sendr-frontend
+docker run -p 8080:8080 -e API_URL=http://sendr-api:8000 sendr-frontend
 ```

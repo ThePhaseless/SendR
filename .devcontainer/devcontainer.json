@@ -4,6 +4,13 @@
     "dockerfile": "Dockerfile",
     "context": ".."
   },
+  "remoteUser": "vscode",
+  "containerEnv": {
+    "SENDR_ENVIRONMENT": "local",
+    "SENDR_DATABASE_URL": "sqlite+aiosqlite:///./sendr.db",
+    "SENDR_UPLOAD_DIR": "./uploads",
+    "API_URL": "http://localhost:8000"
+  },
   "features": {
     "ghcr.io/devcontainers-extra/features/uv:1": {},
     "ghcr.io/shyim/devcontainers-features/bun:0": {},
@@ -18,13 +25,35 @@
     4200,
     8000
   ],
+  "portsAttributes": {
+    "4200": {
+      "label": "Angular dev server",
+      "onAutoForward": "notify"
+    },
+    "8000": {
+      "label": "FastAPI backend",
+      "onAutoForward": "notify"
+    }
+  },
   "customizations": {
     "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/bin/python",
+        "python.analysis.typeCheckingMode": "strict",
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": [
+          "backend/tests"
+        ],
+        "ruff.nativeServer": "on",
+        "angular.enable-strict-mode-prompt": false,
+        "typescript.preferences.importModuleSpecifier": "non-relative",
+        "oxc.enable": true,
+        "bun.runtime": "bun"
+      },
       "extensions": [
         "angular.ng-template",
         "charliermarsh.ruff",
         "oxc.oxc-vscode",
-        "Angular.ng-template",
         "ms-python.python",
         "tamasfe.even-better-toml",
         "oven.bun-vscode",
