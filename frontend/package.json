@@ -6,7 +6,8 @@
     "start": "bunx --bun --no-install ng serve --host 0.0.0.0",
     "build": "bunx --bun --no-install ng build",
     "watch": "bunx --bun --no-install ng build --watch --configuration development",
-    "test": "bunx --bun --no-install ng test",
+    "test": "ng test --watch=false",
+    "test:watch": "ng test",
     "lint": "oxlint --import-plugin --promise-plugin --config oxlintrc.json --ignore-pattern src/app/api src/",
     "lint:fix": "oxlint --import-plugin --promise-plugin --fix --config oxlintrc.json --ignore-pattern src/app/api src/",
     "format": "oxfmt src/",
@@ -27,8 +28,7 @@
     "postcss": "^8.5.8",
     "rxjs": "~7.8.2",
     "tailwindcss": "4",
-    "tslib": "^2.8.1",
-    "zone.js": "~0.16.1"
+    "tslib": "^2.8.1"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^21.2.2",

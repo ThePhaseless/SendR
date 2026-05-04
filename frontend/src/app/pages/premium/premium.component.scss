@@ -112,15 +112,19 @@
   }
 }
 
+.tier-card-footer {
+  @apply flex flex-col items-start;
+  padding: 1rem 1.5rem 1.5rem;
+  min-height: 5rem;
+}
+
 .btn-tier {
-  @apply mt-auto;
-  margin: 1rem 1.5rem 1.5rem;
+  margin: 0;
 }
 
 .tier-note {
   color: var(--color-text-secondary);
-  @apply text-xs italic;
-  padding: 0 1.5rem 1rem;
+  @apply text-xs italic m-0;
 }
 
 .actions {

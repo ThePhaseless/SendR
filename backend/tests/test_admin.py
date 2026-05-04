@@ -6,8 +6,17 @@ from sqlmodel import select
 
 import database
 from app import app
-from models import AuthToken, FileUpload, User, UserLogin, UserTier, VerificationCode, _utcnow
+from models import (
+    AuthToken,
+    FileUpload,
+    User,
+    UserLogin,
+    UserTier,
+    VerificationCode,
+    _utcnow,
+)
 from security import create_access_token, hash_token
+from tests.utils import get_error_message
 
 
 async def _create_user(
@@ -23,7 +32,9 @@ async def _create_user(
         session.add(user)
         await session.flush()
         raw_token, expires_at = create_access_token(user.id)
-        auth_token = AuthToken(user_id=user.id, token=hash_token(raw_token), expires_at=expires_at)
+        auth_token = AuthToken(
+            user_id=user.id, token=hash_token(raw_token), expires_at=expires_at
+        )
         session.add(auth_token)
         await session.commit()
     return user.id, {"Authorization": f"Bearer {raw_token}"}
@@ -87,7 +98,9 @@ async def test_admin_can_ban_user_and_block_existing_session():
 
     assert admin_id != user_id
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.patch(
             f"/api/admin/users/{user_id}",
             json={"is_banned": True},
@@ -98,7 +111,7 @@ async def test_admin_can_ban_user_and_block_existing_session():
 
         me_response = await client.get("/api/auth/me", headers=user_headers)
         assert me_response.status_code == 403
-        assert me_response.json()["detail"] == "Account is banned"
+        assert get_error_message(me_response) == "Account is banned"
 
 
 @pytest.mark.asyncio
@@ -109,7 +122,9 @@ async def test_admin_cannot_ban_own_account():
         is_admin=True,
     )
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.patch(
             f"/api/admin/users/{admin_id}",
             json={"is_banned": True},
@@ -117,7 +132,7 @@ async def test_admin_cannot_ban_own_account():
         )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "Cannot ban your own account"
+    assert get_error_message(response) == "Cannot ban your own account"
 
 
 @pytest.mark.asyncio
@@ -136,13 +151,15 @@ async def test_banned_user_cannot_request_or_verify_code():
         )
         await session.commit()
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         request_code_response = await client.post(
             "/api/auth/request-code",
             json={"email": banned_email},
         )
         assert request_code_response.status_code == 403
-        assert request_code_response.json()["detail"] == "Account is banned"
+        assert get_error_message(request_code_response) == "Account is banned"
 
         verify_code_response = await client.post(
             "/api/auth/verify-code",
@@ -150,7 +167,7 @@ async def test_banned_user_cannot_request_or_verify_code():
         )
 
     assert verify_code_response.status_code == 403
-    assert verify_code_response.json()["detail"] == "Account is banned"
+    assert get_error_message(verify_code_response) == "Account is banned"
 
 
 @pytest.mark.asyncio
@@ -167,7 +184,9 @@ async def test_verify_code_records_login_event():
         )
         await session.commit()
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.post(
             "/api/auth/verify-code",
             json={"email": email, "code": "654321", "create_account": True},
@@ -179,7 +198,9 @@ async def test_verify_code_records_login_event():
     async with session_factory() as session:
         user_result = await session.exec(select(User).where(User.email == email))
         user = user_result.first()
-        login_result = await session.exec(select(UserLogin).where(UserLogin.user_id == user.id))
+        login_result = await session.exec(
+            select(UserLogin).where(UserLogin.user_id == user.id)
+        )
         login = login_result.first()
 
     assert user is not None
@@ -212,8 +233,12 @@ async def test_admin_can_list_and_delete_user_transfers():
         name="second.txt",
     )
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        list_response = await client.get(f"/api/admin/users/{user_id}/uploads", headers=admin_headers)
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        list_response = await client.get(
+            f"/api/admin/users/{user_id}/uploads", headers=admin_headers
+        )
         assert list_response.status_code == 200
         assert len(list_response.json()["files"]) == 2
 
@@ -223,13 +248,17 @@ async def test_admin_can_list_and_delete_user_transfers():
         )
         assert delete_response.status_code == 200
 
-        after_response = await client.get(f"/api/admin/users/{user_id}/uploads", headers=admin_headers)
+        after_response = await client.get(
+            f"/api/admin/users/{user_id}/uploads", headers=admin_headers
+        )
         assert after_response.status_code == 200
         assert after_response.json()["files"] == []
 
     session_factory = database.async_session
     async with session_factory() as session:
-        result = await session.exec(select(FileUpload).where(FileUpload.upload_group == upload_group))
+        result = await session.exec(
+            select(FileUpload).where(FileUpload.upload_group == upload_group)
+        )
         uploads = result.all()
 
     assert uploads
@@ -279,15 +308,21 @@ async def test_admin_can_list_user_logins_and_stats():
         logged_in_at=now,
     )
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        logins_response = await client.get(f"/api/admin/users/{user_id}/logins", headers=admin_headers)
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        logins_response = await client.get(
+            f"/api/admin/users/{user_id}/logins", headers=admin_headers
+        )
         assert logins_response.status_code == 200
         logins = logins_response.json()["logins"]
         assert len(logins) == 2
         assert logins[0]["auth_method"] == "dev_login"
         assert logins[0]["ip_address"] == "198.51.100.11"
 
-        stats_response = await client.get(f"/api/admin/users/{user_id}/stats", headers=admin_headers)
+        stats_response = await client.get(
+            f"/api/admin/users/{user_id}/stats", headers=admin_headers
+        )
         assert stats_response.status_code == 200
         stats = stats_response.json()
 

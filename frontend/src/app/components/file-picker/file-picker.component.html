@@ -65,42 +65,88 @@
   </div>
 }
 
-@if (pendingFiles().length > 0) {
-  <div class="staged-files">
+@if (showStagedFiles()) {
+  <div class="staged-files" [attr.aria-busy]="isProcessingSelection()">
     @if (!compact()) {
-      <h3>Selected files ({{ pendingFiles().length }})</h3>
+      <h3>Selected files ({{ displayedPendingCount() }})</h3>
     }
 
     @if (limitWarning(); as warning) {
       <div class="alert alert-error alert-sm staged-warning">{{ warning }}</div>
     }
 
-    <div class="staged-file-list">
-      <ng-template #treeNode let-nodes>
-        @for (node of nodes; track node.fullPath) {
-          @if (node.isFolder) {
-            <div class="staged-folder">
-              <div class="staged-folder-header">
-                <button
-                  class="folder-toggle"
-                  (click)="toggleFolder(node.fullPath)"
-                  [attr.aria-expanded]="!isFolderCollapsed(node.fullPath)"
-                  aria-label="Toggle folder"
-                >
-                  <span class="folder-chevron" [class.collapsed]="isFolderCollapsed(node.fullPath)"
-                    >▼</span
+    @if (isProcessingSelection()) {
+      <div class="staged-processing loading" aria-live="polite">
+        <div class="spinner"></div>
+        <p>{{ processingStatusText() }}</p>
+        <p class="staged-processing-note">
+          Preparing the folder tree so you can review and remove items.
+        </p>
+      </div>
+    } @else {
+      <div class="staged-file-list scroll-surface scroll-roomy">
+        <ng-template #treeNode let-nodes>
+          @for (node of nodes; track node.fullPath) {
+            @if (node.isFolder) {
+              <div class="staged-folder">
+                <div class="staged-folder-header">
+                  <button
+                    class="folder-toggle"
+                    (click)="toggleFolder(node.fullPath)"
+                    [attr.aria-expanded]="!isFolderCollapsed(node.fullPath)"
+                    aria-label="Toggle folder"
                   >
-                  📁 {{ node.name }}
-                </button>
-                <span class="staged-folder-meta">
-                  {{ node.fileCount }} {{ node.fileCount === 1 ? "file" : "files" }} ·
-                  {{ formatSize(node.size) }}
-                </span>
+                    <span
+                      class="folder-chevron"
+                      [class.collapsed]="isFolderCollapsed(node.fullPath)"
+                      >▼</span
+                    >
+                    📁 {{ node.name }}
+                  </button>
+                  <span class="staged-folder-meta">
+                    {{ node.fileCount }} {{ node.fileCount === 1 ? "file" : "files" }} ·
+                    {{ formatSize(node.size) }}
+                  </span>
+                  @if (!disabled()) {
+                    <button
+                      class="btn-remove"
+                      (click)="removeFolder(node.fullPath)"
+                      aria-label="Remove folder"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  }
+                </div>
+                @if (!isFolderCollapsed(node.fullPath)) {
+                  <div class="staged-folder-children">
+                    <ng-container
+                      *ngTemplateOutlet="treeNode; context: { $implicit: node.children }"
+                    ></ng-container>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="staged-file-item">
+                <span class="staged-file-name">{{ getNodeEmoji(node) }} {{ node.name }}</span>
+                <span class="staged-file-size">{{ formatSize(node.size) }}</span>
                 @if (!disabled()) {
                   <button
                     class="btn-remove"
-                    (click)="removeFolder(node.fullPath)"
-                    aria-label="Remove folder"
+                    (click)="removeFile(node.fileIndex)"
+                    aria-label="Remove file"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -119,46 +165,14 @@
                   </button>
                 }
               </div>
-              @if (!isFolderCollapsed(node.fullPath)) {
-                <div class="staged-folder-children">
-                  <ng-container
-                    *ngTemplateOutlet="treeNode; context: { $implicit: node.children }"
-                  ></ng-container>
-                </div>
-              }
-            </div>
-          } @else {
-            <div class="staged-file-item">
-              <span class="staged-file-name">{{ getNodeEmoji(node) }} {{ node.name }}</span>
-              <span class="staged-file-size">{{ formatSize(node.size) }}</span>
-              @if (!disabled()) {
-                <button
-                  class="btn-remove"
-                  (click)="removeFile(node.fileIndex)"
-                  aria-label="Remove file"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              }
-            </div>
+            }
           }
-        }
-      </ng-template>
-      <ng-container *ngTemplateOutlet="treeNode; context: { $implicit: fileTree() }"></ng-container>
-    </div>
-    <p class="staged-total">Total: {{ formatSize(totalPendingSize()) }}</p>
+        </ng-template>
+        <ng-container
+          *ngTemplateOutlet="treeNode; context: { $implicit: fileTree() }"
+        ></ng-container>
+      </div>
+      <p class="staged-total">Total: {{ formatSize(totalPendingSize()) }}</p>
+    }
   </div>
 }

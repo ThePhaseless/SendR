@@ -1,21 +1,29 @@
 import { DatePipe } from '@angular/common';
 import type { OnInit } from '@angular/core';
-import { Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { UploadFileEntry } from '../../components/file-picker/file-picker.component';
-import { FilePickerComponent } from '../../components/file-picker/file-picker.component';
+import type { QuotaResponse } from '../../api/model';
+import {
+  FilePickerComponent,
+  type UploadFileEntry,
+} from '../../components/file-picker/file-picker.component';
 import { UploadSettingsComponent } from '../../components/upload-settings/upload-settings.component';
-import { AuthService } from '../../services/auth.service';
 import type {
   AccessEditRequest,
   AccessInfoResponse,
   DownloadStatsResponse,
   FileUploadResponse,
-} from '../../services/file.service';
-import { FileService } from '../../services/file.service';
-import { extractDownloadToken, formatFileSize, isExpired } from '../../utils/file.utils';
-import { getErrorDetail } from '../../utils/error.utils';
-import { resolveAppUrl } from '../../utils/url.utils';
+} from '../../services';
+import { AuthService, ConfirmDialogService, FileService } from '../../services';
+import {
+  extractDownloadToken,
+  formatFileSize,
+  getApiDateTime,
+  getErrorDetail,
+  isExpired,
+  parseApiDate,
+  resolveAppUrl,
+} from '../../utils/index';
 
 export interface UploadGroup {
   key: string;
@@ -26,14 +34,17 @@ export interface UploadGroup {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [DatePipe, FormsModule, FilePickerComponent, UploadSettingsComponent],
   selector: 'app-dashboard',
+  standalone: true,
   styleUrl: './dashboard.component.scss',
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent implements OnInit {
   private readonly fileService = inject(FileService);
   private readonly authService = inject(AuthService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   files = signal<FileUploadResponse[]>([]);
   loading = signal(true);
@@ -49,12 +60,14 @@ export class DashboardComponent implements OnInit {
   accountCurrentPassword = signal('');
   accountNewPassword = signal('');
   accountConfirmPassword = signal('');
+  quota = signal<QuotaResponse | null>(null);
 
   // Unified panel settings (bound to upload-settings component)
   panelExpiryHours = signal(72);
   panelMaxDownloads = signal(0);
   panelTitle = signal('');
   panelDescription = signal('');
+  panelSettingsHasError = signal(false);
   // Download stats for the expanded group
   groupStats = signal<DownloadStatsResponse | null>(null);
   statsLoading = signal(false);
@@ -65,15 +78,14 @@ export class DashboardComponent implements OnInit {
   accessLoading = signal(false);
   newPasswordLabel = signal('');
   newPasswordValue = signal('');
+  newPasswordLabelWithoutValue = computed(
+    () => this.newPasswordLabel().trim().length > 0 && this.newPasswordValue().trim().length === 0,
+  );
   newEmail = signal('');
 
   // Staged new files for the expanded group
   newFiles = signal<UploadFileEntry[]>([]);
   isSaving = signal(false);
-
-  // Refresh warning dialog
-  showRefreshWarning = signal(false);
-  pendingRefreshGroup = signal<UploadGroup | null>(null);
 
   /** Groups files by upload_group. */
   uploadGroups = computed<UploadGroup[]>(() => {
@@ -118,13 +130,29 @@ export class DashboardComponent implements OnInit {
       if (aExpired !== bExpired) {
         return aExpired - bExpired;
       }
-      const aExpiry = Math.max(...a.files.map((f) => new Date(f.expires_at).getTime()));
-      const bExpiry = Math.max(...b.files.map((f) => new Date(f.expires_at).getTime()));
+      const aExpiry = Math.max(...a.files.map((f) => getApiDateTime(f.expires_at)));
+      const bExpiry = Math.max(...b.files.map((f) => getApiDateTime(f.expires_at)));
       return bExpiry - aExpiry;
     });
 
     return groups;
   });
+
+  panelExpiryOptionsHours = computed<number[] | null>(
+    () => this.quota()?.expiry_options_hours ?? null,
+  );
+
+  panelMinExpiryHours = computed<number | null>(() => this.quota()?.min_expiry_hours ?? null);
+
+  panelMaxExpiryHours = computed<number | null>(() => this.quota()?.max_expiry_hours ?? null);
+
+  panelBackendMaxDownloadsLimit = computed<number | null>(
+    () => this.quota()?.max_downloads_limit ?? null,
+  );
+
+  panelBackendMaxDownloadsOptions = computed<number[] | null>(
+    () => this.quota()?.max_downloads_options ?? null,
+  );
 
   ngOnInit(): void {
     this.loadFiles();
@@ -133,6 +161,14 @@ export class DashboardComponent implements OnInit {
         this.userEmail.set(me.email);
         this.userHasPassword.set(Boolean(me.has_password));
         this.userTier.set(me.tier);
+      },
+    });
+    this.authService.getQuota().subscribe({
+      error: () => {
+        this.quota.set(null);
+      },
+      next: (quota) => {
+        this.quota.set(quota);
       },
     });
   }
@@ -216,7 +252,7 @@ export class DashboardComponent implements OnInit {
 
   /** Check if an expired group is within the 14-day premium refresh grace period. */
   isWithinGrace(group: UploadGroup): boolean {
-    const latestExpiry = Math.max(...group.files.map((f) => new Date(f.expires_at).getTime()));
+    const latestExpiry = Math.max(...group.files.map((f) => getApiDateTime(f.expires_at)));
     const graceCutoff = Date.now() - 14 * 24 * 60 * 60 * 1000;
     return latestExpiry > graceCutoff;
   }
@@ -241,7 +277,7 @@ export class DashboardComponent implements OnInit {
 
   getGroupExpiry(group: UploadGroup): string {
     const latest = group.files.reduce((max, f) => {
-      const d = new Date(f.expires_at);
+      const d = parseApiDate(f.expires_at);
       return d > max ? d : max;
     }, new Date(0));
     return latest.toISOString();
@@ -249,7 +285,7 @@ export class DashboardComponent implements OnInit {
 
   getGroupDownloads(group: UploadGroup): string {
     const total = group.files.reduce((sum, f) => sum + f.download_count, 0);
-    const maxDl = group.files[0]?.max_downloads;
+    const maxDl = this.getPrimaryGroupFile(group).max_downloads;
     if (maxDl) {
       return `${total}/${maxDl * group.files.length}`;
     }
@@ -257,13 +293,7 @@ export class DashboardComponent implements OnInit {
   }
 
   copyLink(group: UploadGroup): void {
-    let link: string;
-    if (group.isGroup && group.uploadGroup) {
-      link = resolveAppUrl(`download/group/${group.uploadGroup}`);
-    } else {
-      const token = extractDownloadToken(group.files[0].download_url);
-      link = resolveAppUrl(`download/${token}`);
-    }
+    const link = this.getDownloadPageUrl(group);
     void navigator.clipboard.writeText(link);
     this.copiedGroupKey.set(group.key);
     setTimeout(() => {
@@ -275,7 +305,7 @@ export class DashboardComponent implements OnInit {
     if (group.isGroup && group.uploadGroup) {
       return resolveAppUrl(`download/group/${group.uploadGroup}`);
     }
-    const token = extractDownloadToken(group.files[0].download_url);
+    const token = extractDownloadToken(this.getPrimaryGroupFile(group).download_url);
     return resolveAppUrl(`download/${token}`);
   }
 
@@ -286,22 +316,24 @@ export class DashboardComponent implements OnInit {
       this.groupStats.set(null);
       this.accessInfo.set(null);
       this.statsExpanded.set(false);
+      this.panelSettingsHasError.set(false);
     } else {
       this.expandedGroupKey.set(groupKey);
       this.newFiles.set([]);
       this.groupStats.set(null);
       this.accessInfo.set(null);
       this.statsExpanded.set(false);
+      this.panelSettingsHasError.set(false);
       this.newPasswordLabel.set('');
       this.newPasswordValue.set('');
       this.newEmail.set('');
       // Pre-populate panel settings from the group
       const group = this.uploadGroups().find((g) => g.key === groupKey);
       if (group) {
-        const ref = group.files[0];
+        const ref = this.getPrimaryGroupFile(group);
         const hoursLeft = Math.max(
           1,
-          Math.ceil((new Date(ref.expires_at).getTime() - Date.now()) / (1000 * 60 * 60)),
+          Math.ceil((getApiDateTime(ref.expires_at) - Date.now()) / (1000 * 60 * 60)),
         );
         // Snap to nearest valid expiry option so the select shows a valid value
         this.panelExpiryHours.set(this.snapToNearestExpiry(hoursLeft));
@@ -323,10 +355,7 @@ export class DashboardComponent implements OnInit {
     // First: if there are staged new files, add them to the group
     const addFilesObs =
       group.uploadGroup && this.newFiles().length > 0
-        ? this.fileService.addFilesToGroup(
-            group.uploadGroup,
-            this.newFiles().map((e) => e.file),
-          )
+        ? this.fileService.addFilesToGroup(group.uploadGroup, this.newFiles())
         : null;
 
     const finishSave = () => {
@@ -355,7 +384,7 @@ export class DashboardComponent implements OnInit {
           });
       } else {
         // Single file: use per-file edit
-        const file = group.files[0];
+        const file = this.getPrimaryGroupFile(group);
         this.fileService
           .editFile(file.id, {
             expires_in_hours: this.panelExpiryHours(),
@@ -390,35 +419,29 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  /** Show refresh confirmation warning. */
-  confirmRefresh(group: UploadGroup): void {
-    this.pendingRefreshGroup.set(group);
-    this.showRefreshWarning.set(true);
-  }
+  async confirmRefresh(group: UploadGroup): Promise<void> {
+    const confirmed = await this.confirmDialog.confirm({
+      confirmLabel: 'Refresh upload',
+      message:
+        'Refreshing creates new download links and expires the current ones. Anyone using the old links will need the new transfer URL.',
+      title: 'Refresh this upload?',
+    });
 
-  /** Cancel refresh warning. */
-  cancelRefresh(): void {
-    this.showRefreshWarning.set(false);
-    this.pendingRefreshGroup.set(null);
+    if (!confirmed) {
+      return;
+    }
+
+    this.executeRefresh(group);
   }
 
   /** Execute refresh after confirmation. */
-  executeRefresh(): void {
-    const group = this.pendingRefreshGroup();
-    if (!group) {
-      return;
-    }
-    this.showRefreshWarning.set(false);
-    this.pendingRefreshGroup.set(null);
+  executeRefresh(group: UploadGroup): void {
     this.isSaving.set(true);
 
     // First: if there are staged new files, add them to the group
     const addFilesObs =
       group.uploadGroup && this.newFiles().length > 0
-        ? this.fileService.addFilesToGroup(
-            group.uploadGroup,
-            this.newFiles().map((e) => e.file),
-          )
+        ? this.fileService.addFilesToGroup(group.uploadGroup, this.newFiles())
         : null;
 
     const doRefresh = () => {
@@ -446,7 +469,7 @@ export class DashboardComponent implements OnInit {
           });
       } else {
         // Single file refresh
-        const file = group.files[0];
+        const file = this.getPrimaryGroupFile(group);
         this.fileService.refreshFile(file.id, this.panelExpiryHours()).subscribe({
           error: (err: unknown) => {
             this.error.set(getErrorDetail(err, 'Failed to refresh upload.'));
@@ -493,7 +516,18 @@ export class DashboardComponent implements OnInit {
   }
 
   /** Delete all files in a group. */
-  deleteGroup(group: UploadGroup): void {
+  async deleteGroup(group: UploadGroup): Promise<void> {
+    const confirmed = await this.confirmDialog.confirm({
+      confirmLabel: 'Delete upload',
+      message: `This will remove ${group.files.length} ${group.files.length === 1 ? 'file' : 'files'} from this transfer. This cannot be undone.`,
+      title: 'Delete this upload?',
+      tone: 'danger',
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
     this.expandedGroupKey.set(null);
     for (const file of group.files) {
       this.fileService.deleteFile(file.id).subscribe({
@@ -577,6 +611,10 @@ export class DashboardComponent implements OnInit {
   addPassword(uploadGroup: string): void {
     const label = this.newPasswordLabel().trim();
     const password = this.newPasswordValue().trim();
+    if (label && !password) {
+      this.error.set('Add a password before saving a label.');
+      return;
+    }
     if (!password) {
       return;
     }
@@ -622,17 +660,35 @@ export class DashboardComponent implements OnInit {
 
   /** Snap a raw hours value to the nearest valid expiry option for the user's tier. */
   private snapToNearestExpiry(hours: number): number {
-    const tier = this.userTier();
-    let options: number[];
-    if (tier === 'premium') {
-      options = [1, 24, 72, 168, 336, 720];
-    } else if (tier === 'free') {
-      options = [1, 24, 72, 168];
-    } else {
-      options = [24, 72];
+    const discreteOptions = this.panelExpiryOptionsHours();
+    if (discreteOptions && discreteOptions.length > 0) {
+      return discreteOptions.reduce((best, option) =>
+        Math.abs(option - hours) < Math.abs(best - hours) ? option : best,
+      );
     }
+
+    const min = this.panelMinExpiryHours();
+    const max = this.panelMaxExpiryHours();
+    let options = [24, 72];
+
+    if (min !== null && max !== null) {
+      options = [1, 24, 72, 168, 336, 720].filter((option) => option >= min && option <= max);
+    } else {
+      const tier = this.userTier();
+      if (tier === 'premium') {
+        options = [1, 24, 72, 168, 336, 720];
+      } else if (tier === 'free') {
+        options = [1, 24, 72, 168];
+      }
+    }
+
     return options.reduce((best, opt) =>
       Math.abs(opt - hours) < Math.abs(best - hours) ? opt : best,
     );
+  }
+
+  private getPrimaryGroupFile(group: UploadGroup): FileUploadResponse {
+    const [file] = group.files;
+    return file;
   }
 }

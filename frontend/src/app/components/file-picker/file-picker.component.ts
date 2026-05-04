@@ -1,8 +1,10 @@
 import { NgTemplateOutlet } from '@angular/common';
 import {
+  ChangeDetectionStrategy,
   Component,
   ElementRef,
   computed,
+  effect,
   inject,
   input,
   model,
@@ -32,17 +34,24 @@ export interface FileTreeNode {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '(document:click)': 'onDocumentClick($event)',
     '(document:keydown.escape)': 'closePickerMenu()',
   },
   imports: [NgTemplateOutlet],
   selector: 'app-file-picker',
+  standalone: true,
   styleUrl: './file-picker.component.scss',
   templateUrl: './file-picker.component.html',
 })
 export class FilePickerComponent {
-  private readonly elementRef = inject(ElementRef<HTMLElement>);
+  private static readonly TREE_BUILD_CHUNK_SIZE = 250;
+  private static readonly TREE_PROCESSING_THRESHOLD = 250;
+
+  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
+  private treeBuildVersion = 0;
+  private forceProcessingIndicator = false;
 
   /** Max total size in MB. */
   maxFileSizeMb = input(100);
@@ -74,8 +83,27 @@ export class FilePickerComponent {
   isDragging = signal(false);
   collapsedFolders = signal(new Set<string>());
   pickerMenuOpen = signal(false);
+  isProcessingSelection = signal(false);
+  processingFileCount = signal(0);
 
   totalPendingSize = computed(() => this.pendingFiles().reduce((sum, f) => sum + f.size, 0));
+
+  showStagedFiles = computed(() => this.pendingFiles().length > 0 || this.isProcessingSelection());
+
+  displayedPendingCount = computed(() => {
+    if (!this.isProcessingSelection()) {
+      return this.pendingFiles().length;
+    }
+    return Math.max(this.processingFileCount(), this.pendingFiles().length);
+  });
+
+  processingStatusText = computed(() => {
+    const fileCount = Math.max(this.processingFileCount(), this.pendingFiles().length);
+    if (fileCount <= 0) {
+      return 'Processing selected files...';
+    }
+    return `Processing ${fileCount.toLocaleString()} selected ${fileCount === 1 ? 'file' : 'files'}...`;
+  });
 
   limitWarning = computed<string | null>(() => {
     const files = this.pendingFiles();
@@ -97,7 +125,13 @@ export class FilePickerComponent {
     return warnings.length > 0 ? warnings.join('. ') : null;
   });
 
-  fileTree = computed<FileTreeNode[]>(() => this.buildFileTree(this.pendingFiles()));
+  fileTree = signal<FileTreeNode[]>([]);
+
+  constructor() {
+    effect(() => {
+      void this.rebuildFileTree(this.pendingFiles());
+    });
+  }
 
   onDragOver(event: DragEvent): void {
     event.preventDefault();
@@ -136,18 +170,18 @@ export class FilePickerComponent {
     this.pickerMenuOpen.update((open) => !open);
   }
 
-  openFilePicker(event: Event, input: HTMLInputElement): void {
+  openFilePicker(event: Event, inputElement: HTMLInputElement): void {
     event.preventDefault();
     event.stopPropagation();
     this.closePickerMenu();
-    input.click();
+    inputElement.click();
   }
 
-  openFolderPicker(event: Event, input: HTMLInputElement): void {
+  openFolderPicker(event: Event, inputElement: HTMLInputElement): void {
     event.preventDefault();
     event.stopPropagation();
     this.closePickerMenu();
-    input.click();
+    inputElement.click();
   }
 
   closePickerMenu(): void {
@@ -158,19 +192,24 @@ export class FilePickerComponent {
     if (!this.pickerMenuOpen()) {
       return;
     }
-    const target = event.target;
+    const { target } = event;
     if (target instanceof Node && this.elementRef.nativeElement.contains(target)) {
       return;
     }
     this.closePickerMenu();
   }
 
-  onFileSelected(event: Event): void {
+  async onFileSelected(event: Event): Promise<void> {
     const { target } = event;
     if (!(target instanceof HTMLInputElement) || !target.files || target.files.length === 0) {
       return;
     }
     this.closePickerMenu();
+    const nextCount = this.pendingFiles().length + target.files.length;
+    if (nextCount >= FilePickerComponent.TREE_PROCESSING_THRESHOLD) {
+      this.beginSelectionProcessing(nextCount);
+      await this.waitForNextPaint();
+    }
     const files = [...target.files];
     const entries: UploadFileEntry[] = files.map((file) => ({
       file,
@@ -237,6 +276,8 @@ export class FilePickerComponent {
   clear(): void {
     this.pendingFiles.set([]);
     this.collapsedFolders.set(new Set());
+    this.processingFileCount.set(0);
+    this.isProcessingSelection.set(false);
     this.closePickerMenu();
     this.filesChanged.emit([]);
   }
@@ -253,17 +294,25 @@ export class FilePickerComponent {
   }
 
   private async processDataTransferItems(items: DataTransferItemList): Promise<void> {
+    this.beginSelectionProcessing(this.pendingFiles().length);
+    await this.waitForNextPaint();
+
     const entries: FileSystemEntry[] = [];
-    for (let i = 0; i < items.length; i++) {
-      const entry = items[i].webkitGetAsEntry();
+    for (const item of items) {
+      const entry = item.webkitGetAsEntry();
       if (entry) {
         entries.push(entry);
       }
     }
     const files = await this.readEntries(entries, '');
     if (files.length > 0) {
+      this.processingFileCount.set(this.pendingFiles().length + files.length);
       this.stageFileEntries(files);
+      return;
     }
+
+    this.processingFileCount.set(this.pendingFiles().length);
+    this.isProcessingSelection.set(false);
   }
 
   private async readEntries(
@@ -317,7 +366,46 @@ export class FilePickerComponent {
     });
   }
 
-  private buildFileTree(files: UploadFileEntry[]): FileTreeNode[] {
+  private beginSelectionProcessing(fileCount: number): void {
+    this.forceProcessingIndicator = true;
+    this.processingFileCount.set(fileCount);
+    this.isProcessingSelection.set(true);
+  }
+
+  private async rebuildFileTree(files: UploadFileEntry[]): Promise<void> {
+    const buildVersion = ++this.treeBuildVersion;
+    const shouldShowProcessing =
+      this.forceProcessingIndicator ||
+      files.length >= FilePickerComponent.TREE_PROCESSING_THRESHOLD;
+
+    this.forceProcessingIndicator = false;
+    this.processingFileCount.set(files.length);
+
+    if (files.length === 0) {
+      this.fileTree.set([]);
+      this.isProcessingSelection.set(false);
+      return;
+    }
+
+    if (shouldShowProcessing) {
+      this.isProcessingSelection.set(true);
+      await this.waitForNextPaint();
+      if (buildVersion !== this.treeBuildVersion) {
+        return;
+      }
+    }
+
+    const tree = await this.buildFileTree(files);
+    if (buildVersion !== this.treeBuildVersion) {
+      return;
+    }
+
+    this.fileTree.set(tree);
+    this.processingFileCount.set(files.length);
+    this.isProcessingSelection.set(false);
+  }
+
+  private async buildFileTree(files: UploadFileEntry[]): Promise<FileTreeNode[]> {
     interface TreeBuildNode {
       name: string;
       fullPath: string;
@@ -369,12 +457,18 @@ export class FilePickerComponent {
         }
         currentChildren = node.children;
       }
+
+      if ((i + 1) % FilePickerComponent.TREE_BUILD_CHUNK_SIZE === 0) {
+        await this.yieldToBrowser();
+      }
     }
 
-    const convertNode = (node: TreeBuildNode): FileTreeNode => {
+    let processedNodes = 0;
+
+    const convertNode = async (node: TreeBuildNode): Promise<FileTreeNode> => {
       const children: FileTreeNode[] = [];
       for (const child of node.children.values()) {
-        children.push(convertNode(child));
+        children.push(await convertNode(child));
       }
       for (const f of node.files) {
         children.push({
@@ -386,7 +480,18 @@ export class FilePickerComponent {
           name: f.entry.name,
           size: f.entry.size,
         });
+
+        processedNodes += 1;
+        if (processedNodes % FilePickerComponent.TREE_BUILD_CHUNK_SIZE === 0) {
+          await this.yieldToBrowser();
+        }
       }
+
+      processedNodes += 1;
+      if (processedNodes % FilePickerComponent.TREE_BUILD_CHUNK_SIZE === 0) {
+        await this.yieldToBrowser();
+      }
+
       return {
         children,
         fileCount: node.totalFileCount,
@@ -399,9 +504,34 @@ export class FilePickerComponent {
 
     const result: FileTreeNode[] = [];
     for (const node of rootChildren.values()) {
-      result.push(convertNode(node));
+      result.push(await convertNode(node));
     }
-    result.push(...rootFiles);
+
+    for (const file of rootFiles) {
+      result.push(file);
+
+      processedNodes += 1;
+      if (processedNodes % FilePickerComponent.TREE_BUILD_CHUNK_SIZE === 0) {
+        await this.yieldToBrowser();
+      }
+    }
+
     return result;
+  }
+
+  private waitForNextPaint(): Promise<void> {
+    return new Promise((resolve) => {
+      if (typeof requestAnimationFrame !== 'function') {
+        setTimeout(resolve, 0);
+        return;
+      }
+      requestAnimationFrame(() => {
+        resolve();
+      });
+    });
+  }
+
+  private yieldToBrowser(): Promise<void> {
+    return this.waitForNextPaint();
   }
 }

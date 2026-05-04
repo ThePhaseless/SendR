@@ -667,7 +667,7 @@ bodyAddFilesToGroupApiFilesGroupUploadGroupAddPost.files.forEach(value => formDa
     );
   }
 /**
- * Refresh all files in a group: new download tokens, new expiry, reset download counts.
+ * Refresh all active files in a group.
  * @summary Refresh Group
  */
  refreshGroupApiFilesGroupUploadGroupRefreshPost<TData = MultiFileUploadResponse>(uploadGroup: string,

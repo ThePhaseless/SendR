@@ -21,7 +21,7 @@
           {{ getResultFiles().length === 1 ? "File uploaded!" : "Files uploaded!" }}
         }
       </h2>
-      <div class="result-file-list">
+      <div class="result-file-list scroll-surface scroll-medium">
         @for (file of getResultFiles(); track file.id) {
           <div class="result-file-item">
             <span class="result-file-name"
@@ -71,38 +71,42 @@
           @if (getSubmittedPasswords().length > 0) {
             <div class="result-access-list">
               <h5>Passwords</h5>
-              @for (pw of getSubmittedPasswords(); track $index; let i = $index) {
-                <div class="result-access-entry">
-                  <span class="result-access-label">{{ pw.label || "Password" }}</span>
-                  <span class="result-access-value">
-                    @if (postUploadPasswordVisibility[i]) {
-                      {{ pw.password }}
-                    } @else {
-                      •••••••
-                    }
-                  </span>
-                  <button
-                    type="button"
-                    class="btn-toggle-vis"
-                    (click)="togglePostPasswordVisibility(i)"
-                  >
-                    <span class="material-symbols-outlined">
-                      {{ postUploadPasswordVisibility[i] ? "visibility_off" : "visibility" }}
+              <div class="result-access-entries scroll-surface scroll-compact">
+                @for (pw of getSubmittedPasswords(); track $index; let i = $index) {
+                  <div class="result-access-entry">
+                    <span class="result-access-label">{{ pw.label || "Password" }}</span>
+                    <span class="result-access-value">
+                      @if (postUploadPasswordVisibility[i]) {
+                        {{ pw.password }}
+                      } @else {
+                        •••••••
+                      }
                     </span>
-                  </button>
-                </div>
-              }
+                    <button
+                      type="button"
+                      class="btn-toggle-vis"
+                      (click)="togglePostPasswordVisibility(i)"
+                    >
+                      <span class="material-symbols-outlined">
+                        {{ postUploadPasswordVisibility[i] ? "visibility_off" : "visibility" }}
+                      </span>
+                    </button>
+                  </div>
+                }
+              </div>
             </div>
           }
 
           @if (getSubmittedEmails().length > 0) {
             <div class="result-access-list">
               <h5>Email Invites</h5>
-              @for (email of getSubmittedEmails(); track $index) {
-                <div class="result-access-entry">
-                  <span class="result-access-label">{{ email }}</span>
-                </div>
-              }
+              <div class="result-access-entries scroll-surface scroll-compact">
+                @for (email of getSubmittedEmails(); track $index) {
+                  <div class="result-access-entry">
+                    <span class="result-access-label">{{ email }}</span>
+                  </div>
+                }
+              </div>
             </div>
           }
         </div>
@@ -260,43 +264,45 @@
             (hasError)="settingsHasError.set($event)"
           />
 
-          <div class="altcha-container">
-            @if (altchaChallenge(); as challenge) {
-              <altcha-widget
-                [attr.challenge]="challenge"
-                auto="onload"
-                (statechange)="onAltchaStateChange($event)"
-              ></altcha-widget>
-            }
-          </div>
+          @if (!isUploading()) {
+            <div class="altcha-container">
+              @if (altchaChallenge(); as challenge) {
+                <altcha-widget
+                  [attr.challenge]="challenge"
+                  auto="onload"
+                  (statechange)="onAltchaStateChange($event)"
+                ></altcha-widget>
+              }
+            </div>
 
-          <div class="upload-action">
-            @if (isQuotaExhausted()) {
-              <p class="upload-action-hint hint-error">Weekly upload limit reached.</p>
-            }
-            <button
-              class="btn btn-primary btn-lg"
-              [disabled]="
-                isUploading() ||
-                !altchaVerified() ||
-                settingsHasError() ||
-                isQuotaExhausted() ||
-                fileLimitWarning()
-              "
-              (click)="startUpload()"
-            >
-              Upload {{ pendingFiles().length === 1 ? "File" : "Files" }}
-            </button>
-            @if (!altchaVerified()) {
-              <p
-                class="upload-action-hint"
-                [class.hint-error]="altchaState() === 'error'"
-                [class.hint-loading]="altchaState() === 'expired'"
+            <div class="upload-action">
+              @if (isQuotaExhausted()) {
+                <p class="upload-action-hint hint-error">Weekly upload limit reached.</p>
+              }
+              <button
+                class="btn btn-primary btn-lg"
+                [disabled]="
+                  isUploading() ||
+                  !altchaVerified() ||
+                  settingsHasError() ||
+                  isQuotaExhausted() ||
+                  fileLimitWarning()
+                "
+                (click)="startUpload()"
               >
-                {{ altchaHintText() }}
-              </p>
-            }
-          </div>
+                Upload {{ pendingFiles().length === 1 ? "File" : "Files" }}
+              </button>
+              @if (!altchaVerified()) {
+                <p
+                  class="upload-action-hint"
+                  [class.hint-error]="altchaState() === 'error'"
+                  [class.hint-loading]="altchaState() === 'expired'"
+                >
+                  {{ altchaHintText() }}
+                </p>
+              }
+            </div>
+          }
         </div>
       }
     </div>

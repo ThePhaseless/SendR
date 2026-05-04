@@ -12,6 +12,7 @@ from app import app
 from models import FileUpload, _utcnow
 from routers.altcha import verify_altcha_payload
 from tasks import cleanup_expired_files
+from tests.utils import get_error_message
 
 
 def _noop_altcha():
@@ -35,7 +36,9 @@ async def test_upload_rejects_detected_malware(auth_headers, monkeypatch):
 
     monkeypatch.setattr("routers.files.scan_upload_content", _raise_detected)
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.post(
             "/api/files/upload",
             files=[("file", ("infected.txt", b"bad", "text/plain"))],
@@ -44,12 +47,14 @@ async def test_upload_rejects_detected_malware(auth_headers, monkeypatch):
         )
 
     assert response.status_code == 400
-    assert "malware detected" in response.json()["detail"]
+    assert "malware detected" in get_error_message(response)
 
 
 @pytest.mark.asyncio
 async def test_duplicate_uploads_reuse_stored_file(auth_headers):
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         first_response = await client.post(
             "/api/files/upload",
             files=[("file", ("first.txt", b"same-content", "text/plain"))],
@@ -76,11 +81,29 @@ async def test_duplicate_uploads_reuse_stored_file(auth_headers):
 
 
 @pytest.mark.asyncio
+async def test_upload_response_serializes_expiry_as_utc(auth_headers):
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post(
+            "/api/files/upload",
+            files=[("file", ("timezone.txt", b"payload", "text/plain"))],
+            data={"altcha": "{}"},
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 201
+    assert response.json()["expires_at"].endswith("Z")
+
+
+@pytest.mark.asyncio
 async def test_cleanup_removes_shared_file_only_after_last_active_reference() -> None:
     stored_filename = "shared-upload.bin"
     shared_path = Path(database.settings.UPLOAD_DIR) / stored_filename
     shared_path.write_bytes(b"shared")
-    expired_at = _utcnow() - timedelta(days=database.settings.FILE_GRACE_PERIOD_DAYS + 1)
+    expired_at = _utcnow() - timedelta(
+        days=database.settings.FILE_GRACE_PERIOD_DAYS + 1
+    )
     active_until = _utcnow() + timedelta(days=1)
 
     async with database.async_session() as session:

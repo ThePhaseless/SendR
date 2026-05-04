@@ -1,25 +1,45 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { environment } from '../../../environments/environment';
-import { getMeApiAuthMeGetResource } from '../../api/endpoints/filename.resource';
 import { AuthService } from '../../services/auth.service';
+import { UiNotificationService } from '../../services/ui-notification.service';
+import { getErrorDetail } from '../../utils/error.utils';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink],
   selector: 'app-header',
+  standalone: true,
   styleUrl: './header.component.scss',
   templateUrl: './header.component.html',
 })
 export class HeaderComponent {
   private readonly router = inject(Router);
   readonly auth = inject(AuthService);
+  private readonly notifications = inject(UiNotificationService);
 
   readonly showDevTools = environment.enableDevTools;
   readonly menuOpen = signal(false);
+  readonly currentUser = this.auth.currentUser;
 
-  private readonly me = this.auth.isAuthenticated() ? getMeApiAuthMeGetResource() : undefined;
+  isAdmin = computed(() => this.currentUser()?.is_admin ?? false);
 
-  isAdmin = computed(() => this.me?.value()?.is_admin ?? false);
+  constructor() {
+    this.auth.syncSession();
+
+    effect(() => {
+      if (!this.auth.authenticated()) {
+        this.closeMenu();
+      }
+    });
+  }
 
   toggleMenu(): void {
     this.menuOpen.update((v) => !v);
@@ -37,11 +57,24 @@ export class HeaderComponent {
 
   devLogin(role: 'admin' | 'user' | 'premium'): void {
     this.auth.devLogin(role).subscribe({
-      error: () => {
-        alert(`Dev login failed. Is SENDR_ENVIRONMENT=local on the backend?`);
+      error: (error) => {
+        const detail = getErrorDetail(
+          error,
+          'Dev login is only available when the backend runs locally.',
+        );
+        this.notifications.error(
+          'Dev login failed',
+          detail === 'Not found'
+            ? 'Dev login is only available when the backend runs locally.'
+            : detail,
+          {
+            dedupeKey: 'dev-login-failed',
+          },
+        );
       },
       next: () => {
-        window.location.reload();
+        this.closeMenu();
+        void this.router.navigate(['/']);
       },
     });
   }

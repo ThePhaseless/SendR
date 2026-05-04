@@ -8,6 +8,20 @@ from config import settings
 logger = logging.getLogger("uvicorn.error")
 
 
+def _should_log_email_delivery() -> bool:
+    return settings.is_local or (
+        settings.ENVIRONMENT == "test" and not settings.smtp_configured
+    )
+
+
+def _log_missing_smtp_configuration(email_kind: str) -> None:
+    logger.warning(
+        "SMTP host is not configured in %s mode; logging %s instead.",
+        settings.ENVIRONMENT,
+        email_kind,
+    )
+
+
 def _build_verification_message(email: str, code: str) -> EmailMessage:
     message = EmailMessage()
     message["From"] = settings.SMTP_FROM
@@ -33,8 +47,10 @@ def _send_verification_email_sync(email: str, code: str) -> None:
 
 
 async def send_verification_email(email: str, code: str) -> None:
-    """Send verification email, or log the code in dev mode."""
-    if settings.is_local:
+    """Send verification email, or log the code when SMTP is unavailable."""
+    if _should_log_email_delivery():
+        if not settings.is_local:
+            _log_missing_smtp_configuration("verification codes")
         logger.info("=" * 50)
         logger.info("VERIFICATION CODE for %s: %s", email, code)
         logger.info("=" * 50)
@@ -56,7 +72,11 @@ def _build_invite_message(
     msg["Subject"] = f"{sender_email} shared files with you on SendR"
 
     file_list = "\n".join(f"  - {name}" for name in file_names)
-    body = f"{sender_email} has shared files with you:\n\n{file_list}\n\nDownload here:\n{download_url}\n"
+    body = (
+        f"{sender_email} has shared files with you:\n\n"
+        f"{file_list}\n\n"
+        f"Download here:\n{download_url}\n"
+    )
     if message:
         body += f"\nMessage from sender:\n{message}\n"
 
@@ -71,7 +91,9 @@ def _send_invite_email_sync(
     file_names: list[str],
     message: str | None = None,
 ) -> None:
-    msg = _build_invite_message(recipient_email, sender_email, download_url, file_names, message)
+    msg = _build_invite_message(
+        recipient_email, sender_email, download_url, file_names, message
+    )
     with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as smtp:
         smtp.ehlo()
         if settings.SMTP_USER or settings.SMTP_PASSWORD:
@@ -88,11 +110,25 @@ async def send_file_invite_email(
     file_names: list[str],
     message: str | None = None,
 ) -> None:
-    """Send file share invitation email, or log in dev mode."""
-    if settings.is_local:
+    """Send file share invitation email, or log it when SMTP is unavailable."""
+    if _should_log_email_delivery():
+        if not settings.is_local:
+            _log_missing_smtp_configuration("file invites")
         logger.info("=" * 50)
-        logger.info("FILE INVITE for %s from %s: %s", recipient_email, sender_email, download_url)
+        logger.info(
+            "FILE INVITE for %s from %s: %s",
+            recipient_email,
+            sender_email,
+            download_url,
+        )
         logger.info("=" * 50)
         return
 
-    await asyncio.to_thread(_send_invite_email_sync, recipient_email, sender_email, download_url, file_names, message)
+    await asyncio.to_thread(
+        _send_invite_email_sync,
+        recipient_email,
+        sender_email,
+        download_url,
+        file_names,
+        message,
+    )

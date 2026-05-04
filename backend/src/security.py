@@ -1,11 +1,12 @@
 import hashlib
 import secrets
-from datetime import datetime, timedelta
-from typing import TYPE_CHECKING
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import APIKeyHeader
-from passlib.hash import pbkdf2_sha256
+from passlib.context import CryptContext
+from passlib.exc import UnknownHashError
 from sqlmodel import select
 
 from config import settings
@@ -16,6 +17,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
+password_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
 def generate_verification_code() -> str:
@@ -26,14 +28,25 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def hash_secret(secret: str) -> str:
+    return password_context.hash(secret)
+
+
+def verify_secret(secret: str, secret_hash: str | None) -> bool:
+    if not secret_hash:
+        return False
+    try:
+        return password_context.verify(secret, secret_hash)
+    except UnknownHashError, ValueError:
+        return False
+
+
 def hash_user_password(password: str) -> str:
-    return pbkdf2_sha256.hash(password)
+    return hash_secret(password)
 
 
 def verify_user_password(password: str, password_hash: str | None) -> bool:
-    if not password_hash:
-        return False
-    return pbkdf2_sha256.verify(password, password_hash)
+    return verify_secret(password, password_hash)
 
 
 def create_access_token(_user_id: int) -> tuple[str, datetime]:
@@ -65,26 +78,86 @@ def _extract_token(authorization: str | None) -> str | None:
     return authorization
 
 
-async def get_current_user(
-    authorization: str | None = Depends(api_key_header),
-    session: AsyncSession = Depends(get_session),
-) -> User:
+def resolve_request_token(request: Request, authorization: str | None) -> str | None:
     token = _extract_token(authorization)
+    if token:
+        return token
+    return request.cookies.get(settings.SESSION_COOKIE_NAME)
+
+
+def set_session_cookie(
+    response: Response, raw_token: str, expires_at: datetime
+) -> None:
+    cookie_expires = (
+        expires_at.replace(tzinfo=UTC)
+        if expires_at.tzinfo is None
+        else expires_at.astimezone(UTC)
+    )
+    response.set_cookie(
+        key=settings.SESSION_COOKIE_NAME,
+        value=raw_token,
+        httponly=True,
+        max_age=settings.TOKEN_EXPIRE_MINUTES * 60,
+        expires=cookie_expires,
+        path="/",
+        samesite=settings.SESSION_COOKIE_SAMESITE,
+        secure=settings.is_production,
+    )
+    response.set_cookie(
+        key=settings.CSRF_COOKIE_NAME,
+        value=secrets.token_urlsafe(32),
+        httponly=False,
+        max_age=settings.TOKEN_EXPIRE_MINUTES * 60,
+        expires=cookie_expires,
+        path="/",
+        samesite=settings.SESSION_COOKIE_SAMESITE,
+        secure=settings.is_production,
+    )
+
+
+def clear_session_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key=settings.SESSION_COOKIE_NAME,
+        path="/",
+        samesite=settings.SESSION_COOKIE_SAMESITE,
+        secure=settings.is_production,
+    )
+    response.delete_cookie(
+        key=settings.CSRF_COOKIE_NAME,
+        path="/",
+        samesite=settings.SESSION_COOKIE_SAMESITE,
+        secure=settings.is_production,
+    )
+
+
+async def get_current_user(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    authorization: Annotated[str | None, Depends(api_key_header)] = None,
+) -> User:
+    token = resolve_request_token(request, authorization)
     if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated"
+        )
     user = await verify_token(token, session)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token"
+        )
     if user.is_banned:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is banned")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Account is banned"
+        )
     return user
 
 
 async def get_optional_user(
-    authorization: str | None = Depends(api_key_header),
-    session: AsyncSession = Depends(get_session),
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    authorization: Annotated[str | None, Depends(api_key_header)] = None,
 ) -> User | None:
-    token = _extract_token(authorization)
+    token = resolve_request_token(request, authorization)
     if not token:
         return None
     user = await verify_token(token, session)
@@ -94,8 +167,10 @@ async def get_optional_user(
 
 
 async def get_admin_user(
-    user: User = Depends(get_current_user),
+    user: Annotated[User, Depends(get_current_user)],
 ) -> User:
     if not user.is_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
     return user

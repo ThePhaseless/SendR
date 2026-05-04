@@ -161,7 +161,7 @@
             } @else if (transferGroups().length === 0) {
               <p>No active or recently expired uploads found for this user.</p>
             } @else {
-              <div class="transfer-list">
+              <div class="transfer-list scroll-surface scroll-tall">
                 @for (group of transferGroups(); track group.uploadGroup) {
                   <article class="transfer-card">
                     <div class="transfer-card-header">
@@ -185,7 +185,7 @@
                       </button>
                     </div>
 
-                    <div class="transfer-files">
+                    <div class="transfer-files scroll-surface scroll-compact">
                       @for (file of group.files; track file.id) {
                         <div class="transfer-file-row">
                           <span>{{ file.original_filename }}</span>
@@ -206,7 +206,7 @@
             } @else if (selectedLogins().length === 0) {
               <p>No login history recorded yet.</p>
             } @else {
-              <div class="login-list">
+              <div class="login-list scroll-surface scroll-medium">
                 @for (login of selectedLogins(); track login.id) {
                   <article class="login-row">
                     <div>

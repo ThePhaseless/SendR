@@ -211,7 +211,7 @@
               <!-- File list -->
               <div class="expanded-section">
                 <h4>Files</h4>
-                <div class="group-file-list">
+                <div class="group-file-list scroll-surface scroll-medium">
                   @for (file of group.files; track file.id) {
                     <div
                       class="group-file-item"
@@ -244,7 +244,9 @@
                   <!-- Staged new files (unsaved) -->
                   @for (entry of newFiles(); track entry.file.name) {
                     <div class="group-file-item new-file">
-                      <span class="group-file-name">{{ entry.file.name }}</span>
+                      <span class="group-file-name">{{
+                        entry.relativePath ?? entry.file.name
+                      }}</span>
                       <span class="group-file-size">{{ formatSize(entry.file.size) }}</span>
                       <span class="badge badge-new">new</span>
                     </div>
@@ -273,8 +275,14 @@
                   [(maxDownloads)]="panelMaxDownloads"
                   [(title)]="panelTitle"
                   [(description)]="panelDescription"
+                  [expiryOptionsHours]="panelExpiryOptionsHours()"
+                  [minExpiryHours]="panelMinExpiryHours()"
+                  [maxExpiryHours]="panelMaxExpiryHours()"
+                  [backendMaxDownloadsLimit]="panelBackendMaxDownloadsLimit()"
+                  [backendMaxDownloadsOptions]="panelBackendMaxDownloadsOptions()"
                   [showHeading]="false"
                   [showAccessControl]="false"
+                  (hasError)="panelSettingsHasError.set($event)"
                 />
               </div>
 
@@ -346,22 +354,24 @@
                       @if (access.passwords.length === 0) {
                         <p class="access-empty">No passwords configured</p>
                       } @else {
-                        @for (pw of access.passwords; track pw.id) {
-                          <div class="access-entry">
-                            <span class="access-entry-label">{{ pw.label }}</span>
-                            <span class="access-entry-value">•••••••</span>
-                            <button
-                              class="btn-file-action btn-file-remove"
-                              (click)="removePassword(group.uploadGroup!, pw.id)"
-                              title="Remove password"
-                              [disabled]="accessLoading()"
-                            >
-                              <span class="material-symbols-outlined" style="font-size: 16px"
-                                >close</span
+                        <div class="access-entry-list scroll-surface scroll-compact">
+                          @for (pw of access.passwords; track pw.id) {
+                            <div class="access-entry">
+                              <span class="access-entry-label">{{ pw.label }}</span>
+                              <span class="access-entry-value">•••••••</span>
+                              <button
+                                class="btn-file-action btn-file-remove"
+                                (click)="removePassword(group.uploadGroup!, pw.id)"
+                                title="Remove password"
+                                [disabled]="accessLoading()"
                               >
-                            </button>
-                          </div>
-                        }
+                                <span class="material-symbols-outlined" style="font-size: 16px"
+                                  >close</span
+                                >
+                              </button>
+                            </div>
+                          }
+                        </div>
                       }
                       <div class="access-add-row">
                         <input
@@ -382,11 +392,18 @@
                         <button
                           class="btn btn-secondary btn-sm"
                           (click)="addPassword(group.uploadGroup!)"
-                          [disabled]="!newPasswordValue() || accessLoading()"
+                          [disabled]="
+                            !newPasswordValue().trim() ||
+                            newPasswordLabelWithoutValue() ||
+                            accessLoading()
+                          "
                         >
                           Add
                         </button>
                       </div>
+                      @if (newPasswordLabelWithoutValue()) {
+                        <p class="access-empty">Add a password before saving a label.</p>
+                      }
                     </div>
 
                     <!-- Emails list -->
@@ -395,26 +412,28 @@
                       @if (access.emails.length === 0) {
                         <p class="access-empty">No email invites</p>
                       } @else {
-                        @for (er of access.emails; track er.id) {
-                          <div class="access-entry">
-                            <span class="access-entry-label">{{ er.email }}</span>
-                            @if (er.notified) {
-                              <span class="badge badge-notified">sent</span>
-                            } @else {
-                              <span class="badge badge-pending">pending</span>
-                            }
-                            <button
-                              class="btn-file-action btn-file-remove"
-                              (click)="removeEmail(group.uploadGroup!, er.id)"
-                              title="Remove email"
-                              [disabled]="accessLoading()"
-                            >
-                              <span class="material-symbols-outlined" style="font-size: 16px"
-                                >close</span
+                        <div class="access-entry-list scroll-surface scroll-compact">
+                          @for (er of access.emails; track er.id) {
+                            <div class="access-entry">
+                              <span class="access-entry-label">{{ er.email }}</span>
+                              @if (er.notified) {
+                                <span class="badge badge-notified">sent</span>
+                              } @else {
+                                <span class="badge badge-pending">pending</span>
+                              }
+                              <button
+                                class="btn-file-action btn-file-remove"
+                                (click)="removeEmail(group.uploadGroup!, er.id)"
+                                title="Remove email"
+                                [disabled]="accessLoading()"
                               >
-                            </button>
-                          </div>
-                        }
+                                <span class="material-symbols-outlined" style="font-size: 16px"
+                                  >close</span
+                                >
+                              </button>
+                            </div>
+                          }
+                        </div>
                       }
                       <div class="access-add-row">
                         <input
@@ -480,7 +499,7 @@
                       @if (stats.stats.length === 0) {
                         <p class="stats-empty">No downloads yet.</p>
                       } @else {
-                        <div class="stats-table">
+                        <div class="stats-table scroll-surface scroll-compact">
                           <div class="stats-row stats-header">
                             <span>Access</span>
                             <span>Identifier</span>
@@ -511,7 +530,7 @@
                   <button
                     class="btn btn-primary btn-sm"
                     (click)="saveGroup(group)"
-                    [disabled]="isSaving()"
+                    [disabled]="isSaving() || panelSettingsHasError()"
                   >
                     Save
                   </button>
@@ -520,7 +539,7 @@
                   <button
                     class="btn btn-secondary btn-sm"
                     (click)="confirmRefresh(group)"
-                    [disabled]="isSaving()"
+                    [disabled]="isSaving() || panelSettingsHasError()"
                   >
                     Refresh
                   </button>
@@ -530,7 +549,7 @@
                   (click)="deleteGroup(group)"
                   [disabled]="isSaving()"
                 >
-                  {{ group.isGroup ? "Delete All" : "Delete" }}
+                  Delete
                 </button>
               </div>
             </div>
@@ -540,19 +559,3 @@
     </div>
   }
 </div>
-
-<!-- Refresh warning dialog -->
-@if (showRefreshWarning()) {
-  <div class="popup-overlay" (click)="cancelRefresh()">
-    <div class="popup-card card" (click)="$event.stopPropagation()">
-      <h2>Refresh Upload</h2>
-      <p class="popup-message">
-        Refreshing will generate new download links and expire the current ones. Continue?
-      </p>
-      <div class="popup-actions">
-        <button class="btn btn-primary btn-sm" (click)="executeRefresh()">Continue</button>
-        <button class="btn btn-secondary btn-sm" (click)="cancelRefresh()">Cancel</button>
-      </div>
-    </div>
-  </div>
-}

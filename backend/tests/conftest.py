@@ -11,12 +11,18 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 import database  # noqa: E402
 from config import settings  # noqa: E402
-from models import AuthToken, User, UserTier  # noqa: E402  # pyright: ignore[reportMissingImports]
+from models import (  # noqa: E402  # pyright: ignore[reportMissingImports]
+    AuthToken,
+    User,
+    UserTier,
+)
 from security import create_access_token, hash_token  # noqa: E402
 
 # Use a temp file for the test database (aiosqlite needs a file path or :memory:)
 _test_engine = create_async_engine("sqlite+aiosqlite://", echo=False)
-_test_session_factory = async_sessionmaker(_test_engine, class_=AsyncSession, expire_on_commit=False)
+_test_session_factory = async_sessionmaker(
+    _test_engine, class_=AsyncSession, expire_on_commit=False
+)
 
 
 async def _get_test_session():

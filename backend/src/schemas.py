@@ -1,38 +1,69 @@
-from datetime import datetime  # noqa: TC003
+from datetime import UTC, datetime  # noqa: TC003
+from typing import Annotated
 
-from sqlmodel import SQLModel
-
-
-class EmailVerificationRequest(SQLModel):
-    email: str
+from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
 
 
-class CodeVerificationRequest(SQLModel):
-    email: str
+def _serialize_utc_datetime(value: datetime) -> str:
+    normalized = (
+        value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+    )
+    return normalized.isoformat().replace("+00:00", "Z")
+
+
+ApiDateTime = Annotated[
+    datetime,
+    PlainSerializer(_serialize_utc_datetime, return_type=str, when_used="json"),
+]
+
+EmailAddress = Annotated[str, Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
+
+
+class ApiModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True, strict=True)
+
+
+class ErrorDetail(ApiModel):
     code: str
+    message: str
+
+
+class ErrorResponse(ApiModel):
+    detail: ErrorDetail
+
+
+class EmailVerificationRequest(ApiModel):
+    email: EmailAddress
+
+
+class CodeVerificationRequest(ApiModel):
+    email: EmailAddress
+    code: str = Field(min_length=6, max_length=6)
     create_account: bool = False
 
 
-class TokenResponse(SQLModel):
-    token: str
-    expires_at: datetime
+class SessionResponse(ApiModel):
+    expires_at: ApiDateTime
 
 
-class PasswordLoginRequest(SQLModel):
-    email: str
-    password: str
+TokenResponse = SessionResponse
 
 
-class SetPasswordRequest(SQLModel):
-    password: str
+class PasswordLoginRequest(ApiModel):
+    email: EmailAddress
+    password: str = Field(min_length=1, max_length=128)
 
 
-class ChangePasswordRequest(SQLModel):
-    current_password: str
-    new_password: str
+class SetPasswordRequest(ApiModel):
+    password: str = Field(min_length=8, max_length=128)
 
 
-class UserResponse(SQLModel):
+class ChangePasswordRequest(ApiModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class UserResponse(ApiModel):
     id: int
     email: str
     tier: str
@@ -41,12 +72,12 @@ class UserResponse(SQLModel):
     has_password: bool = False
 
 
-class FileUploadResponse(SQLModel):
+class FileUploadResponse(ApiModel):
     id: int
     original_filename: str
     file_size_bytes: int
     download_url: str
-    expires_at: datetime
+    expires_at: ApiDateTime
     download_count: int
     public_download_count: int = 0
     restricted_download_count: int = 0
@@ -62,11 +93,11 @@ class FileUploadResponse(SQLModel):
     group_download_only: bool = False
 
 
-class FileListResponse(SQLModel):
+class FileListResponse(ApiModel):
     files: list[FileUploadResponse]
 
 
-class QuotaResponse(SQLModel):
+class QuotaResponse(ApiModel):
     max_file_size_mb: int
     max_files_per_upload: int
     weekly_uploads_limit: int
@@ -91,7 +122,7 @@ class QuotaResponse(SQLModel):
     can_use_email_stats: bool = False
 
 
-class MultiFileUploadResponse(SQLModel):
+class MultiFileUploadResponse(ApiModel):
     files: list[FileUploadResponse]
     upload_group: str
     total_size_bytes: int
@@ -99,7 +130,7 @@ class MultiFileUploadResponse(SQLModel):
     description: str | None = None
 
 
-class UploadGroupInfoResponse(SQLModel):
+class UploadGroupInfoResponse(ApiModel):
     files: list[FileUploadResponse]
     upload_group: str
     total_size_bytes: int
@@ -114,19 +145,19 @@ class UploadGroupInfoResponse(SQLModel):
     viewer_is_owner: bool = False
 
 
-class TransferInfoResponse(SQLModel):
+class TransferInfoResponse(ApiModel):
     upload_group: str
     message: str | None = None
     sender_email: str | None = None
     has_password: bool = False
-    created_at: datetime
-    expires_at: datetime
+    created_at: ApiDateTime
+    expires_at: ApiDateTime
     files: list[FileUploadResponse]
     total_size_bytes: int
     file_count: int
 
 
-class LimitsResponse(SQLModel):
+class LimitsResponse(ApiModel):
     max_file_size_mb: int
     max_files_per_upload: int
     weekly_uploads_limit: int
@@ -143,88 +174,88 @@ class LimitsResponse(SQLModel):
     can_use_email_stats: bool = False
 
 
-class FileEditRequest(SQLModel):
+class FileEditRequest(ApiModel):
     original_filename: str | None = None
     message: str | None = None
     expires_in_hours: int | None = None
     max_downloads: int | None = None
 
 
-class GroupRefreshRequest(SQLModel):
+class GroupRefreshRequest(ApiModel):
     expiry_hours: int | None = None
     max_downloads: int | None = None
     title: str | None = None
     description: str | None = None
 
 
-class GroupEditRequest(SQLModel):
+class GroupEditRequest(ApiModel):
     expiry_hours: int | None = None
     max_downloads: int | None = None
     title: str | None = None
     description: str | None = None
 
 
-class AdminUserUpdateRequest(SQLModel):
+class AdminUserUpdateRequest(ApiModel):
     tier: str | None = None
     is_admin: bool | None = None
     is_banned: bool | None = None
 
 
-class AdminUserListResponse(SQLModel):
+class AdminUserListResponse(ApiModel):
     users: list[UserResponse]
     total: int
 
 
-class AdminUserLoginEntry(SQLModel):
+class AdminUserLoginEntry(ApiModel):
     id: int
     auth_method: str
     ip_address: str | None = None
-    logged_in_at: datetime
+    logged_in_at: ApiDateTime
 
 
-class AdminUserLoginListResponse(SQLModel):
+class AdminUserLoginListResponse(ApiModel):
     logins: list[AdminUserLoginEntry]
 
 
-class AdminUserStatsResponse(SQLModel):
+class AdminUserStatsResponse(ApiModel):
     total_transfers: int
     active_transfers: int
     total_files_uploaded: int
     total_uploaded_bytes: int
     total_downloads: int
     login_count: int
-    last_login_at: datetime | None = None
+    last_login_at: ApiDateTime | None = None
 
 
-class DownloadStatEntry(SQLModel):
+class DownloadStatEntry(ApiModel):
     access_type: str
     identifier: str | None = None  # password label or email address
     download_count: int
-    last_download: datetime | None = None
+    last_download: ApiDateTime | None = None
 
 
-class DownloadStatsResponse(SQLModel):
+class DownloadStatsResponse(ApiModel):
     stats: list[DownloadStatEntry]
     total_downloads: int
 
 
-class PasswordInfo(SQLModel):
+class PasswordInfo(ApiModel):
     id: int
     label: str
 
 
-class EmailRecipientInfo(SQLModel):
+class EmailRecipientInfo(ApiModel):
     id: int
     email: str
     notified: bool
 
 
-class PasswordEntry(SQLModel):
+class PasswordEntry(ApiModel):
     label: str
     password: str
 
 
-class AccessEditRequest(SQLModel):
+class AccessEditRequest(ApiModel):
     is_public: bool | None = None
     show_email_stats: bool | None = None
     separate_download_counts: bool | None = None
@@ -234,7 +265,7 @@ class AccessEditRequest(SQLModel):
     email_ids_to_remove: list[int] | None = None
 
 
-class AccessInfoResponse(SQLModel):
+class AccessInfoResponse(ApiModel):
     is_public: bool
     passwords: list[PasswordInfo]
     emails: list[EmailRecipientInfo]
@@ -242,18 +273,18 @@ class AccessInfoResponse(SQLModel):
     separate_download_counts: bool = False
 
 
-class RecipientDownloadEntry(SQLModel):
+class RecipientDownloadEntry(ApiModel):
     email: str
     download_count: int
 
 
-class RecipientStatsResponse(SQLModel):
+class RecipientStatsResponse(ApiModel):
     downloads: list[RecipientDownloadEntry]
     total_downloads: int
 
 
-class SubscriptionResponse(SQLModel):
+class SubscriptionResponse(ApiModel):
     plan: str
     is_active: bool
-    started_at: datetime | None = None
-    expires_at: datetime | None = None
+    started_at: ApiDateTime | None = None
+    expires_at: ApiDateTime | None = None

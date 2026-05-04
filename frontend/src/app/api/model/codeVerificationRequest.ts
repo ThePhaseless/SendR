@@ -7,7 +7,12 @@
  */
 
 export interface CodeVerificationRequest {
+  /** @pattern ^[^@\s]+@[^@\s]+\.[^@\s]+$ */
   email: string;
+  /**
+     * @minLength 6
+     * @maxLength 6
+     */
   code: string;
   create_account?: boolean;
 }

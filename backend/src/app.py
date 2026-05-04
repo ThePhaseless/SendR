@@ -1,47 +1,53 @@
 import logging
 from contextlib import asynccontextmanager
+from hmac import compare_digest
 from pathlib import Path
+from typing import cast
 
 from alembic.config import Config
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import create_engine, inspect
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from alembic import command
 from config import settings
+from errors import http_exception_handler
 from routers import admin, altcha, auth, dev, files, subscription
 
 logger = logging.getLogger(__name__)
-
 STATIC_DIR = Path(__file__).resolve().parent.parent.parent.parent / "static"
 _ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
+
+
+def _sync_database_url(url: str) -> str:
+    return url.replace("+aiosqlite", "").replace("+asyncpg", "")
 
 
 def _run_migrations() -> None:
     logger.info("Running database migrations...")
     cfg = Config(str(_ALEMBIC_INI))
-    sync_url = settings.DATABASE_URL.replace("+aiosqlite", "")
+    sync_url = _sync_database_url(settings.DATABASE_URL)
     cfg.set_main_option("sqlalchemy.url", sync_url)
     cfg.attributes["skip_logging_config"] = True
 
-    # If the DB has tables but no alembic_version (created by old init_db),
-    # stamp it at head so alembic doesn't try to re-create everything.
-    from sqlalchemy import create_engine, inspect
-
     engine = create_engine(sync_url)
-    with engine.connect() as conn:
-        inspector = inspect(conn)
-        tables = inspector.get_table_names()
-        has_alembic = "alembic_version" in tables
-        has_app_tables = "user" in tables
-
-        if has_app_tables and not has_alembic:
-            logger.info("Existing database without alembic tracking detected, stamping at head...")
-            command.stamp(cfg, "head")
-        else:
-            command.upgrade(cfg, "head")
-    engine.dispose()
+    try:
+        with engine.connect() as connection:
+            inspector = inspect(connection)
+            tables = set(inspector.get_table_names())
+            if "user" in tables and "alembic_version" not in tables:
+                logger.info(
+                    "Existing schema without Alembic tracking detected; "
+                    "stamping at head."
+                )
+                command.stamp(cfg, "head")
+            else:
+                command.upgrade(cfg, "head")
+    finally:
+        engine.dispose()
 
     logger.info("Database migrations complete.")
 
@@ -62,10 +68,45 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
-    allow_headers=["content-type", "authorization"],
+    allow_headers=["content-type", "authorization", settings.CSRF_HEADER_NAME],
 )
+
+
+async def _http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    return await http_exception_handler(request, cast("StarletteHTTPException", exc))
+
+
+app.add_exception_handler(StarletteHTTPException, _http_exception_handler)
+
+
+@app.middleware("http")
+async def enforce_cookie_csrf(request: Request, call_next):
+    if (
+        request.method in {"POST", "PATCH", "PUT", "DELETE"}
+        and request.url.path.startswith("/api/")
+        and settings.SESSION_COOKIE_NAME in request.cookies
+    ):
+        csrf_cookie = request.cookies.get(settings.CSRF_COOKIE_NAME)
+        csrf_header = request.headers.get(settings.CSRF_HEADER_NAME)
+        if (
+            not csrf_cookie
+            or not csrf_header
+            or not compare_digest(csrf_cookie, csrf_header)
+        ):
+            return JSONResponse(
+                status_code=status.HTTP_403_FORBIDDEN,
+                content={
+                    "detail": {
+                        "code": "CSRF_FAILED",
+                        "message": "Invalid CSRF token.",
+                    }
+                },
+            )
+
+    return await call_next(request)
+
 
 app.include_router(admin.router)
 app.include_router(altcha.router)
@@ -78,13 +119,19 @@ if settings.is_local:
 
 if STATIC_DIR.is_dir():
     _resolved_static = STATIC_DIR.resolve()
-    app.mount("/assets", StaticFiles(directory=str(_resolved_static / "assets")), name="assets")
+    app.mount(
+        "/assets",
+        StaticFiles(directory=str(_resolved_static / "assets")),
+        name="assets",
+    )
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(_request: Request, full_path: str):  # noqa: ARG001
         file_path = (STATIC_DIR / full_path).resolve()
         if not str(file_path).startswith(str(_resolved_static)):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Not found"
+            )
         if file_path.is_file():
             return FileResponse(str(file_path))
         return FileResponse(str(_resolved_static / "index.html"))

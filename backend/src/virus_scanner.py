@@ -12,7 +12,9 @@ logger = logging.getLogger(__name__)
 def _get_client() -> clamd.ClamdNetworkSocket | clamd.ClamdUnixSocket:
     if settings.CLAMAV_UNIX_SOCKET:
         return clamd.ClamdUnixSocket(path=settings.CLAMAV_UNIX_SOCKET)
-    return clamd.ClamdNetworkSocket(host=settings.CLAMAV_HOST, port=settings.CLAMAV_PORT)
+    return clamd.ClamdNetworkSocket(
+        host=settings.CLAMAV_HOST, port=settings.CLAMAV_PORT
+    )
 
 
 def scan_upload_content(content: bytes) -> None:

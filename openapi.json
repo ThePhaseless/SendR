@@ -476,7 +476,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TokenResponse"
+                  "$ref": "#/components/schemas/SessionResponse"
                 }
               }
             }
@@ -517,7 +517,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TokenResponse"
+                  "$ref": "#/components/schemas/SessionResponse"
                 }
               }
             }
@@ -549,6 +549,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_api_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Logout Api Auth Logout Post"
                 }
               }
             }
@@ -830,6 +860,22 @@
               ],
               "title": "Password"
             }
+          },
+          {
+            "name": "X-Access-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Access-Token"
+            }
           }
         ],
         "responses": {
@@ -949,6 +995,22 @@
               ],
               "title": "Password"
             }
+          },
+          {
+            "name": "X-Access-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Access-Token"
+            }
           }
         ],
         "responses": {
@@ -1036,6 +1098,22 @@
               ],
               "title": "Password"
             }
+          },
+          {
+            "name": "X-Access-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Access-Token"
+            }
           }
         ],
         "responses": {
@@ -1096,6 +1174,22 @@
                 }
               ],
               "title": "Password"
+            }
+          },
+          {
+            "name": "X-Access-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Access-Token"
             }
           }
         ],
@@ -1357,7 +1451,7 @@
           "files"
         ],
         "summary": "Refresh Group",
-        "description": "Refresh all files in a group: new download tokens, new expiry, reset download counts.",
+        "description": "Refresh all active files in a group.",
         "operationId": "refresh_group_api_files_group__upload_group__refresh_post",
         "security": [
           {
@@ -1596,6 +1690,22 @@
               ],
               "title": "Password"
             }
+          },
+          {
+            "name": "X-Access-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Access-Token"
+            }
           }
         ],
         "responses": {
@@ -1654,7 +1764,7 @@
           "subscription"
         ],
         "summary": "Upgrade To Premium",
-        "description": "Mock upgrade to premium. In production, this would integrate with a payment provider.",
+        "description": "Mock upgrade to premium.",
         "operationId": "upgrade_to_premium_api_subscription_upgrade_post",
         "responses": {
           "200": {
@@ -1700,48 +1810,6 @@
             "APIKeyHeader": []
           }
         ]
-      }
-    },
-    "/api/dev/login/{role}": {
-      "post": {
-        "tags": [
-          "dev"
-        ],
-        "summary": "Dev Login",
-        "operationId": "dev_login_api_dev_login__role__post",
-        "parameters": [
-          {
-            "name": "role",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Role"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TokenResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
       }
     }
   },
@@ -1925,7 +1993,6 @@
           },
           "logged_in_at": {
             "type": "string",
-            "format": "date-time",
             "title": "Logged In At"
           }
         },
@@ -1982,8 +2049,7 @@
           "last_login_at": {
             "anyOf": [
               {
-                "type": "string",
-                "format": "date-time"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -2266,10 +2332,14 @@
         "properties": {
           "current_password": {
             "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
             "title": "Current Password"
           },
           "new_password": {
             "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
             "title": "New Password"
           }
         },
@@ -2284,10 +2354,13 @@
         "properties": {
           "email": {
             "type": "string",
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
             "title": "Email"
           },
           "code": {
             "type": "string",
+            "maxLength": 6,
+            "minLength": 6,
             "title": "Code"
           },
           "create_account": {
@@ -2327,8 +2400,7 @@
           "last_download": {
             "anyOf": [
               {
-                "type": "string",
-                "format": "date-time"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -2392,6 +2464,7 @@
         "properties": {
           "email": {
             "type": "string",
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
             "title": "Email"
           }
         },
@@ -2487,7 +2560,6 @@
           },
           "expires_at": {
             "type": "string",
-            "format": "date-time",
             "title": "Expires At"
           },
           "download_count": {
@@ -2849,10 +2921,13 @@
         "properties": {
           "email": {
             "type": "string",
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
             "title": "Email"
           },
           "password": {
             "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
             "title": "Password"
           }
         },
@@ -3031,10 +3106,25 @@
         ],
         "title": "RecipientStatsResponse"
       },
+      "SessionResponse": {
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "title": "Expires At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "expires_at"
+        ],
+        "title": "SessionResponse"
+      },
       "SetPasswordRequest": {
         "properties": {
           "password": {
             "type": "string",
+            "maxLength": 128,
+            "minLength": 8,
             "title": "Password"
           }
         },
@@ -3057,8 +3147,7 @@
           "started_at": {
             "anyOf": [
               {
-                "type": "string",
-                "format": "date-time"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -3069,8 +3158,7 @@
           "expires_at": {
             "anyOf": [
               {
-                "type": "string",
-                "format": "date-time"
+                "type": "string"
               },
               {
                 "type": "null"
@@ -3085,25 +3173,6 @@
           "is_active"
         ],
         "title": "SubscriptionResponse"
-      },
-      "TokenResponse": {
-        "properties": {
-          "token": {
-            "type": "string",
-            "title": "Token"
-          },
-          "expires_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Expires At"
-          }
-        },
-        "type": "object",
-        "required": [
-          "token",
-          "expires_at"
-        ],
-        "title": "TokenResponse"
       },
       "UploadGroupInfoResponse": {
         "properties": {

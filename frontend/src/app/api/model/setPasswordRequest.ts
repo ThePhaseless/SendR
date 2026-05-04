@@ -7,5 +7,9 @@
  */
 
 export interface SetPasswordRequest {
+  /**
+     * @minLength 8
+     * @maxLength 128
+     */
   password: string;
 }

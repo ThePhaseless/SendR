@@ -1,3 +1,5 @@
+import { parseApiDate } from './date.utils';
+
 /** Map MIME type prefixes to emojis */
 const MIME_PREFIX_EMOJI: Record<string, string> = {
   application: '📦',
@@ -66,7 +68,7 @@ export function mimeToEmoji(mime: string): string {
   if (EXT_EMOJI[ext]) {
     return EXT_EMOJI[ext];
   }
-  const prefix = mime.split('/')[0];
+  const [prefix] = mime.split('/');
   return MIME_PREFIX_EMOJI[prefix] ?? '📄';
 }
 
@@ -99,7 +101,7 @@ export function extractDownloadToken(downloadUrl: string): string {
 }
 
 export function isExpired(expiresAt: string): boolean {
-  return new Date(expiresAt) < new Date();
+  return parseApiDate(expiresAt).getTime() < Date.now();
 }
 
 export { resolveAppUrl } from './url.utils';

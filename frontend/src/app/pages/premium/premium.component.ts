@@ -1,13 +1,15 @@
 import { DatePipe } from '@angular/common';
 import type { OnInit } from '@angular/core';
-import { Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { SubscriptionResponse, UserResponse } from '../../api/model';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, DatePipe],
   selector: 'app-premium',
+  standalone: true,
   styleUrl: './premium.component.scss',
   templateUrl: './premium.component.html',
 })
@@ -19,15 +21,12 @@ export class PremiumComponent implements OnInit {
   loading = signal(true);
   error = signal<string | null>(null);
   processing = signal(false);
-  isAuthenticated = this.authService.isAuthenticated();
+  readonly isAuthenticated = computed(() => this.authService.authenticated());
 
   ngOnInit(): void {
-    if (!this.isAuthenticated) {
-      this.loading.set(false);
-      return;
-    }
     this.authService.getMe().subscribe({
       error: () => {
+        this.user.set(null);
         this.loading.set(false);
       },
       next: (me) => {

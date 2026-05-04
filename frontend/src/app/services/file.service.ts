@@ -4,6 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { FilesService as ApiFilesService } from '../api/endpoints/files/files.service';
+import type { UploadFileEntry } from '../components/file-picker/file-picker.component';
 import type {
   AccessEditRequest,
   AccessInfoResponse,
@@ -106,30 +107,22 @@ export class FileService {
   }
 
   uploadMultiple(
-    files: File[],
+    files: UploadFileEntry[],
     altchaPayload: string,
     options?: UploadAccessOptions,
   ): Observable<HttpEvent<MultiFileUploadResponse>> {
-    return this.api.uploadMultipleFilesApiFilesUploadMultiplePost(
+    const formData = this.buildUploadAccessFormData(altchaPayload, options);
+    for (const entry of files) {
+      formData.append('files', entry.file, entry.relativePath ?? entry.file.name);
+    }
+
+    return this.http.post<MultiFileUploadResponse>(
+      `${this.apiUrl}/api/files/upload-multiple`,
+      formData,
       {
-        altcha: altchaPayload,
-        description: options?.description ?? undefined,
-        emails:
-          options?.emails && options.emails.length > 0 ? JSON.stringify(options.emails) : undefined,
-        expiry_hours: options?.expiryHours,
-        files,
-        is_public: options?.isPublic ?? true,
-        max_downloads:
-          options?.maxDownloads && options.maxDownloads > 0 ? options.maxDownloads : undefined,
-        passwords:
-          options?.passwords && options.passwords.length > 0
-            ? JSON.stringify(options.passwords)
-            : undefined,
-        separate_download_counts: options?.separateDownloadCounts ?? false,
-        show_email_stats: options?.showEmailStats ?? false,
-        title: options?.title ?? undefined,
+        observe: 'events',
+        reportProgress: true,
       },
-      { observe: 'events', reportProgress: true },
     );
   }
 
@@ -137,10 +130,13 @@ export class FileService {
     return this.api.getGroupInfoApiFilesGroupUploadGroupGet(uploadGroup);
   }
 
-  addFilesToGroup(uploadGroup: string, files: File[]): Observable<MultiFileUploadResponse> {
+  addFilesToGroup(
+    uploadGroup: string,
+    files: UploadFileEntry[],
+  ): Observable<MultiFileUploadResponse> {
     const formData = new FormData();
-    for (const file of files) {
-      formData.append('files', file);
+    for (const entry of files) {
+      formData.append('files', entry.file, entry.relativePath ?? entry.file.name);
     }
     return this.http.post<MultiFileUploadResponse>(
       `${this.apiUrl}/api/files/group/${encodeURIComponent(uploadGroup)}/add`,
@@ -176,24 +172,50 @@ export class FileService {
   }
 
   getRecipientStats(uploadGroup: string, token: string): Observable<RecipientStatsResponse> {
-    return this.api.getRecipientStatsApiFilesGroupUploadGroupRecipientStatsGet(uploadGroup, {
-      password: token,
-    });
+    return this.http.get<RecipientStatsResponse>(
+      `${this.apiUrl}/api/files/group/${encodeURIComponent(uploadGroup)}/recipient-stats`,
+      { headers: { 'X-Access-Token': token } },
+    );
   }
 
-  getDownloadUrlWithPassword(downloadToken: string, password?: string): string {
-    const base = `${this.apiUrl}/api/files/${downloadToken}`;
-    if (password) {
-      return `${base}?password=${encodeURIComponent(password)}`;
-    }
-    return base;
+  getDownloadUrlWithPassword(downloadToken: string, _password?: string): string {
+    return `${this.apiUrl}/api/files/${downloadToken}`;
   }
 
-  getGroupDownloadUrlWithPassword(uploadGroup: string, password?: string): string {
-    const base = `${this.apiUrl}/api/files/group/${uploadGroup}/download`;
-    if (password) {
-      return `${base}?password=${encodeURIComponent(password)}`;
+  getGroupDownloadUrlWithPassword(uploadGroup: string, _password?: string): string {
+    return `${this.apiUrl}/api/files/group/${uploadGroup}/download`;
+  }
+
+  private buildUploadAccessFormData(
+    altchaPayload: string,
+    options?: UploadAccessOptions,
+  ): FormData {
+    const formData = new FormData();
+    formData.append('altcha', altchaPayload);
+    if (options?.expiryHours !== undefined) {
+      formData.append('expiry_hours', options.expiryHours.toString());
     }
-    return base;
+    if (options?.maxDownloads && options.maxDownloads > 0) {
+      formData.append('max_downloads', options.maxDownloads.toString());
+    }
+    formData.append('is_public', (options?.isPublic ?? true).toString());
+    if (options?.passwords && options.passwords.length > 0) {
+      formData.append('passwords', JSON.stringify(options.passwords));
+    }
+    if (options?.emails && options.emails.length > 0) {
+      formData.append('emails', JSON.stringify(options.emails));
+    }
+    formData.append('show_email_stats', (options?.showEmailStats ?? false).toString());
+    formData.append(
+      'separate_download_counts',
+      (options?.separateDownloadCounts ?? false).toString(),
+    );
+    if (options?.title) {
+      formData.append('title', options.title);
+    }
+    if (options?.description) {
+      formData.append('description', options.description);
+    }
+    return formData;
   }
 }

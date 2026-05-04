@@ -37,39 +37,44 @@
 
 <div class="settings-row">
   <label for="max-downloads">Max downloads</label>
-  @if (useCustomDownloads()) {
-    <div class="input-with-toggle">
-      <button
-        type="button"
-        class="btn btn-secondary btn-sm"
-        [class.active]="maxDownloads() === 0"
-        (click)="maxDownloads.set(0)"
-      >
-        Unlimited
-      </button>
-      <input
-        type="number"
-        class="form-input"
-        [ngModel]="maxDownloads() || null"
-        (ngModelChange)="onMaxDownloadsChange($event)"
-        placeholder="Custom"
-        [min]="1"
-      />
-    </div>
-    @if (maxDownloadsExceedsLimit()) {
-      <p class="validation-warning">Maximum allowed is {{ maxDownloadsLimit() }} for your plan.</p>
-    }
-  } @else {
-    <select
-      id="max-downloads"
-      [ngModel]="maxDownloads()"
-      (ngModelChange)="maxDownloads.set($event)"
-    >
-      @for (opt of maxDownloadsOptions(); track opt.value) {
-        <option [ngValue]="opt.value">{{ opt.label }}</option>
+  <div class="settings-control">
+    @if (useCustomDownloads()) {
+      <div class="input-with-toggle">
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm"
+          [class.active]="maxDownloads() === 0"
+          (click)="maxDownloads.set(0)"
+        >
+          Unlimited
+        </button>
+        <input
+          type="number"
+          class="form-input"
+          [ngModel]="maxDownloads() || null"
+          (ngModelChange)="onMaxDownloadsChange($event)"
+          [max]="maxDownloadsLimit()"
+          placeholder="Custom"
+          [min]="1"
+        />
+      </div>
+      @if (maxDownloadsExceedsLimit()) {
+        <p class="validation-warning">
+          Maximum allowed is {{ maxDownloadsLimit() }} for your plan.
+        </p>
       }
-    </select>
-  }
+    } @else {
+      <select
+        id="max-downloads"
+        [ngModel]="maxDownloads()"
+        (ngModelChange)="maxDownloads.set($event)"
+      >
+        @for (opt of maxDownloadsOptions(); track opt.value) {
+          <option [ngValue]="opt.value">{{ opt.label }}</option>
+        }
+      </select>
+    }
+  </div>
 </div>
 
 @if (showAccessControl()) {
@@ -136,6 +141,7 @@
               <input
                 type="text"
                 class="form-input pw-label"
+                [attr.aria-invalid]="entry.label.trim() && !entry.password.trim() ? 'true' : null"
                 [ngModel]="entry.label"
                 (ngModelChange)="updatePasswordLabel(i, $event)"
                 placeholder="Label"
@@ -176,6 +182,9 @@
                 <span class="material-symbols-outlined">close</span>
               </button>
             </div>
+          }
+          @if (passwordLabelWithoutPassword()) {
+            <p class="validation-warning">Add a password before saving a label.</p>
           }
         </div>
       }

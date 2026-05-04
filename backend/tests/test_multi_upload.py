@@ -1,4 +1,6 @@
+import io
 import json
+import zipfile
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -23,7 +25,9 @@ def _override_altcha():
 @pytest.mark.asyncio
 async def test_upload_multiple_no_files_returns_400(auth_headers):
     """POST /api/files/upload-multiple with no files should return 400."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.post(
             "/api/files/upload-multiple",
             headers=auth_headers,
@@ -36,7 +40,9 @@ async def test_upload_multiple_no_files_returns_400(auth_headers):
 @pytest.mark.asyncio
 async def test_upload_multiple_success(auth_headers):
     """POST /api/files/upload-multiple should upload multiple files."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         files = [
             ("files", ("test1.txt", b"hello world 1", "text/plain")),
             ("files", ("test2.txt", b"hello world 2", "text/plain")),
@@ -62,7 +68,9 @@ async def test_upload_multiple_success(auth_headers):
 @pytest.mark.asyncio
 async def test_group_info(auth_headers):
     """GET /api/files/group/{group} should return group info."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         # First upload files
         files = [
             ("files", ("a.txt", b"aaa", "text/plain")),
@@ -89,7 +97,9 @@ async def test_group_info(auth_headers):
 @pytest.mark.asyncio
 async def test_group_download(auth_headers):
     """GET /api/files/group/{group}/download should return file or zip."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         files = [
             ("files", ("x.txt", b"xxx", "text/plain")),
             ("files", ("y.txt", b"yyy", "text/plain")),
@@ -111,8 +121,71 @@ async def test_group_download(auth_headers):
 
 
 @pytest.mark.asyncio
+async def test_group_download_uses_upload_title_for_zip_name(auth_headers):
+    """Group ZIP downloads should use the upload title as the archive name."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        files = [
+            ("files", ("first.txt", b"first", "text/plain")),
+            ("files", ("second.txt", b"second", "text/plain")),
+        ]
+        upload_resp = await client.post(
+            "/api/files/upload-multiple",
+            files=files,
+            headers=auth_headers,
+            data={
+                "altcha": json.dumps({"mock": True}),
+                "title": "Project Brief",
+            },
+        )
+        assert upload_resp.status_code == 201
+        upload_group = upload_resp.json()["upload_group"]
+
+        download_resp = await client.get(f"/api/files/group/{upload_group}/download")
+
+    assert download_resp.status_code == 200
+    assert "application/zip" in download_resp.headers.get("content-type", "")
+    assert 'filename="Project Brief.zip"' in download_resp.headers.get(
+        "content-disposition", ""
+    )
+
+    archive = zipfile.ZipFile(io.BytesIO(download_resp.content))
+    assert sorted(archive.namelist()) == ["first.txt", "second.txt"]
+
+
+@pytest.mark.asyncio
+async def test_group_download_preserves_folder_paths_in_zip(auth_headers):
+    """Folder uploads preserve relative paths in the ZIP flow."""
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        upload_resp = await client.post(
+            "/api/files/upload-multiple",
+            files=[("files", ("docs/readme.txt", b"hello", "text/plain"))],
+            headers=auth_headers,
+            data={"altcha": json.dumps({"mock": True}), "title": "Docs"},
+        )
+        assert upload_resp.status_code == 201
+        upload_group = upload_resp.json()["upload_group"]
+
+        info_resp = await client.get(f"/api/files/group/{upload_group}")
+        download_resp = await client.get(f"/api/files/group/{upload_group}/download")
+
+    assert info_resp.status_code == 200
+    assert info_resp.json()["will_zip"] is True
+    assert download_resp.status_code == 200
+    assert "application/zip" in download_resp.headers.get("content-type", "")
+
+    archive = zipfile.ZipFile(io.BytesIO(download_resp.content))
+    assert archive.namelist() == ["docs/readme.txt"]
+
+
+@pytest.mark.asyncio
 async def test_group_not_found():
     """GET /api/files/group/nonexistent should return 404."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.get("/api/files/group/nonexistent")
     assert response.status_code == 404

@@ -1,0 +1,46 @@
+@reference "tailwindcss";
+
+.confirm-overlay {
+  @apply fixed inset-0 z-[1300] flex items-center justify-center p-4;
+  background: rgb(0 0 0 / 55%);
+  backdrop-filter: blur(4px);
+}
+
+.confirm-card {
+  @apply w-full max-w-[28rem] flex flex-col gap-4;
+  border-radius: 1.25rem;
+  box-shadow: 0 22px 54px rgb(15 23 42 / 22%);
+}
+
+.confirm-icon {
+  @apply inline-flex items-center justify-center rounded-2xl;
+  width: 3rem;
+  height: 3rem;
+  background: color-mix(in srgb, var(--color-accent-light) 70%, transparent);
+  color: var(--color-accent);
+
+  .material-symbols-outlined {
+    font-size: 1.4rem;
+  }
+}
+
+.confirm-icon-danger {
+  background: color-mix(in srgb, var(--color-primary-light) 75%, transparent);
+  color: var(--color-danger);
+}
+
+.confirm-copy {
+  h2 {
+    @apply text-lg font-semibold;
+    color: var(--color-text);
+  }
+
+  p {
+    @apply text-sm mt-2;
+    color: var(--color-text-secondary);
+  }
+}
+
+.confirm-actions {
+  @apply flex flex-wrap justify-end gap-2;
+}

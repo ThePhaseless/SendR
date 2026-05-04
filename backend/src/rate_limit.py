@@ -44,7 +44,10 @@ auth_rate_limiter = RateLimiter(
 
 def get_client_ip(request: Request) -> str:
     """Extract client IP from request, considering proxy headers."""
+    client_ip = request.client.host if request.client else "unknown"
     forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    if forwarded and client_ip in settings.TRUSTED_PROXY_IPS:
+        forwarded_ip = forwarded.split(",")[0].strip()
+        if forwarded_ip:
+            return forwarded_ip
+    return client_ip

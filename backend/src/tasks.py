@@ -15,10 +15,12 @@ logger = logging.getLogger(__name__)
 
 
 async def cleanup_expired_files(session: AsyncSession) -> int:
-    """Delete files that are past the grace period. Returns number of files cleaned up."""
+    """Delete files past the grace period and return the cleanup count."""
     now = _utcnow()
     cutoff = now - timedelta(days=settings.FILE_GRACE_PERIOD_DAYS)
-    owned_cutoff = now - timedelta(days=max(settings.FILE_GRACE_PERIOD_DAYS, settings.PREMIUM_REFRESH_GRACE_DAYS))
+    owned_cutoff = now - timedelta(
+        days=max(settings.FILE_GRACE_PERIOD_DAYS, settings.PREMIUM_REFRESH_GRACE_DAYS)
+    )
 
     stmt = select(FileUpload).where(
         FileUpload.is_active == True,  # noqa: E712
@@ -32,7 +34,9 @@ async def cleanup_expired_files(session: AsyncSession) -> int:
 
     cleaned = 0
     upload_dir = Path(settings.UPLOAD_DIR)
-    cleaned_ids = {file_upload.id for file_upload in expired_files if file_upload.id is not None}
+    cleaned_ids = {
+        file_upload.id for file_upload in expired_files if file_upload.id is not None
+    }
     stored_filenames_to_delete: set[str] = set()
 
     for file_upload in expired_files:

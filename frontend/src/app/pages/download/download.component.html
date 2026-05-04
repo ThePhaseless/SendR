@@ -121,7 +121,7 @@
           </div>
           @if (group.will_zip) {
             <div class="alert alert-info zip-info">
-              📦 These files will be delivered as a ZIP archive.
+              📦 This transfer will be delivered as a ZIP archive.
             </div>
           }
           @if (groupRestrictsSingleFileDownloads()) {
@@ -130,32 +130,16 @@
               transfer download.
             </div>
           }
-          @if (!needsPasswordToDownload()) {
-            <div class="group-file-list">
-              @for (file of group.files; track file.id) {
-                <div class="group-file-item">
-                  <span class="group-file-name"
-                    >{{ getFileEmoji(file.original_filename) }} {{ file.original_filename }}</span
-                  >
-                  <span class="group-file-size">{{ formatSize(file.file_size_bytes) }}</span>
-                  @if (file.group_download_only) {
-                    <span class="limit-reached-badge">Use full transfer</span>
-                  } @else if (!isGroupFileLimitReached(file)) {
-                    <button
-                      class="btn btn-secondary btn-sm"
-                      [attr.aria-label]="'Download ' + file.original_filename"
-                      [disabled]="downloading()"
-                      (click)="downloadSingleFile(file.download_url, file.original_filename)"
-                    >
-                      Download
-                    </button>
-                  } @else {
-                    <span class="limit-reached-badge">Limit reached</span>
-                  }
-                </div>
-              }
-            </div>
-          }
+          <div class="group-file-list scroll-surface scroll-medium">
+            @for (file of group.files; track file.id) {
+              <div class="group-file-item">
+                <span class="group-file-name"
+                  >{{ getFileEmoji(file.original_filename) }} {{ file.original_filename }}</span
+                >
+                <span class="group-file-size">{{ formatSize(file.file_size_bytes) }}</span>
+              </div>
+            }
+          </div>
           @if (needsPasswordToDownload()) {
             <p class="password-hint">Enter the password to download these files.</p>
             <form class="password-form" (ngSubmit)="submitPassword()">
@@ -184,11 +168,7 @@
               (click)="downloadGroup()"
             >
               {{
-                downloading()
-                  ? "Downloading…"
-                  : group.will_zip
-                    ? "Download All (ZIP)"
-                    : "Download All"
+                downloading() ? "Downloading…" : group.will_zip ? "Download ZIP" : "Download File"
               }}
             </button>
           }
@@ -198,13 +178,22 @@
           } @else if (recipientStats(); as stats) {
             <div class="recipient-stats">
               <h3>Download Activity</h3>
-              <div class="recipient-stats-table">
+              <div class="recipient-stats-table scroll-surface scroll-compact">
                 @for (entry of stats.downloads; track entry.email) {
                   <div class="recipient-row">
                     <span class="recipient-email">{{ entry.email }}</span>
                     <span class="recipient-count"
                       >{{ entry.download_count }}
                       {{ entry.download_count === 1 ? "download" : "downloads" }}</span
+                    >
+                  </div>
+                }
+                @if (showOtherRecipientDownloads()) {
+                  <div class="recipient-row">
+                    <span class="recipient-email">Other downloads</span>
+                    <span class="recipient-count"
+                      >{{ otherRecipientDownloads() }}
+                      {{ otherRecipientDownloads() === 1 ? "download" : "downloads" }}</span
                     >
                   </div>
                 }

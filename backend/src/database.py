@@ -1,7 +1,6 @@
 from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from config import settings
@@ -20,8 +19,3 @@ async def get_session_context():
     """Context manager for use outside of FastAPI dependency injection."""
     async with async_session() as session:
         yield session
-
-
-async def init_db():
-    async with engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)

@@ -176,6 +176,7 @@
 
 .result-file-list {
   @apply flex flex-col gap-2 my-4;
+  width: 100%;
 }
 
 .result-file-item {
@@ -283,6 +284,10 @@ app-upload-settings {
     @apply text-xs font-semibold uppercase tracking-wide mb-1;
     color: var(--color-text-secondary);
   }
+}
+
+.result-access-entries {
+  @apply flex flex-col gap-1;
 }
 
 .result-access-entry {

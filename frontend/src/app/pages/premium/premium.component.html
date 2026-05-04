@@ -3,7 +3,7 @@
     <p class="loading">Loading subscription info…</p>
   } @else {
     <div class="page-header-section">
-      @if (!isAuthenticated) {
+      @if (!isAuthenticated()) {
         <h1 class="plans-title">Plans</h1>
         <p class="plans-subtitle">Choose the plan that fits your needs</p>
       } @else if (subscription(); as sub) {
@@ -34,11 +34,13 @@
           <li>Expiry: 1 day or 3 days</li>
           <li>Downloads: 1 or unlimited</li>
         </ul>
-        @if (user()?.tier === "temporary") {
-          <p class="tier-note">Create a free account for more features</p>
-        } @else if (!isAuthenticated) {
-          <p class="tier-note">Available without an account</p>
-        }
+        <div class="tier-card-footer">
+          @if (user()?.tier === "temporary") {
+            <p class="tier-note">Create a free account for more features</p>
+          } @else if (!isAuthenticated()) {
+            <p class="tier-note">Available without an account</p>
+          }
+        </div>
       </div>
 
       <div class="tier-card card" [class.current]="user()?.tier === 'free'">
@@ -55,19 +57,21 @@
           <li>Dashboard &amp; file management</li>
           <li>Refresh uploads before expiry</li>
         </ul>
-        @if (!isAuthenticated || user()?.tier === "temporary") {
-          <a
-            routerLink="/auth"
-            [queryParams]="{ mode: 'register' }"
-            class="btn btn-primary btn-tier"
-            >Create Free Account</a
-          >
-        }
-        @if (isPremium()) {
-          <button class="btn btn-secondary btn-tier" [disabled]="processing()" (click)="cancel()">
-            {{ processing() ? "Processing…" : "Downgrade to Free" }}
-          </button>
-        }
+        <div class="tier-card-footer">
+          @if (!isAuthenticated() || user()?.tier === "temporary") {
+            <a
+              routerLink="/auth"
+              [queryParams]="{ mode: 'register' }"
+              class="btn btn-primary btn-tier"
+              >Create Free Account</a
+            >
+          }
+          @if (isPremium()) {
+            <button class="btn btn-secondary btn-tier" [disabled]="processing()" (click)="cancel()">
+              {{ processing() ? "Processing…" : "Downgrade to Free" }}
+            </button>
+          }
+        </div>
       </div>
 
       <div class="tier-card card highlighted" [class.current]="isPremium()">
@@ -80,7 +84,7 @@
           <li>Up to 10 GB per upload</li>
           <li>Unlimited files per upload</li>
           <li>Expiry: 1 hour – 30 days</li>
-          <li>Downloads: unlimited or any count</li>
+          <li>Downloads: unlimited or 1–1 000</li>
           <li>Dashboard &amp; file management</li>
           <li>Refresh uploads before expiry</li>
           <li>Recover uploads up to 2 weeks after expiry</li>
@@ -88,25 +92,31 @@
           <li>Edit uploads without changing link</li>
           <li>Download notifications</li>
         </ul>
-        @if (!isPremium()) {
-          @if (isAuthenticated) {
-            <button class="btn btn-primary btn-tier" [disabled]="processing()" (click)="upgrade()">
-              {{ processing() ? "Processing…" : "Upgrade to Premium" }}
-            </button>
-          } @else {
-            <a
-              routerLink="/auth"
-              [queryParams]="{ mode: 'register' }"
-              class="btn btn-primary btn-tier"
-              >Create Account to Upgrade</a
-            >
+        <div class="tier-card-footer">
+          @if (!isPremium()) {
+            @if (isAuthenticated()) {
+              <button
+                class="btn btn-primary btn-tier"
+                [disabled]="processing()"
+                (click)="upgrade()"
+              >
+                {{ processing() ? "Processing…" : "Upgrade to Premium" }}
+              </button>
+            } @else {
+              <a
+                routerLink="/auth"
+                [queryParams]="{ mode: 'register' }"
+                class="btn btn-primary btn-tier"
+                >Create Account to Upgrade</a
+              >
+            }
           }
-        }
+        </div>
       </div>
     </div>
 
     <div class="actions">
-      @if (isAuthenticated) {
+      @if (isAuthenticated()) {
         <a routerLink="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
       } @else {
         <a routerLink="/" class="btn btn-secondary">Back to Home</a>

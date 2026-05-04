@@ -30,11 +30,12 @@ import type {
   CodeVerificationRequest,
   EmailVerificationRequest,
   LimitsResponse,
+  LogoutApiAuthLogoutPost200,
   PasswordLoginRequest,
   QuotaResponse,
   RequestCodeApiAuthRequestCodePost200,
+  SessionResponse,
   SetPasswordRequest,
-  TokenResponse,
   UserResponse
 } from '../../model';
 
@@ -125,10 +126,10 @@ export class AuthService {
 /**
  * @summary Verify Code
  */
- verifyCodeApiAuthVerifyCodePost<TData = TokenResponse>(codeVerificationRequest: CodeVerificationRequest, options?: HttpClientBodyOptions): Observable<TData>;
- verifyCodeApiAuthVerifyCodePost<TData = TokenResponse>(codeVerificationRequest: CodeVerificationRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- verifyCodeApiAuthVerifyCodePost<TData = TokenResponse>(codeVerificationRequest: CodeVerificationRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  verifyCodeApiAuthVerifyCodePost<TData = TokenResponse>(
+ verifyCodeApiAuthVerifyCodePost<TData = SessionResponse>(codeVerificationRequest: CodeVerificationRequest, options?: HttpClientBodyOptions): Observable<TData>;
+ verifyCodeApiAuthVerifyCodePost<TData = SessionResponse>(codeVerificationRequest: CodeVerificationRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ verifyCodeApiAuthVerifyCodePost<TData = SessionResponse>(codeVerificationRequest: CodeVerificationRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  verifyCodeApiAuthVerifyCodePost<TData = SessionResponse>(
     codeVerificationRequest: CodeVerificationRequest, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
     if (options?.observe === 'events') {
       return this.http.post<TData>(
@@ -161,10 +162,10 @@ export class AuthService {
 /**
  * @summary Login Password
  */
- loginPasswordApiAuthLoginPasswordPost<TData = TokenResponse>(passwordLoginRequest: PasswordLoginRequest, options?: HttpClientBodyOptions): Observable<TData>;
- loginPasswordApiAuthLoginPasswordPost<TData = TokenResponse>(passwordLoginRequest: PasswordLoginRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- loginPasswordApiAuthLoginPasswordPost<TData = TokenResponse>(passwordLoginRequest: PasswordLoginRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
-  loginPasswordApiAuthLoginPasswordPost<TData = TokenResponse>(
+ loginPasswordApiAuthLoginPasswordPost<TData = SessionResponse>(passwordLoginRequest: PasswordLoginRequest, options?: HttpClientBodyOptions): Observable<TData>;
+ loginPasswordApiAuthLoginPasswordPost<TData = SessionResponse>(passwordLoginRequest: PasswordLoginRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ loginPasswordApiAuthLoginPasswordPost<TData = SessionResponse>(passwordLoginRequest: PasswordLoginRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  loginPasswordApiAuthLoginPasswordPost<TData = SessionResponse>(
     passwordLoginRequest: PasswordLoginRequest, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
     if (options?.observe === 'events') {
       return this.http.post<TData>(
@@ -222,6 +223,39 @@ export class AuthService {
 
     return this.http.get<TData>(
       `/api/auth/me`,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
+  }
+/**
+ * @summary Logout
+ */
+ logoutApiAuthLogoutPost<TData = LogoutApiAuthLogoutPost200>( options?: HttpClientBodyOptions): Observable<TData>;
+ logoutApiAuthLogoutPost<TData = LogoutApiAuthLogoutPost200>( options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ logoutApiAuthLogoutPost<TData = LogoutApiAuthLogoutPost200>( options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  logoutApiAuthLogoutPost<TData = LogoutApiAuthLogoutPost200>(
+     options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.post<TData>(
+      `/api/auth/logout`,undefined,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.post<TData>(
+      `/api/auth/logout`,undefined,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.post<TData>(
+      `/api/auth/logout`,undefined,{
         ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
       }

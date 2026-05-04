@@ -43,7 +43,7 @@ async def upgrade_to_premium(
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> SubscriptionResponse:
-    """Mock upgrade to premium. In production, this would integrate with a payment provider."""
+    """Mock upgrade to premium."""
     # Deactivate existing subscriptions
     stmt = select(Subscription).where(
         Subscription.user_id == user.id,
@@ -69,7 +69,7 @@ async def upgrade_to_premium(
     user.updated_at = now
     session.add(user)
 
-    # Automatically restore recently expired uploads so premium takes effect immediately.
+    # Restore recently expired uploads so premium takes effect immediately.
     premium_grace_cutoff = now - timedelta(days=settings.PREMIUM_REFRESH_GRACE_DAYS)
     restored_expiry = now + timedelta(hours=settings.PREMIUM_MAX_EXPIRY_HOURS)
     expired_uploads_result = await session.exec(

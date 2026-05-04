@@ -8,16 +8,13 @@ import { SubscriptionService as ApiSubscriptionService } from '../api/endpoints/
 import type {
   LimitsResponse,
   QuotaResponse,
+  SessionResponse,
   SubscriptionResponse,
-  TokenResponse,
   UserResponse,
 } from '../api/model';
 
-export type VerifyCodeResponse = TokenResponse;
+export type VerifyCodeResponse = SessionResponse;
 export type MeResponse = UserResponse;
-
-const TOKEN_KEY = 'sendr_token';
-const EXPIRES_KEY = 'sendr_token_expires';
 
 @Injectable({
   providedIn: 'root',
@@ -27,7 +24,10 @@ export class AuthService {
   private readonly api = inject(ApiAuthService);
   private readonly subscriptionApi = inject(ApiSubscriptionService);
   private readonly apiUrl = environment.apiUrl;
-  authenticated = signal(this.isAuthenticated());
+  private syncingSession = false;
+
+  readonly authenticated = signal(false);
+  readonly currentUser = signal<MeResponse | null>(null);
 
   requestCode(email: string): Observable<Record<string, string>> {
     return this.api.requestCodeApiAuthRequestCodePost({ email });
@@ -35,8 +35,9 @@ export class AuthService {
 
   loginWithPassword(email: string, password: string): Observable<VerifyCodeResponse> {
     return this.api.loginPasswordApiAuthLoginPasswordPost({ email, password }).pipe(
-      tap((res) => {
-        this.storeToken(res);
+      tap(() => {
+        this.authenticated.set(true);
+        this.syncSession();
       }),
     );
   }
@@ -45,14 +46,20 @@ export class AuthService {
     return this.api
       .verifyCodeApiAuthVerifyCodePost({ code, create_account: createAccount, email })
       .pipe(
-        tap((res) => {
-          this.storeToken(res);
+        tap(() => {
+          this.authenticated.set(true);
+          this.syncSession();
         }),
       );
   }
 
   getMe(): Observable<MeResponse> {
-    return this.api.getMeApiAuthMeGet();
+    return this.api.getMeApiAuthMeGet().pipe(
+      tap((user) => {
+        this.currentUser.set(user);
+        this.authenticated.set(true);
+      }),
+    );
   }
 
   setPassword(password: string): Observable<MeResponse> {
@@ -87,38 +94,45 @@ export class AuthService {
   }
 
   isAuthenticated(): boolean {
-    const token = this.getToken();
-    if (!token) {
-      return false;
-    }
-    const expires = localStorage.getItem(EXPIRES_KEY);
-    if (!expires) {
-      return false;
-    }
-    return new Date(expires) > new Date();
-  }
-
-  getToken(): string | null {
-    return localStorage.getItem(TOKEN_KEY);
+    return this.authenticated();
   }
 
   devLogin(role: 'admin' | 'user' | 'premium'): Observable<VerifyCodeResponse> {
     return this.http.post<VerifyCodeResponse>(`${this.apiUrl}/api/dev/login/${role}`, {}).pipe(
-      tap((res) => {
-        this.storeToken(res);
+      tap(() => {
+        this.authenticated.set(true);
+        this.syncSession();
       }),
     );
   }
 
-  storeToken(res: VerifyCodeResponse): void {
-    localStorage.setItem(TOKEN_KEY, res.token);
-    localStorage.setItem(EXPIRES_KEY, res.expires_at);
-    this.authenticated.set(true);
+  syncSession(): void {
+    if (this.syncingSession) {
+      return;
+    }
+
+    this.syncingSession = true;
+    this.api.getMeApiAuthMeGet().subscribe({
+      complete: () => {
+        this.syncingSession = false;
+      },
+      error: () => {
+        this.currentUser.set(null);
+        this.authenticated.set(false);
+      },
+      next: (user) => {
+        this.currentUser.set(user);
+        this.authenticated.set(true);
+      },
+    });
   }
 
   logout(): void {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(EXPIRES_KEY);
+    this.currentUser.set(null);
     this.authenticated.set(false);
+    this.http.post(`${this.apiUrl}/api/auth/logout`, {}).subscribe({
+      error() {},
+      next() {},
+    });
   }
 }

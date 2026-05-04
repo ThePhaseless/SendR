@@ -1,27 +1,39 @@
 import { HttpEventType } from '@angular/common/http';
-import { CUSTOM_ELEMENTS_SCHEMA, Component, computed, inject, signal } from '@angular/core';
+import {
+  CUSTOM_ELEMENTS_SCHEMA,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AltchaService } from '../../api/endpoints/altcha/altcha.service';
+import type { LimitsResponse, QuotaResponse } from '../../api/model';
 import {
-  getLimitsApiAuthLimitsGetResource,
-  getQuotaApiAuthQuotaGetResource,
-} from '../../api/endpoints/filename.resource';
-import type { UploadFileEntry } from '../../components/file-picker/file-picker.component';
-import { FilePickerComponent } from '../../components/file-picker/file-picker.component';
+  FilePickerComponent,
+  type UploadFileEntry,
+} from '../../components/file-picker/file-picker.component';
 import { JumpingTextComponent } from '../../components/jumping-text/jumping-text.component';
-import type { PasswordEntry } from '../../components/upload-settings/upload-settings.component';
-import { UploadSettingsComponent } from '../../components/upload-settings/upload-settings.component';
-import { AuthService } from '../../services/auth.service';
-import type { FileUploadResponse, MultiFileUploadResponse } from '../../services/file.service';
-import { FileService } from '../../services/file.service';
-import { getErrorDetail } from '../../utils/error.utils';
+import {
+  type PasswordEntry,
+  UploadSettingsComponent,
+} from '../../components/upload-settings/upload-settings.component';
+import {
+  AuthService,
+  FileService,
+  type FileUploadResponse,
+  type MultiFileUploadResponse,
+} from '../../services';
 import {
   extractDownloadToken,
   filenameToEmoji,
   formatFileSize,
+  getErrorDetail,
   resolveAppUrl,
-} from '../../utils/file.utils';
+} from '../../utils/index';
 
 interface AltchaStateChangeDetail {
   payload?: string;
@@ -29,8 +41,47 @@ interface AltchaStateChangeDetail {
 }
 
 type AltchaState = 'unverified' | 'verifying' | 'verified' | 'expired' | 'error' | 'code';
+type UploadLimits = LimitsResponse | QuotaResponse;
+
+interface UploadLimitsRequest {
+  subscribe: (observer: { error: () => void; next: (limits: UploadLimits) => void }) => {
+    unsubscribe: () => void;
+  };
+}
+
+const PREMIUM_MAX_EXPIRY_HOURS = 720;
+
+function getLimitNumber(limits: UploadLimits | null, key: string): number | null {
+  if (!limits) {
+    return null;
+  }
+
+  const value: unknown = Reflect.get(limits, key);
+  return typeof value === 'number' ? value : null;
+}
+
+function getLimitBoolean(limits: UploadLimits | null, key: string): boolean {
+  if (!limits) {
+    return false;
+  }
+
+  const value: unknown = Reflect.get(limits, key);
+  return typeof value === 'boolean' ? value : false;
+}
+
+function isAltchaState(value: string | undefined): value is AltchaState {
+  return (
+    value === 'code' ||
+    value === 'error' ||
+    value === 'expired' ||
+    value === 'unverified' ||
+    value === 'verified' ||
+    value === 'verifying'
+  );
+}
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     JumpingTextComponent,
     FormsModule,
@@ -40,6 +91,7 @@ type AltchaState = 'unverified' | 'verifying' | 'verified' | 'expired' | 'error'
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   selector: 'app-home',
+  standalone: true,
   styleUrl: './home.component.scss',
   templateUrl: './home.component.html',
 })
@@ -113,20 +165,23 @@ export class HomeComponent {
 
   altchaHintText = computed(() => {
     switch (this.altchaState()) {
-      case 'verifying': {
-        return 'Verifying…';
-      }
-      case 'expired': {
-        return 'CAPTCHA expired — fetching a new challenge…';
+      case 'code': {
+        return 'Please complete the code challenge.';
       }
       case 'error': {
         return 'Verification failed. Please try again.';
       }
-      case 'code': {
-        return 'Please complete the code challenge.';
+      case 'expired': {
+        return 'CAPTCHA expired — fetching a new challenge…';
       }
-      default: {
+      case 'unverified': {
         return 'Please complete the CAPTCHA to upload.';
+      }
+      case 'verified': {
+        return 'CAPTCHA verified.';
+      }
+      case 'verifying': {
+        return 'Verifying…';
       }
     }
   });
@@ -135,16 +190,37 @@ export class HomeComponent {
   private lastProgressTime = 0;
   private lastProgressBytes = 0;
 
-  private readonly limitsData = this.authService.isAuthenticated()
-    ? getQuotaApiAuthQuotaGetResource()
-    : getLimitsApiAuthLimitsGetResource();
+  private readonly limitsData = signal<UploadLimits | null>(null);
+  private readonly limitsRefreshNonce = signal(0);
 
   constructor() {
     this.loadAltchaChallenge();
+
+    effect((onCleanup) => {
+      const authenticated = this.authService.authenticated();
+      this.limitsRefreshNonce();
+
+      const request$: UploadLimitsRequest = authenticated
+        ? this.authService.getQuota()
+        : this.authService.getLimits();
+
+      const request = request$.subscribe({
+        error: () => {
+          this.limitsData.set(null);
+        },
+        next: (limits: UploadLimits) => {
+          this.limitsData.set(limits);
+        },
+      });
+
+      onCleanup(() => {
+        request.unsubscribe();
+      });
+    });
   }
 
   maxFileSizeMb = computed<number>(() => {
-    const l = this.limitsData.value();
+    const l = this.limitsData();
     if (l) {
       return l.max_file_size_mb;
     }
@@ -152,11 +228,11 @@ export class HomeComponent {
   });
 
   isAuthenticated(): boolean {
-    return this.authService.isAuthenticated();
+    return this.authService.authenticated();
   }
 
   maxFilesPerUpload = computed<number>(() => {
-    const l = this.limitsData.value();
+    const l = this.limitsData();
     if (l) {
       return l.max_files_per_upload;
     }
@@ -164,7 +240,7 @@ export class HomeComponent {
   });
 
   userTier = computed(() => {
-    const l = this.limitsData.value();
+    const l = this.limitsData();
     if (!l) {
       return 'temporary';
     }
@@ -175,7 +251,7 @@ export class HomeComponent {
       l.min_expiry_hours !== null &&
       l.min_expiry_hours !== undefined
     ) {
-      if ((l as { max_expiry_hours?: number | null }).max_expiry_hours === 720) {
+      if (getLimitNumber(l, 'max_expiry_hours') === PREMIUM_MAX_EXPIRY_HOURS) {
         return 'premium';
       }
       return 'free';
@@ -184,99 +260,94 @@ export class HomeComponent {
   });
 
   maxPasswordsPerUpload = computed(() => {
-    const l = this.limitsData.value();
-    if (l && 'max_passwords_per_upload' in l) {
-      return (l as { max_passwords_per_upload?: number }).max_passwords_per_upload ?? 0;
-    }
-    return 1;
+    const l = this.limitsData();
+    return getLimitNumber(l, 'max_passwords_per_upload') ?? 1;
   });
 
   maxEmailsPerUpload = computed(() => {
-    const l = this.limitsData.value();
-    if (l && 'max_emails_per_upload' in l) {
-      return (l as { max_emails_per_upload?: number }).max_emails_per_upload ?? 0;
-    }
-    return 0;
+    const l = this.limitsData();
+    return getLimitNumber(l, 'max_emails_per_upload') ?? 0;
   });
 
   // Backend-driven expiry/download options
   expiryOptionsHours = computed<number[] | null>(() => {
-    const l = this.limitsData.value();
+    const l = this.limitsData();
     return l?.expiry_options_hours ?? null;
   });
 
-  minExpiryHours = computed<number | null>(() => {
-    const l = this.limitsData.value();
-    return (l as { min_expiry_hours?: number | null } | undefined)?.min_expiry_hours ?? null;
-  });
+  minExpiryHours = computed<number | null>(() =>
+    getLimitNumber(this.limitsData(), 'min_expiry_hours'),
+  );
 
-  maxExpiryHours = computed<number | null>(() => {
-    const l = this.limitsData.value();
-    return (l as { max_expiry_hours?: number | null } | undefined)?.max_expiry_hours ?? null;
-  });
+  maxExpiryHours = computed<number | null>(() =>
+    getLimitNumber(this.limitsData(), 'max_expiry_hours'),
+  );
 
-  backendMaxDownloadsLimit = computed<number | null>(() => {
-    const l = this.limitsData.value();
-    return (l as { max_downloads_limit?: number | null } | undefined)?.max_downloads_limit ?? null;
-  });
+  backendMaxDownloadsLimit = computed<number | null>(() =>
+    getLimitNumber(this.limitsData(), 'max_downloads_limit'),
+  );
 
   backendMaxDownloadsOptions = computed<number[] | null>(() => {
-    const l = this.limitsData.value();
+    const l = this.limitsData();
     return l?.max_downloads_options ?? null;
   });
 
-  canUseSeparateDownloadCounts = computed(() => {
-    const l = this.limitsData.value();
-    return (
-      (l as { can_use_separate_download_counts?: boolean } | undefined)
-        ?.can_use_separate_download_counts ?? false
-    );
-  });
+  canUseSeparateDownloadCounts = computed(() =>
+    getLimitBoolean(this.limitsData(), 'can_use_separate_download_counts'),
+  );
 
-  canUseEmailStats = computed(() => {
-    const l = this.limitsData.value();
-    return (l as { can_use_email_stats?: boolean } | undefined)?.can_use_email_stats ?? false;
-  });
+  canUseEmailStats = computed(() => getLimitBoolean(this.limitsData(), 'can_use_email_stats'));
 
   // Weekly upload quota
-  weeklyUploadsUsed = computed(() => {
-    const l = this.limitsData.value();
-    return (l as { weekly_uploads_used?: number } | undefined)?.weekly_uploads_used ?? 0;
-  });
+  weeklyUploadsUsed = computed(() => getLimitNumber(this.limitsData(), 'weekly_uploads_used') ?? 0);
 
   weeklyUploadsLimit = computed(() => {
-    const l = this.limitsData.value();
+    const l = this.limitsData();
     return l?.weekly_uploads_limit ?? 0;
   });
 
   weeklyUploadsRemaining = computed(() => {
-    const l = this.limitsData.value();
-    return (l as { weekly_uploads_remaining?: number } | undefined)?.weekly_uploads_remaining ?? 0;
+    const l = this.limitsData();
+    if (!l) {
+      return 0;
+    }
+
+    if ('weekly_uploads_remaining' in l && l.weekly_uploads_remaining !== undefined) {
+      return l.weekly_uploads_remaining ?? 0;
+    }
+
+    const weeklyLimit = l.weekly_uploads_limit ?? 0;
+    const weeklyUsed = 'weekly_uploads_used' in l ? (l.weekly_uploads_used ?? 0) : 0;
+    return weeklyLimit > 0 ? Math.max(0, weeklyLimit - weeklyUsed) : 0;
   });
 
   // Weekly upload size quota (bytes)
-  weeklyUploadSizeLimitBytes = computed(() => {
-    const l = this.limitsData.value();
-    return (
-      (l as { weekly_upload_size_limit_bytes?: number } | undefined)
-        ?.weekly_upload_size_limit_bytes ?? 0
-    );
-  });
+  weeklyUploadSizeLimitBytes = computed(
+    () => getLimitNumber(this.limitsData(), 'weekly_upload_size_limit_bytes') ?? 0,
+  );
 
-  weeklyUploadSizeUsedBytes = computed(() => {
-    const l = this.limitsData.value();
-    return (
-      (l as { weekly_upload_size_used_bytes?: number } | undefined)
-        ?.weekly_upload_size_used_bytes ?? 0
-    );
-  });
+  weeklyUploadSizeUsedBytes = computed(
+    () => getLimitNumber(this.limitsData(), 'weekly_upload_size_used_bytes') ?? 0,
+  );
 
   weeklyUploadSizeRemainingBytes = computed(() => {
-    const l = this.limitsData.value();
-    return (
-      (l as { weekly_upload_size_remaining_bytes?: number } | undefined)
-        ?.weekly_upload_size_remaining_bytes ?? 0
-    );
+    const l = this.limitsData();
+    if (!l) {
+      return 0;
+    }
+
+    if (
+      'weekly_upload_size_remaining_bytes' in l &&
+      l.weekly_upload_size_remaining_bytes !== undefined
+    ) {
+      return l.weekly_upload_size_remaining_bytes ?? 0;
+    }
+
+    const sizeLimit =
+      'weekly_upload_size_limit_bytes' in l ? (l.weekly_upload_size_limit_bytes ?? 0) : 0;
+    const sizeUsed =
+      'weekly_upload_size_used_bytes' in l ? (l.weekly_upload_size_used_bytes ?? 0) : 0;
+    return sizeLimit > 0 ? Math.max(0, sizeLimit - sizeUsed) : 0;
   });
 
   isSizeQuotaExhausted = computed(() => {
@@ -294,8 +365,12 @@ export class HomeComponent {
   });
 
   onAltchaStateChange(event: Event): void {
+    if (this.isUploading()) {
+      return;
+    }
+
     const detail = this.getAltchaStateDetail(event);
-    const state = (detail?.state ?? 'unverified') as AltchaState;
+    const state = isAltchaState(detail?.state) ? detail.state : 'unverified';
     this.altchaState.set(state);
     switch (state) {
       case 'verified': {
@@ -345,7 +420,7 @@ export class HomeComponent {
       this.showAuthPopup.set(true);
       return;
     }
-    this.uploadFiles(this.pendingFiles().map((entry) => entry.file));
+    this.uploadFiles(this.pendingFiles());
   }
 
   openAuthPopup(): void {
@@ -419,7 +494,7 @@ export class HomeComponent {
     void this.router.navigateByUrl(url.pathname);
   }
 
-  private uploadFiles(files: File[]): void {
+  private uploadFiles(entries: UploadFileEntry[]): void {
     if (!this.altchaPayload) {
       this.error.set('Please complete the CAPTCHA verification first.');
       return;
@@ -437,17 +512,17 @@ export class HomeComponent {
     this.lastProgressTime = this.uploadStartTime;
     this.lastProgressBytes = 0;
 
-    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+    const totalSize = entries.reduce((sum, entry) => sum + entry.size, 0);
 
-    if (files.length === 1) {
+    if (entries.length === 1) {
       this.fileService
-        .upload(files[0], this.altchaPayload, {
+        .upload(entries[0].file, this.altchaPayload, {
           description: this.description(),
           emails: this.emails().filter((e) => e.trim()),
           expiryHours: this.expiryHours(),
           isPublic: this.isPublic(),
           maxDownloads: this.maxDownloads(),
-          passwords: this.passwords().filter((p) => p.password),
+          passwords: this.getSubmittedPasswords(),
           separateDownloadCounts: this.separateDownloadCounts(),
           showEmailStats: this.showEmailStats(),
           title: this.title(),
@@ -469,6 +544,7 @@ export class HomeComponent {
               this.singleUploadResult.set(event.body);
               this.isUploading.set(false);
               this.uploadProgress.set(0);
+              this.reloadLimits();
               this.resetAltcha();
             }
           },
@@ -477,13 +553,13 @@ export class HomeComponent {
     }
 
     this.fileService
-      .uploadMultiple(files, this.altchaPayload, {
+      .uploadMultiple(entries, this.altchaPayload, {
         description: this.description(),
         emails: this.emails().filter((e) => e.trim()),
         expiryHours: this.expiryHours(),
         isPublic: this.isPublic(),
         maxDownloads: this.maxDownloads(),
-        passwords: this.passwords().filter((p) => p.password),
+        passwords: this.getSubmittedPasswords(),
         separateDownloadCounts: this.separateDownloadCounts(),
         showEmailStats: this.showEmailStats(),
         title: this.title(),
@@ -505,6 +581,7 @@ export class HomeComponent {
             this.uploadResult.set(event.body);
             this.isUploading.set(false);
             this.uploadProgress.set(0);
+            this.reloadLimits();
             this.resetAltcha();
           }
         },
@@ -614,7 +691,9 @@ export class HomeComponent {
 
   /** Get passwords that were submitted (non-empty). */
   getSubmittedPasswords(): PasswordEntry[] {
-    return this.passwords().filter((p) => p.password);
+    return this.passwords()
+      .filter((p) => p.password.trim())
+      .map((p) => ({ label: p.label.trim(), password: p.password.trim() }));
   }
 
   /** Get emails that were submitted (non-empty). */
@@ -657,6 +736,10 @@ export class HomeComponent {
         this.altchaChallenge.set(JSON.stringify(challenge));
       },
     });
+  }
+
+  private reloadLimits(): void {
+    this.limitsRefreshNonce.update((value) => value + 1);
   }
 
   private getAltchaStateDetail(event: Event): AltchaStateChangeDetail | null {

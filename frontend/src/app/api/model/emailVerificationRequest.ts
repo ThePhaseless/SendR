@@ -7,5 +7,6 @@
  */
 
 export interface EmailVerificationRequest {
+  /** @pattern ^[^@\s]+@[^@\s]+\.[^@\s]+$ */
   email: string;
 }

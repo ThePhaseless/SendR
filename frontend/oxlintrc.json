@@ -16,8 +16,49 @@
     {
       "files": ["**/*.spec.ts"],
       "rules": {
+        "init-declarations": "off",
+        "no-unsafe-assignment": "off",
         "no-unsafe-call": "off",
-        "no-unsafe-member-access": "off"
+        "no-unsafe-member-access": "off",
+        "no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": ["src/app/components/file-picker/file-picker.component.ts"],
+      "rules": {
+        "avoid-new": "off",
+        "no-await-in-loop": "off",
+        "no-continue": "off",
+        "no-unsafe-call": "off",
+        "no-unsafe-member-access": "off",
+        "no-unsafe-type-assertion": "off"
+      }
+    },
+    {
+      "files": ["src/app/interceptors/api-error.interceptor.ts"],
+      "rules": {
+        "prefer-await-to-callbacks": "off"
+      }
+    },
+    {
+      "files": ["src/app/pages/admin/admin.component.ts"],
+      "rules": {
+        "no-array-sort": "off"
+      }
+    },
+    {
+      "files": [
+        "src/app/pages/dashboard/dashboard.component.ts",
+        "src/app/pages/home/home.component.ts"
+      ],
+      "rules": {
+        "max-dependencies": "off"
+      }
+    },
+    {
+      "files": ["src/app/services/confirm-dialog.service.ts"],
+      "rules": {
+        "avoid-new": "off"
       }
     }
   ],

@@ -111,7 +111,7 @@ export class SubscriptionService {
     );
   }
 /**
- * Mock upgrade to premium. In production, this would integrate with a payment provider.
+ * Mock upgrade to premium.
  * @summary Upgrade To Premium
  */
  upgradeToPremiumApiSubscriptionUpgradePost<TData = SubscriptionResponse>( options?: HttpClientBodyOptions): Observable<TData>;

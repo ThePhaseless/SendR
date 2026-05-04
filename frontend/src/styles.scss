@@ -232,6 +232,54 @@ button {
   color: var(--color-text);
 }
 
+.scroll-surface {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-primary) 45%, transparent) transparent;
+  padding-right: 0.25rem;
+
+  &::-webkit-scrollbar {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--color-text-secondary) 32%, transparent);
+    border-radius: 999px;
+    border: 0.18rem solid transparent;
+    background-clip: padding-box;
+  }
+
+  &:hover::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--color-primary) 48%, transparent);
+    border: 0.18rem solid transparent;
+    background-clip: padding-box;
+  }
+}
+
+.scroll-compact {
+  max-height: min(14rem, 38vh);
+}
+
+.scroll-medium {
+  max-height: min(18rem, 46vh);
+}
+
+.scroll-roomy {
+  max-height: min(24rem, 54vh);
+}
+
+.scroll-tall {
+  max-height: min(30rem, 64vh);
+}
+
 // ── Loading & Spinner (shared) ───────────────────────────
 .loading {
   @apply text-center py-12;

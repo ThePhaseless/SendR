@@ -1,12 +1,14 @@
 import { DatePipe } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { OnInit } from '@angular/core';
 import type { AdminUserLoginEntry, AdminUserStatsResponse } from '../../api/model';
+import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 import { AdminService } from '../../services/admin.service';
 import type { AdminUser } from '../../services/admin.service';
 import type { FileUploadResponse } from '../../services/file.service';
+import { getApiDateTime } from '../../utils/date.utils';
+import { getErrorDetail } from '../../utils/error.utils';
 import { formatFileSize } from '../../utils/file.utils';
 
 interface AdminTransferGroup {
@@ -17,13 +19,16 @@ interface AdminTransferGroup {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [DatePipe, FormsModule],
   selector: 'app-admin',
+  standalone: true,
   styleUrl: './admin.component.scss',
   templateUrl: './admin.component.html',
 })
 export class AdminComponent implements OnInit {
   private readonly adminService = inject(AdminService);
+  private readonly confirmDialog = inject(ConfirmDialogService);
 
   users = signal<AdminUser[]>([]);
   total = signal(0);
@@ -94,23 +99,6 @@ export class AdminComponent implements OnInit {
     this.editingUser.set(null);
   }
 
-  private getErrorDetail(error: unknown, fallback: string): string {
-    if (
-      !(error instanceof HttpErrorResponse) ||
-      typeof error.error !== 'object' ||
-      error.error === null
-    ) {
-      return fallback;
-    }
-
-    const detail: unknown = Reflect.get(error.error, 'detail');
-    if (typeof detail === 'string') {
-      return detail;
-    }
-
-    return fallback;
-  }
-
   saveEdit(): void {
     const user = this.editingUser();
     if (!user) {
@@ -125,7 +113,7 @@ export class AdminComponent implements OnInit {
       })
       .subscribe({
         error: (err) => {
-          this.error.set(this.getErrorDetail(err, 'Failed to update user.'));
+          this.error.set(getErrorDetail(err, 'Failed to update user.'));
         },
         next: (updated) => {
           this.users.update((users) => users.map((u) => (u.id === updated.id ? updated : u)));
@@ -137,14 +125,21 @@ export class AdminComponent implements OnInit {
       });
   }
 
-  deleteUser(user: AdminUser): void {
-    if (!confirm(`Delete user ${user.email}? This cannot be undone.`)) {
+  async deleteUser(user: AdminUser): Promise<void> {
+    const confirmed = await this.confirmDialog.confirm({
+      confirmLabel: 'Delete user',
+      message: `${user.email} will be deleted permanently. This action cannot be undone.`,
+      title: 'Delete this user?',
+      tone: 'danger',
+    });
+
+    if (!confirmed) {
       return;
     }
 
     this.adminService.deleteUser(user.id).subscribe({
       error: (err) => {
-        this.error.set(this.getErrorDetail(err, 'Failed to delete user.'));
+        this.error.set(getErrorDetail(err, 'Failed to delete user.'));
       },
       next: () => {
         if (this.selectedDetailsUser()?.id === user.id) {
@@ -185,7 +180,7 @@ export class AdminComponent implements OnInit {
     this.statsLoading.set(true);
     this.adminService.listUserUploads(user.id).subscribe({
       error: (err) => {
-        this.error.set(this.getErrorDetail(err, 'Failed to load user uploads.'));
+        this.error.set(getErrorDetail(err, 'Failed to load user uploads.'));
         this.uploadsLoading.set(false);
       },
       next: (res) => {
@@ -195,7 +190,7 @@ export class AdminComponent implements OnInit {
     });
     this.adminService.listUserLogins(user.id).subscribe({
       error: (err) => {
-        this.error.set(this.getErrorDetail(err, 'Failed to load user logins.'));
+        this.error.set(getErrorDetail(err, 'Failed to load user logins.'));
         this.loginsLoading.set(false);
       },
       next: (res) => {
@@ -205,7 +200,7 @@ export class AdminComponent implements OnInit {
     });
     this.adminService.getUserStats(user.id).subscribe({
       error: (err) => {
-        this.error.set(this.getErrorDetail(err, 'Failed to load user stats.'));
+        this.error.set(getErrorDetail(err, 'Failed to load user stats.'));
         this.statsLoading.set(false);
       },
       next: (stats) => {
@@ -224,36 +219,45 @@ export class AdminComponent implements OnInit {
       groups.set(groupKey, existing);
     }
 
-    return [...groups.entries()]
-      .map(([uploadGroup, files]) => ({
+    const transferGroups: AdminTransferGroup[] = [...groups.entries()].map(
+      ([uploadGroup, files]) => ({
         files,
         latestExpiry: files.reduce(
           (latest, file) =>
-            new Date(file.expires_at) > new Date(latest) ? file.expires_at : latest,
+            getApiDateTime(file.expires_at) > getApiDateTime(latest) ? file.expires_at : latest,
           files[0].expires_at,
         ),
         totalSize: files.reduce((sum, file) => sum + file.file_size_bytes, 0),
         uploadGroup,
-      }))
-      .sort((a, b) => new Date(b.latestExpiry).getTime() - new Date(a.latestExpiry).getTime());
+      }),
+    );
+
+    transferGroups.sort(
+      (left, right) => getApiDateTime(right.latestExpiry) - getApiDateTime(left.latestExpiry),
+    );
+    return transferGroups;
   }
 
-  deleteTransfer(group: AdminTransferGroup): void {
+  async deleteTransfer(group: AdminTransferGroup): Promise<void> {
     const user = this.selectedDetailsUser();
     if (!user) {
       return;
     }
-    if (
-      !confirm(
-        `Delete transfer ${group.uploadGroup}? This will deactivate ${group.files.length} file(s).`,
-      )
-    ) {
+
+    const confirmed = await this.confirmDialog.confirm({
+      confirmLabel: 'Delete transfer',
+      message: `This will deactivate ${group.files.length} ${group.files.length === 1 ? 'file' : 'files'} for ${user.email}.`,
+      title: 'Delete this transfer?',
+      tone: 'danger',
+    });
+
+    if (!confirmed) {
       return;
     }
 
     this.adminService.deleteUserTransfer(user.id, group.uploadGroup).subscribe({
       error: (err) => {
-        this.error.set(this.getErrorDetail(err, 'Failed to delete transfer.'));
+        this.error.set(getErrorDetail(err, 'Failed to delete transfer.'));
       },
       next: () => {
         this.selectedUploads.update((files) =>
@@ -261,7 +265,7 @@ export class AdminComponent implements OnInit {
         );
         this.adminService.getUserStats(user.id).subscribe({
           error: (err) => {
-            this.error.set(this.getErrorDetail(err, 'Failed to refresh user stats.'));
+            this.error.set(getErrorDetail(err, 'Failed to refresh user stats.'));
           },
           next: (stats) => {
             this.selectedStats.set(stats);

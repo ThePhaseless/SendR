@@ -1,0 +1,33 @@
+@if (confirmDialog.dialog(); as dialog) {
+  <div class="confirm-overlay" (click)="confirmDialog.resolve(false)">
+    <section
+      class="confirm-card card"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="dialog.title"
+    >
+      <div class="confirm-icon" [class.confirm-icon-danger]="dialog.tone === 'danger'">
+        <span class="material-symbols-outlined">
+          {{ dialog.tone === "danger" ? "warning" : "help" }}
+        </span>
+      </div>
+      <div class="confirm-copy">
+        <h2>{{ dialog.title }}</h2>
+        <p>{{ dialog.message }}</p>
+      </div>
+      <div class="confirm-actions">
+        <button type="button" class="btn btn-secondary" (click)="confirmDialog.resolve(false)">
+          {{ dialog.cancelLabel }}
+        </button>
+        <button
+          type="button"
+          [class]="dialog.tone === 'danger' ? 'btn btn-danger' : 'btn btn-primary'"
+          (click)="confirmDialog.resolve(true)"
+        >
+          {{ dialog.confirmLabel }}
+        </button>
+      </div>
+    </section>
+  </div>
+}

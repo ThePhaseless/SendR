@@ -1,8 +1,17 @@
-import { Component, DestroyRef, inject, input, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  input,
+  viewChild,
+} from '@angular/core';
 import type { ElementRef, OnInit } from '@angular/core';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-jumping-text',
+  standalone: true,
   styleUrl: './jumping-text.component.scss',
   templateUrl: './jumping-text.component.html',
 })

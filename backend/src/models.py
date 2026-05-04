@@ -6,7 +6,7 @@ from sqlmodel import Field, SQLModel
 
 
 def _utcnow() -> datetime:
-    """Return current UTC time as a naive datetime (for SQLite compatibility)."""
+    """Return current UTC time as a naive datetime for SQLite storage."""
     return datetime.now(UTC).replace(tzinfo=None)
 
 
@@ -105,8 +105,12 @@ class DownloadLog(SQLModel, table=True):
     upload_group: str = Field(index=True)
     file_upload_id: int | None = Field(default=None, foreign_key="fileupload.id")
     access_type: str  # "public" | "password" | "email" | "owner"
-    upload_password_id: int | None = Field(default=None, foreign_key="uploadpassword.id")
-    email_recipient_id: int | None = Field(default=None, foreign_key="uploademailrecipient.id")
+    upload_password_id: int | None = Field(
+        default=None, foreign_key="uploadpassword.id"
+    )
+    email_recipient_id: int | None = Field(
+        default=None, foreign_key="uploademailrecipient.id"
+    )
     downloaded_at: datetime = Field(default_factory=_utcnow)
 
 

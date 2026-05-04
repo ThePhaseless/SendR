@@ -31,7 +31,9 @@ async def _get_user_or_404(session: AsyncSession, user_id: int) -> User:
     result = await session.exec(select(User).where(User.id == user_id))
     user = result.first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
     return user
 
 
@@ -85,15 +87,18 @@ async def update_user(
     user = result.first()
 
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
 
     if body.tier is not None:
         try:
             user.tier = UserTier(body.tier)
         except ValueError as err:
+            valid_tiers = ", ".join(t.value for t in UserTier)
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid tier. Must be one of: {', '.join(t.value for t in UserTier)}",
+                detail=f"Invalid tier. Must be one of: {valid_tiers}",
             ) from err
 
     if body.is_admin is not None:
@@ -142,7 +147,9 @@ async def delete_user(
     user = result.first()
 
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
 
     await session.delete(user)
     await session.commit()
@@ -158,7 +165,9 @@ async def list_user_uploads(
 ) -> FileListResponse:
     await _get_user_or_404(session, user_id)
     now = _utcnow()
-    grace_cutoff = now - timedelta(days=max(settings.FILE_GRACE_PERIOD_DAYS, settings.PREMIUM_REFRESH_GRACE_DAYS))
+    grace_cutoff = now - timedelta(
+        days=max(settings.FILE_GRACE_PERIOD_DAYS, settings.PREMIUM_REFRESH_GRACE_DAYS)
+    )
     stmt = (
         select(FileUpload)
         .where(
@@ -174,7 +183,9 @@ async def list_user_uploads(
     group_access_cache: dict[str, tuple[object | None, int, int]] = {}
     for file_upload in files:
         if file_upload.upload_group not in group_access_cache:
-            group_settings, passwords, email_recipients = await _load_group_access(session, file_upload.upload_group)
+            group_settings, passwords, email_recipients = await _load_group_access(
+                session, file_upload.upload_group
+            )
             group_access_cache[file_upload.upload_group] = (
                 group_settings,
                 len(passwords),
@@ -182,7 +193,10 @@ async def list_user_uploads(
             )
 
     return FileListResponse(
-        files=[_to_response(file_upload, *group_access_cache[file_upload.upload_group]) for file_upload in files],
+        files=[
+            _to_response(file_upload, *group_access_cache[file_upload.upload_group])
+            for file_upload in files
+        ],
     )
 
 
@@ -194,7 +208,10 @@ async def list_user_logins(
 ) -> AdminUserLoginListResponse:
     await _get_user_or_404(session, user_id)
     result = await session.exec(
-        select(UserLogin).where(UserLogin.user_id == user_id).order_by(UserLogin.logged_in_at.desc()).limit(50)
+        select(UserLogin)
+        .where(UserLogin.user_id == user_id)
+        .order_by(UserLogin.logged_in_at.desc())
+        .limit(50)
     )
     logins = list(result.all())
 
@@ -221,7 +238,9 @@ async def get_user_stats(
     now = _utcnow()
 
     total_transfers_result = await session.exec(
-        select(func.count(func.distinct(FileUpload.upload_group))).where(FileUpload.user_id == user_id)
+        select(func.count(func.distinct(FileUpload.upload_group))).where(
+            FileUpload.user_id == user_id
+        )
     )
     active_transfers_result = await session.exec(
         select(func.count(func.distinct(FileUpload.upload_group))).where(
@@ -230,15 +249,25 @@ async def get_user_stats(
             FileUpload.expires_at > now,
         )
     )
-    total_files_result = await session.exec(select(func.count(FileUpload.id)).where(FileUpload.user_id == user_id))
+    total_files_result = await session.exec(
+        select(func.count(FileUpload.id)).where(FileUpload.user_id == user_id)
+    )
     total_uploaded_bytes_result = await session.exec(
-        select(func.coalesce(func.sum(FileUpload.file_size_bytes), 0)).where(FileUpload.user_id == user_id)
+        select(func.coalesce(func.sum(FileUpload.file_size_bytes), 0)).where(
+            FileUpload.user_id == user_id
+        )
     )
     total_downloads_result = await session.exec(
-        select(func.coalesce(func.sum(FileUpload.download_count), 0)).where(FileUpload.user_id == user_id)
+        select(func.coalesce(func.sum(FileUpload.download_count), 0)).where(
+            FileUpload.user_id == user_id
+        )
     )
-    login_count_result = await session.exec(select(func.count(UserLogin.id)).where(UserLogin.user_id == user_id))
-    last_login_result = await session.exec(select(func.max(UserLogin.logged_in_at)).where(UserLogin.user_id == user_id))
+    login_count_result = await session.exec(
+        select(func.count(UserLogin.id)).where(UserLogin.user_id == user_id)
+    )
+    last_login_result = await session.exec(
+        select(func.max(UserLogin.logged_in_at)).where(UserLogin.user_id == user_id)
+    )
 
     return AdminUserStatsResponse(
         total_transfers=total_transfers_result.one(),
@@ -251,7 +280,9 @@ async def get_user_stats(
     )
 
 
-@router.delete("/users/{user_id}/transfers/{upload_group}", status_code=status.HTTP_200_OK)
+@router.delete(
+    "/users/{user_id}/transfers/{upload_group}", status_code=status.HTTP_200_OK
+)
 async def delete_user_transfer(
     user_id: int,
     upload_group: str,
@@ -267,7 +298,9 @@ async def delete_user_transfer(
     files = list(result.all())
 
     if not files:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transfer not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Transfer not found"
+        )
 
     for file_upload in files:
         file_upload.is_active = False

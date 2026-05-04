@@ -242,6 +242,9 @@
   grid-template-columns: 5rem 1fr 5rem 6rem;
 
   &.stats-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     @apply text-xs font-semibold uppercase tracking-wide;
     color: var(--color-text-secondary);
     background: var(--color-card-bg);
@@ -344,6 +347,10 @@
   }
 }
 
+.access-entry-list {
+  @apply flex flex-col gap-1;
+}
+
 .access-add-row {
   @apply flex gap-1.5 mt-1.5;
 
@@ -398,29 +405,5 @@
   .material-symbols-outlined {
     font-size: 1.125rem;
     color: var(--color-text-secondary);
-  }
-}
-
-.popup-overlay {
-  @apply fixed inset-0 z-50 flex items-center justify-center;
-  background: rgb(0 0 0 / 50%);
-}
-
-.popup-card {
-  @apply flex flex-col gap-3 p-6;
-  max-width: 28rem;
-  width: 90%;
-
-  h2 {
-    @apply text-lg font-semibold;
-  }
-
-  .popup-message {
-    @apply text-sm;
-    color: var(--color-text-secondary);
-  }
-
-  .popup-actions {
-    @apply flex gap-2 mt-2;
   }
 }

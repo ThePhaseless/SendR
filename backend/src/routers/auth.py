@@ -1,13 +1,21 @@
 from datetime import timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlmodel import func, select
 
 from config import settings
 from database import get_session
 from email_utils import send_verification_email
-from models import AuthToken, FileUpload, User, UserLogin, UserTier, VerificationCode, _utcnow
+from models import (
+    AuthToken,
+    FileUpload,
+    User,
+    UserLogin,
+    UserTier,
+    VerificationCode,
+    _utcnow,
+)
 from rate_limit import auth_rate_limiter, get_client_ip
 from schemas import (
     ChangePasswordRequest,
@@ -16,16 +24,20 @@ from schemas import (
     LimitsResponse,
     PasswordLoginRequest,
     QuotaResponse,
+    SessionResponse,
     SetPasswordRequest,
-    TokenResponse,
     UserResponse,
 )
 from security import (
+    api_key_header,
+    clear_session_cookie,
     create_access_token,
     generate_verification_code,
     get_current_user,
     hash_token,
     hash_user_password,
+    resolve_request_token,
+    set_session_cookie,
     verify_user_password,
 )
 
@@ -60,7 +72,8 @@ async def _issue_auth_token(
     user: User,
     auth_method: str,
     request: Request,
-) -> TokenResponse:
+    response: Response,
+) -> SessionResponse:
     raw_token, expires_at = create_access_token(user.id)
     session.add(
         AuthToken(
@@ -77,7 +90,8 @@ async def _issue_auth_token(
         )
     )
     await session.commit()
-    return TokenResponse(token=raw_token, expires_at=expires_at)
+    set_session_cookie(response, raw_token, expires_at)
+    return SessionResponse(expires_at=expires_at)
 
 
 def _to_user_response(user: User) -> UserResponse:
@@ -120,16 +134,20 @@ def _weekly_size_limit_for_tier(tier: UserTier) -> int:
 async def request_code(
     body: EmailVerificationRequest,
     request: Request,
-    session: AsyncSession = Depends(get_session),
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> dict[str, str]:
     auth_rate_limiter.check(get_client_ip(request))
 
     user = await _get_user_by_email(session, body.email)
     if user and user.is_banned:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is banned")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Account is banned"
+        )
 
     code = generate_verification_code()
-    expires_at = _utcnow() + timedelta(minutes=settings.VERIFICATION_CODE_EXPIRE_MINUTES)
+    expires_at = _utcnow() + timedelta(
+        minutes=settings.VERIFICATION_CODE_EXPIRE_MINUTES
+    )
 
     verification = VerificationCode(
         email=body.email,
@@ -148,8 +166,9 @@ async def request_code(
 async def verify_code(
     body: CodeVerificationRequest,
     request: Request,
-    session: AsyncSession = Depends(get_session),
-) -> TokenResponse:
+    response: Response,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> SessionResponse:
     auth_rate_limiter.check(get_client_ip(request))
 
     stmt = select(VerificationCode).where(
@@ -161,7 +180,10 @@ async def verify_code(
     result = await session.exec(stmt)
     vc = result.first()
     if not vc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired verification code")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification code",
+        )
 
     vc.used = True
     session.add(vc)
@@ -174,45 +196,76 @@ async def verify_code(
         session.add(user)
         await session.flush()
     elif user.is_banned:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is banned")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Account is banned"
+        )
     elif body.create_account and user.tier == UserTier.temporary:
         # Upgrade temporary user to free on registration
         user.tier = UserTier.free
         session.add(user)
 
-    return await _issue_auth_token(session, user, "verification_code", request)
+    return await _issue_auth_token(
+        session, user, "verification_code", request, response
+    )
 
 
 @router.post("/login-password")
 async def login_password(
     body: PasswordLoginRequest,
     request: Request,
-    session: AsyncSession = Depends(get_session),
-) -> TokenResponse:
+    response: Response,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> SessionResponse:
     auth_rate_limiter.check(get_client_ip(request))
 
     user = await _get_user_by_email(session, body.email)
     if not user or not verify_user_password(body.password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"
+        )
     if user.is_banned:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is banned")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Account is banned"
+        )
 
-    return await _issue_auth_token(session, user, "password", request)
+    return await _issue_auth_token(session, user, "password", request, response)
 
 
 @router.get("/me")
-async def get_me(user: User = Depends(get_current_user)) -> UserResponse:
+async def get_me(user: Annotated[User, Depends(get_current_user)]) -> UserResponse:
     return _to_user_response(user)
+
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+async def logout(
+    request: Request,
+    response: Response,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    authorization: Annotated[str | None, Depends(api_key_header)] = None,
+) -> dict[str, str]:
+    token = resolve_request_token(request, authorization)
+    if token:
+        stmt = select(AuthToken).where(AuthToken.token == hash_token(token))
+        result = await session.exec(stmt)
+        auth_token = result.first()
+        if auth_token:
+            await session.delete(auth_token)
+            await session.commit()
+
+    clear_session_cookie(response)
+    return {"message": "Logged out"}
 
 
 @router.post("/set-password")
 async def set_password(
     body: SetPasswordRequest,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> UserResponse:
     if user.password_hash:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password already set")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Password already set"
+        )
 
     user.password_hash = hash_user_password(_validate_account_password(body.password))
     user.updated_at = _utcnow()
@@ -225,15 +278,23 @@ async def set_password(
 @router.post("/change-password")
 async def change_password(
     body: ChangePasswordRequest,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> UserResponse:
     if not user.password_hash:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No password set for this account")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No password set for this account",
+        )
     if not verify_user_password(body.current_password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
 
-    user.password_hash = hash_user_password(_validate_account_password(body.new_password))
+    user.password_hash = hash_user_password(
+        _validate_account_password(body.new_password)
+    )
     user.updated_at = _utcnow()
     session.add(user)
     await session.commit()
@@ -242,8 +303,9 @@ async def change_password(
 
 
 @router.get("/limits")
-async def get_limits() -> LimitsResponse:
+async def get_limits(response: Response) -> LimitsResponse:
     """Return upload limits for temporary tier (public, no auth required)."""
+    response.headers["Cache-Control"] = "public, max-age=300"
     return LimitsResponse(
         max_file_size_mb=settings.TEMPORARY_MAX_FILE_SIZE_MB,
         max_files_per_upload=settings.TEMPORARY_MAX_FILES_PER_UPLOAD,
@@ -255,8 +317,8 @@ async def get_limits() -> LimitsResponse:
 
 @router.get("/quota")
 async def get_quota(
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> QuotaResponse:
     max_file_size_mb, max_files_per_upload = _get_max_file_size_for_tier(user.tier)
 
@@ -271,7 +333,9 @@ async def get_quota(
     weekly_used = result.one()
 
     weekly_limit = _weekly_limit_for_tier(user.tier)
-    weekly_remaining = max(0, weekly_limit - weekly_used) if weekly_limit > 0 else weekly_limit
+    weekly_remaining = (
+        max(0, weekly_limit - weekly_used) if weekly_limit > 0 else weekly_limit
+    )
 
     # Compute weekly size usage
     size_limit = _weekly_size_limit_for_tier(user.tier)

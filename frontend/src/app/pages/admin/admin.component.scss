@@ -54,7 +54,6 @@
     background: var(--color-secondary-hover-bg);
   }
 
-  // TODO: high specificity — consider refactoring HTML to use classes
   tbody tr:last-child td {
     border-bottom: none;
   }

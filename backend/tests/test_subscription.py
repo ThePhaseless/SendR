@@ -20,7 +20,9 @@ async def _create_user(tier: UserTier = UserTier.free) -> tuple[int, dict[str, s
         session.add(user)
         await session.flush()
         raw_token, expires_at = create_access_token(user.id)
-        auth_token = AuthToken(user_id=user.id, token=hash_token(raw_token), expires_at=expires_at)
+        auth_token = AuthToken(
+            user_id=user.id, token=hash_token(raw_token), expires_at=expires_at
+        )
         session.add(auth_token)
         await session.commit()
     return user.id, {"Authorization": f"Bearer {raw_token}"}
@@ -70,7 +72,9 @@ async def test_upgrade_to_premium_restores_recently_expired_upload():
         created_at=now - timedelta(days=8),
     )
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         before_resp = await client.get(f"/api/files/{download_token}")
         assert before_resp.status_code == 410
 
@@ -82,7 +86,9 @@ async def test_upgrade_to_premium_restores_recently_expired_upload():
 
     session_factory = database.async_session
     async with session_factory() as session:
-        result = await session.exec(select(FileUpload).where(FileUpload.download_token == download_token))
+        result = await session.exec(
+            select(FileUpload).where(FileUpload.download_token == download_token)
+        )
         file_upload = result.first()
 
     assert file_upload is not None
@@ -102,7 +108,9 @@ async def test_list_files_includes_premium_uploads_within_refresh_grace():
         created_at=now - timedelta(days=17),
     )
 
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         response = await client.get("/api/files/", headers=headers)
 
     assert response.status_code == 200
@@ -137,9 +145,13 @@ async def test_cleanup_expired_files_keeps_owned_uploads_for_premium_recovery_wi
     assert not Path(settings.UPLOAD_DIR, f"{anonymous_token}.txt").exists()
 
     async with session_factory() as session:
-        result = await session.exec(select(FileUpload).where(FileUpload.id == owned_upload_id))
+        result = await session.exec(
+            select(FileUpload).where(FileUpload.id == owned_upload_id)
+        )
         owned_upload = result.first()
-        result = await session.exec(select(FileUpload).where(FileUpload.id == anonymous_upload_id))
+        result = await session.exec(
+            select(FileUpload).where(FileUpload.id == anonymous_upload_id)
+        )
         anonymous_upload = result.first()
 
     assert owned_upload is not None

@@ -1,14 +1,14 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlmodel import select
 
 from config import settings
 from database import get_session
 from models import AuthToken, User, UserLogin, UserTier
 from rate_limit import get_client_ip
-from schemas import TokenResponse
-from security import create_access_token, hash_token
+from schemas import SessionResponse
+from security import create_access_token, hash_token, set_session_cookie
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,8 +20,9 @@ router = APIRouter(prefix="/api/dev", tags=["dev"])
 async def dev_login(
     role: str,
     request: Request,
-    session: AsyncSession = Depends(get_session),
-) -> TokenResponse:
+    response: Response,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> SessionResponse:
     if not settings.is_local:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
@@ -39,7 +40,9 @@ async def dev_login(
     user = result.first()
 
     if user and user.is_banned:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is banned")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Account is banned"
+        )
 
     if not user:
         tier = UserTier.free
@@ -69,5 +72,6 @@ async def dev_login(
         )
     )
     await session.commit()
+    set_session_cookie(response, raw_token, expires_at)
 
-    return TokenResponse(token=raw_token, expires_at=expires_at)
+    return SessionResponse(expires_at=expires_at)

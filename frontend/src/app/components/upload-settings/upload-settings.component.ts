@@ -1,4 +1,12 @@
-import { Component, computed, effect, input, model, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  input,
+  model,
+  output,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 export interface ExpiryOption {
@@ -11,9 +19,16 @@ export interface PasswordEntry {
   password: string;
 }
 
+interface MaxDownloadsOption {
+  value: number;
+  label: string;
+}
+
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormsModule],
   selector: 'app-upload-settings',
+  standalone: true,
   styleUrl: './upload-settings.component.scss',
   templateUrl: './upload-settings.component.html',
 })
@@ -101,7 +116,7 @@ export class UploadSettingsComponent {
     });
     // Emit validation error state
     effect(() => {
-      this.hasError.emit(this.maxDownloadsExceedsLimit());
+      this.hasError.emit(this.maxDownloadsExceedsLimit() || this.passwordLabelWithoutPassword());
     });
     // Reset isPublic to true when no passwords remain (hide-details toggle only makes sense with passwords)
     effect(() => {
@@ -113,33 +128,42 @@ export class UploadSettingsComponent {
 
   private static readonly KNOWN_EXPIRY_LABELS: Record<number, string> = {
     1: '1 hour',
-    24: '1 day',
-    72: '3 days',
     168: '7 days',
+    24: '1 day',
     336: '14 days',
+    72: '3 days',
     720: '30 days',
   };
+
+  private static readonly EXPIRY_OPTION_HOURS = [1, 24, 72, 168, 336, 720] as const;
+  private static readonly DEFAULT_MAX_DOWNLOADS_OPTIONS: MaxDownloadsOption[] = [
+    { label: 'Unlimited', value: 0 },
+    { label: '1', value: 1 },
+  ];
+
+  private static toExpiryOption(hours: number): ExpiryOption {
+    return {
+      label: UploadSettingsComponent.KNOWN_EXPIRY_LABELS[hours] ?? `${hours}h`,
+      value: hours,
+    };
+  }
+
+  private static toMaxDownloadsOption(value: number): MaxDownloadsOption {
+    return { label: value === 0 ? 'Unlimited' : String(value), value };
+  }
 
   /** Available expiry duration options, driven by backend data. */
   expiryOptions = computed<ExpiryOption[]>(() => {
     const discrete = this.expiryOptionsHours();
     if (discrete) {
-      // Temporary tier: use discrete options from backend
-      return discrete.map((h) => ({
-        label: UploadSettingsComponent.KNOWN_EXPIRY_LABELS[h] ?? `${h}h`,
-        value: h,
-      }));
+      return discrete.map((hours) => UploadSettingsComponent.toExpiryOption(hours));
     }
-    // Free/premium: generate options within min–max range
+
     const min = this.minExpiryHours() ?? 1;
     const max = this.maxExpiryHours() ?? 168;
-    const all = [1, 24, 72, 168, 336, 720];
-    return all
-      .filter((h) => h >= min && h <= max)
-      .map((h) => ({
-        label: UploadSettingsComponent.KNOWN_EXPIRY_LABELS[h] ?? `${h}h`,
-        value: h,
-      }));
+    return UploadSettingsComponent.EXPIRY_OPTION_HOURS.filter((h) => h >= min && h <= max).map(
+      (hours) => UploadSettingsComponent.toExpiryOption(hours),
+    );
   });
 
   /** Max download limit from backend. */
@@ -149,15 +173,12 @@ export class UploadSettingsComponent {
   useCustomDownloads = computed(() => this.backendMaxDownloadsLimit() !== null);
 
   /** Available max download options for the select (temporary tier). */
-  maxDownloadsOptions = computed<{ value: number; label: string }[]>(() => {
+  maxDownloadsOptions = computed<MaxDownloadsOption[]>(() => {
     const opts = this.backendMaxDownloadsOptions();
     if (opts) {
-      return opts.map((v) => ({ label: v === 0 ? 'Unlimited' : String(v), value: v }));
+      return opts.map((option) => UploadSettingsComponent.toMaxDownloadsOption(option));
     }
-    return [
-      { label: 'Unlimited', value: 0 },
-      { label: '1', value: 1 },
-    ];
+    return UploadSettingsComponent.DEFAULT_MAX_DOWNLOADS_OPTIONS;
   });
 
   /** Whether user can add more passwords. */
@@ -176,7 +197,12 @@ export class UploadSettingsComponent {
   });
 
   /** Count of non-empty password entries (for badge). */
-  passwordCount = computed(() => this.passwords().filter((p) => p.password).length);
+  passwordCount = computed(() => this.passwords().filter((p) => p.password.trim()).length);
+
+  /** Whether a password label has been entered without a password value. */
+  passwordLabelWithoutPassword = computed(() =>
+    this.passwords().some((p) => p.label.trim().length > 0 && p.password.trim().length === 0),
+  );
 
   /** Count of non-empty email entries (for badge). */
   emailCount = computed(() => this.emails().filter((e) => e.trim()).length);

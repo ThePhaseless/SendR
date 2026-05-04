@@ -1,0 +1,29 @@
+@if (notifications.notifications().length > 0) {
+  <section class="notification-stack" aria-live="polite" aria-atomic="false">
+    @for (notification of notifications.notifications(); track notification.id) {
+      <article
+        class="notification-card"
+        [class.notification-card-error]="notification.tone === 'error'"
+        [class.notification-card-info]="notification.tone === 'info'"
+        [class.notification-card-success]="notification.tone === 'success'"
+        [class.notification-card-warning]="notification.tone === 'warning'"
+        [attr.role]="notification.tone === 'error' ? 'alert' : 'status'"
+      >
+        <div class="notification-copy">
+          <p class="notification-title">{{ notification.title }}</p>
+          @if (notification.message) {
+            <p class="notification-message">{{ notification.message }}</p>
+          }
+        </div>
+        <button
+          type="button"
+          class="notification-dismiss"
+          (click)="notifications.dismiss(notification.id)"
+          aria-label="Dismiss notification"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </article>
+    }
+  </section>
+}

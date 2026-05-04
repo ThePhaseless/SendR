@@ -5,27 +5,21 @@ from sqlalchemy import engine_from_config, pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlmodel import SQLModel
 
+import models  # noqa: F401
 from alembic import context
-from models import *  # type: ignore # noqa: F401, F403
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
 config = context.config
 
-# Interpret the config file for Python logging.
-# Skip when called programmatically (e.g., from app lifespan) to avoid
-# reconfiguring loggers and breaking the host process.
-if not config.attributes.get("skip_logging_config") and config.config_file_name is not None:
+if (
+    not config.attributes.get("skip_logging_config")
+    and config.config_file_name is not None
+):
     fileConfig(config.config_file_name)
 
 target_metadata = SQLModel.metadata
 
-_url = config.get_main_option("sqlalchemy.url") or ""
-_is_async = "+aiosqlite" in _url or "+asyncpg" in _url
-
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -51,7 +45,6 @@ def do_run_migrations(connection):
 
 
 def run_migrations_online_sync() -> None:
-    """Run migrations in 'online' mode with sync engine."""
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -65,7 +58,6 @@ def run_migrations_online_sync() -> None:
 
 
 async def run_async_migrations() -> None:
-    """Run migrations in 'online' mode with async engine."""
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -79,8 +71,8 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode."""
-    if _is_async:
+    url = config.get_main_option("sqlalchemy.url") or ""
+    if "+aiosqlite" in url or "+asyncpg" in url:
         asyncio.run(run_async_migrations())
     else:
         run_migrations_online_sync()

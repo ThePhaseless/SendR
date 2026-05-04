@@ -1,15 +1,15 @@
 <div class="auth-page">
   <div class="card auth-card">
-    <h1>{{ isRegister ? "Create Account" : "Sign In" }}</h1>
+    <h1>{{ isRegister() ? "Create Account" : "Sign In" }}</h1>
     <p class="auth-subtitle">
       {{
-        isRegister
-          ? "Start with email verification. You can add a password later in your account settings."
+        isRegister()
+          ? "Choose a password now, then verify your email to finish creating your account."
           : "Sign in with a password or get a verification code sent to your email"
       }}
     </p>
 
-    @if (!isRegister) {
+    @if (!isRegister()) {
       <div class="auth-mode-toggle">
         <button
           type="button"
@@ -30,12 +30,12 @@
       </div>
     }
 
-    @if (isRegister) {
+    @if (isRegister()) {
       <ul class="benefits-list">
         <li class="benefit-item">Dashboard to manage and track your uploads</li>
         <li class="benefit-item">Upload up to 5 files per week</li>
         <li class="benefit-item">File expiry from 1 hour to 7 days</li>
-        <li class="benefit-item">Set custom download limits up to 1 000</li>
+        <li class="benefit-item">Set custom download limits up to 10</li>
       </ul>
     }
 
@@ -53,12 +53,52 @@
             [(ngModel)]="email"
             name="email"
             placeholder="you@example.com"
+            autocomplete="email"
             required
             class="form-input"
           />
         </div>
-        <button type="submit" class="btn btn-primary btn-full" [disabled]="loading() || !email">
-          {{ loading() ? "Sending..." : "Send Code" }}
+
+        @if (isRegister()) {
+          <div class="form-group">
+            <label for="register-password">Password</label>
+            <input
+              id="register-password"
+              type="password"
+              [(ngModel)]="password"
+              name="password"
+              placeholder="Create a password"
+              autocomplete="new-password"
+              minlength="8"
+              maxlength="128"
+              required
+              class="form-input"
+            />
+          </div>
+          <div class="form-group">
+            <label for="register-password-confirm">Confirm password</label>
+            <input
+              id="register-password-confirm"
+              type="password"
+              [(ngModel)]="confirmPassword"
+              name="confirmPassword"
+              placeholder="Repeat your password"
+              autocomplete="new-password"
+              minlength="8"
+              maxlength="128"
+              required
+              class="form-input"
+            />
+          </div>
+          <p class="password-hint">You'll use this password the next time you sign in.</p>
+        }
+
+        <button
+          type="submit"
+          class="btn btn-primary btn-full"
+          [disabled]="loading() || !email || (isRegister() && (!password || !confirmPassword))"
+        >
+          {{ loading() ? "Sending..." : isRegister() ? "Send Verification Code" : "Send Code" }}
         </button>
       </form>
     } @else if (step() === "password") {
@@ -71,6 +111,7 @@
             [(ngModel)]="email"
             name="email"
             placeholder="you@example.com"
+            autocomplete="email"
             required
             class="form-input"
           />
@@ -83,11 +124,12 @@
             [(ngModel)]="password"
             name="password"
             placeholder="Enter your password"
+            autocomplete="current-password"
             required
             class="form-input"
           />
         </div>
-        <p class="password-login-hint">
+        <p class="password-hint">
           If you have not set a password yet, use email code sign-in once and add one from the
           dashboard.
         </p>
@@ -103,6 +145,11 @@
       @if (message(); as msg) {
         <div class="alert alert-success">{{ msg }}</div>
       }
+      @if (isRegister()) {
+        <p class="password-hint">
+          Your password will be saved after the verification code is accepted.
+        </p>
+      }
       <form (ngSubmit)="verifyCode()">
         <div class="form-group">
           <label for="code">Verification code</label>
@@ -112,6 +159,7 @@
             [(ngModel)]="code"
             name="code"
             placeholder="Enter 6-digit code"
+            autocomplete="one-time-code"
             required
             class="form-input"
           />

@@ -89,27 +89,50 @@
 }
 
 .staged-files {
-  @apply w-full mt-4;
+  @apply w-full mt-4 flex flex-col;
   padding: 1rem 1.5rem;
   background: var(--color-staged-bg);
   border-radius: 0.5rem;
+  gap: 0.75rem;
+  max-height: min(36rem, 70vh);
+  min-height: 0;
 
   h3 {
-    @apply font-semibold mb-3;
+    @apply font-semibold;
     font-size: 0.9rem;
     color: var(--color-text);
   }
 }
 
 :host[compact] .staged-files,
-:host .staged-files:has(~ .compact-actions) {
+:host .compact-actions + .staged-files {
   padding: 0.75rem 1rem;
+  max-height: min(28rem, 55vh);
 }
 
 .staged-file-list {
-  @apply flex flex-col overflow-y-auto;
+  @apply flex flex-col;
   gap: 0.375rem;
-  max-height: 400px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.staged-processing {
+  @apply flex-1 flex flex-col items-center justify-center text-center;
+  min-height: 12rem;
+  padding: 1.5rem 1rem;
+  background: color-mix(in srgb, var(--color-card-bg) 94%, white 6%);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+
+  p {
+    max-width: 28rem;
+  }
+}
+
+.staged-processing-note {
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
 }
 
 .staged-file-item {
@@ -174,7 +197,7 @@
 }
 
 .staged-warning {
-  @apply mb-3;
+  margin: 0;
 }
 
 .btn-remove {
@@ -190,7 +213,7 @@
 }
 
 .staged-total {
-  @apply text-right mt-2;
+  @apply text-right;
   color: var(--color-text-secondary);
   font-size: 0.8rem;
 }
