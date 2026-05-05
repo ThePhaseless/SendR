@@ -1,15 +1,31 @@
 output "cluster_endpoint" {
   description = "Kubernetes cluster endpoint"
-  value       = data.digitalocean_kubernetes_cluster.sendrr.endpoint
+  value       = module.kubernetes.cluster_endpoint
 }
 
 output "database_connection_string" {
   description = "PostgreSQL connection string"
-  value       = data.digitalocean_database_cluster.sendrr_db.connection_string
+  value       = module.database.connection_string
   sensitive   = true
 }
 
 output "database_host" {
   description = "Database host"
-  value       = data.digitalocean_database_cluster.sendrr_db.host
+  value       = module.database.host
+}
+
+output "kubeconfig" {
+  description = "Kubeconfig for cluster"
+  value       = module.kubernetes.kubeconfig
+  sensitive   = true
+}
+
+output "vpc_id" {
+  description = "VPC ID"
+  value       = module.vpc.vpc_id
+}
+
+output "cluster_id" {
+  description = "Kubernetes cluster ID"
+  value       = module.kubernetes.cluster_id
 }

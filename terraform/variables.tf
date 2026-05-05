@@ -16,18 +16,72 @@ variable "do_spaces_secret_key" {
   sensitive   = true
 }
 
-variable "backend_secret_key" {
-  description = "Secret key for backend - generate: openssl rand -base64 32"
+variable "project_name" {
+  description = "Project name used for resources"
   type        = string
-  sensitive   = true
+  default     = "sendr"
 }
 
-variable "github_app_credentials" {
-  description = "GitHub App credentials"
-  type = object({
-    app_id           = string
-    installation_id  = string
-    private_key_base64 = string
-  })
-  sensitive = true
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  default     = "dev"
+}
+
+variable "region" {
+  description = "DigitalOcean region"
+  type        = string
+  default     = "fra1"
+}
+
+variable "vpc_cidr" {
+  description = "VPC CIDR block"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "kubernetes_version" {
+  description = "Kubernetes version"
+  type        = string
+  default     = null
+}
+
+variable "kubernetes_node_size" {
+  description = "Kubernetes node size"
+  type        = string
+  default     = "s-2vcpu-2gb"
+}
+
+variable "kubernetes_node_count" {
+  description = "Number of Kubernetes nodes"
+  type        = number
+  default     = 2
+}
+
+variable "database_node_size" {
+  description = "Database node size"
+  type        = string
+  default     = "db-s-1vcpu-2gb"
+}
+
+variable "database_node_count" {
+  description = "Number of database nodes"
+  type        = number
+  default     = 2
+}
+
+variable "database_engine_version" {
+  description = "PostgreSQL engine version"
+  type        = string
+  default     = "16"
+}
+
+variable "tags" {
+  description = "Tags to apply to all resources"
+  type        = map(string)
+  default = {
+    env        = "dev"
+    project    = "sendr"
+    managed_by = "terraform"
+  }
 }
