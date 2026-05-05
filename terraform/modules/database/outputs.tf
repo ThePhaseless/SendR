@@ -1,10 +1,15 @@
 output "connection_string" {
   description = "PostgreSQL connection string"
-  value       = data.digitalocean_database_cluster.sendrr.connection_string
+  value       = digitalocean_database_cluster.sendr.uri
   sensitive   = true
 }
 
 output "host" {
   description = "Database host"
-  value       = data.digitalocean_database_cluster.sendrr.host
+  value       = digitalocean_database_cluster.sendr.host
+}
+
+output "db_urn" {
+  description = "Database URN"
+  value       = digitalocean_database_cluster.sendr.urn
 }

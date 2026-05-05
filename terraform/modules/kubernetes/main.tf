@@ -1,7 +1,16 @@
-data "digitalocean_kubernetes_cluster" "sendrr" {
-  name = var.cluster_name
-}
+data "digitalocean_kubernetes_versions" "current" {}
 
-data "digitalocean_kubernetes_cluster_credentials" "sendrr" {
-  cluster_id = data.digitalocean_kubernetes_cluster.sendrr.id
+resource "digitalocean_kubernetes_cluster" "sendr" {
+  name       = var.cluster_name
+  region     = var.region
+  version    = coalesce(var.kubernetes_version, data.digitalocean_kubernetes_versions.current.latest_version)
+  vpc_uuid   = var.vpc_id
+
+  node_pool {
+    name       = "default"
+    size       = var.node_size
+    node_count = var.node_count
+  }
+
+  tags = [for key, value in var.tags : "${key}:${value}"]
 }

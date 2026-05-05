@@ -1,9 +1,14 @@
 output "vpc_id" {
-  description = "ID VPC"
-  value       = data.digitalocean_vpc.sendrr.id
+  description = "VPC ID"
+  value       = digitalocean_vpc.sendr.id
 }
 
 output "vpc_name" {
   description = "VPC name"
-  value       = data.digitalocean_vpc.sendrr.name
+  value       = digitalocean_vpc.sendr.name
+}
+
+output "vpc_urn" {
+  description = "VPC URN"
+  value       = digitalocean_vpc.sendr.urn
 }

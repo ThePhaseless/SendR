@@ -1,3 +1,5 @@
-data "digitalocean_vpc" "sendrr" {
-  name = var.vpc_name
+resource "digitalocean_vpc" "sendr" {
+  name   = var.vpc_name
+  region = var.region
+  ip_range = var.vpc_cidr
 }
