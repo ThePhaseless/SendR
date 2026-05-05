@@ -1,2 +1,0 @@
-# Ignore tfvars - contains secrets
-terraform.tfvars
