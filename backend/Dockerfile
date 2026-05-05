@@ -1,6 +1,6 @@
 FROM python:3.14.4-slim-bookworm@sha256:a28fb284c750940c714dba2e0cf5a26e5121c3c5ed06e9ca8bcfeaaba701b614
 
-COPY --from=ghcr.io/astral-sh/uv:0.11.9@sha256:6b6fa841d71a48fbc9e2c55651c5ad570e01104d7a7d701f57b2b22c0f58e9b1 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.11.10@sha256:bca7f6959666f3524e0c42129f9d8bbcfb0c180d847f5187846b98ff06125ead /uv /usr/local/bin/uv
 
 WORKDIR /app
 
