@@ -43,7 +43,7 @@
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.2.0",
     "orval": "^8.6.2",
-    "oxfmt": "^0.47.0",
+    "oxfmt": "^0.48.0",
     "oxlint": "^1.56.0",
     "oxlint-tsgolint": "^0.22.0",
     "typescript": "^6.0.0"
