@@ -1,4 +1,4 @@
-FROM python:3.14.4-slim-bookworm@sha256:9981f4e8c82ecafdfe1a755b60ef692c7d89274760452a5f3c7ac1a7eee436ca
+FROM python:3.14.4-slim-bookworm@sha256:fc74d22ffd0d5ac395a4b7bdda75a4539758862c49ebf3005647084631e63789
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.12@sha256:3a59a3cdd5f7c217faa36e32dbc7fddbb0412889c2a0a5229f6d790e5a019dd7 /uv /usr/local/bin/uv
 
