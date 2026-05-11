@@ -2,7 +2,7 @@ name: Build and Push Frontend to GHCR
 
 on:
   push:
-    branches: [main]
+    branches: [main, DO-implementation]
     paths:
       - 'frontend/**'
       - 'openapi.json'

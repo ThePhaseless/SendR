@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: ["Build and Push Backend to GHCR", "Build and Push Frontend to GHCR"]
     types: [completed]
-    branches: [main]
+    branches: [main, DO-implementation]
 
 env:
   KUBECTL_VERSION: '1.30.0'

@@ -2,7 +2,7 @@ name: Build and Push Backend to GHCR
 
 on:
   push:
-    branches: [main]
+    branches: [main, DO-implementation]
     paths:
       - 'backend/**'
       - 'openapi.json'
