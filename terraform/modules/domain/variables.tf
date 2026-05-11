@@ -1,5 +1,16 @@
 variable "domain_name" {
-  description = "The name of the domain"
+  description = "Domain name"
   type        = string
-  default     = "sendr.app"
+}
+
+variable "target_ip" {
+  description = "IP for A records"
+  type        = string
+  default     = ""
+}
+
+variable "env" {
+  description = "Environment name"
+  type        = string
+  default     = "dev"
 }

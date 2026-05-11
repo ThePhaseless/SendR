@@ -4,16 +4,10 @@ variable "do_token" {
   sensitive   = true
 }
 
-variable "do_spaces_access_key" {
-  description = "DigitalOcean Spaces Access Key"
+variable "env" {
+  description = "Environment name (dev, staging, prod)"
   type        = string
-  sensitive   = true
-}
-
-variable "do_spaces_secret_key" {
-  description = "DigitalOcean Spaces Secret Key"
-  type        = string
-  sensitive   = true
+  default     = "dev"
 }
 
 variable "project_name" {
@@ -22,16 +16,22 @@ variable "project_name" {
   default     = "sendr"
 }
 
-variable "environment" {
-  description = "Environment name"
-  type        = string
-  default     = "dev"
-}
-
 variable "region" {
   description = "DigitalOcean region"
   type        = string
   default     = "fra1"
+}
+
+variable "domain_name" {
+  description = "Domain name to register"
+  type        = string
+  default     = "sendr.app"
+}
+
+variable "domain_target_ip" {
+  description = "IP for domain A records (empty = no record creation)"
+  type        = string
+  default     = ""
 }
 
 variable "vpc_cidr" {
@@ -40,8 +40,35 @@ variable "vpc_cidr" {
   default     = "10.0.0.0/16"
 }
 
+variable "database_engine_version" {
+  description = "PostgreSQL engine version"
+  type        = string
+  default     = "16"
+}
+
+variable "database_node_size" {
+  description = "Database node size"
+  type        = string
+  default     = "db-s-1vcpu-2gb"
+}
+
+variable "database_node_count" {
+  description = "Number of database nodes"
+  type        = number
+  default     = 1
+}
+
+variable "tags" {
+  description = "Tags for resources"
+  type        = map(string)
+  default = {
+    project    = "sendr"
+    managed_by = "terraform"
+  }
+}
+
 variable "kubernetes_version" {
-  description = "Kubernetes version"
+  description = "Kubernetes version (null = latest)"
   type        = string
   default     = null
 }
@@ -56,32 +83,4 @@ variable "kubernetes_node_count" {
   description = "Number of Kubernetes nodes"
   type        = number
   default     = 2
-}
-
-variable "database_node_size" {
-  description = "Database node size"
-  type        = string
-  default     = "db-s-1vcpu-2gb"
-}
-
-variable "database_node_count" {
-  description = "Number of database nodes"
-  type        = number
-  default     = 2
-}
-
-variable "database_engine_version" {
-  description = "PostgreSQL engine version"
-  type        = string
-  default     = "16"
-}
-
-variable "tags" {
-  description = "Tags to apply to all resources"
-  type        = map(string)
-  default = {
-    env        = "dev"
-    project    = "sendr"
-    managed_by = "terraform"
-  }
 }

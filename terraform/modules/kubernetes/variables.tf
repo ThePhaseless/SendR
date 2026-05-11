@@ -1,5 +1,5 @@
 variable "cluster_name" {
-  description = "Kubernetes cluster name"
+  description = "Cluster name"
   type        = string
 }
 
@@ -9,7 +9,7 @@ variable "region" {
 }
 
 variable "kubernetes_version" {
-  description = "Kubernetes version"
+  description = "Kubernetes version (null = latest)"
   type        = string
   default     = null
 }
@@ -25,11 +25,11 @@ variable "node_count" {
 }
 
 variable "vpc_id" {
-  description = "VPC ID"
+  description = "VPC UUID"
   type        = string
 }
 
 variable "tags" {
-  description = "Tags to apply to cluster"
+  description = "Tags for resources"
   type        = map(string)
 }
