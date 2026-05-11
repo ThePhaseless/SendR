@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: sendr
+bases:
+  - ../../base
+patches:
+  - path: backend-image-tag.yaml
+  - path: frontend-image-tag.yaml
+replicas:
+  - name: sendr-backend
+    count: 1
+  - name: sendr-frontend
+    count: 1

@@ -1,0 +1,11 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sendr-backend
+  namespace: sendr
+spec:
+  template:
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/sendrr/sendr-backend:dev-latest

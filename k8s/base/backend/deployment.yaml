@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sendr-backend
+  namespace: sendr
+  labels:
+    app: sendr-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sendr-backend
+  template:
+    metadata:
+      labels:
+        app: sendr-backend
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: backend
+          image: ghcr.io/sendrr/sendr-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: SENDR_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sendr-secrets
+                  key: database-url
+            - name: SENDR_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sendr-secrets
+                  key: secret-key
+            - name: SENDR_SMTP_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: sendr-secrets
+                  key: smtp-host
+            - name: SENDR_SMTP_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: sendr-secrets
+                  key: smtp-port
+            - name: SENDR_SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: sendr-secrets
+                  key: smtp-user
+            - name: SENDR_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sendr-secrets
+                  key: smtp-password
+            - name: SENDR_RESEND_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sendr-secrets
+                  key: resend-api-key
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
