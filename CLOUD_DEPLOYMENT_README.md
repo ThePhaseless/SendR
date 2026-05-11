@@ -14,7 +14,7 @@ SendRR deployment to DigitalOcean Kubernetes (DOKS) using:
 ## Architecture
 
 ```
-GitHub Actions ──► GHCR (sendrr/sendr-backend, sendrr/sendr-frontend)
+GitHub Actions ──► GHCR (thephaseless/sendr/backend, thephaseless/sendr/frontend)
                         │
          ┌──────────────┼──────────────┐
          │              │              │
@@ -616,8 +616,8 @@ The `sendrr-ghcr-bot` GitHub App uses its own bot identity to authenticate with 
 │                                    ▼                                         │
 │   Step 5: Push/Pull Images                                                 │
 │   ┌──────────────────────────────────────────────────────────────────────┐ │
-│   │  docker push ghcr.io/sendrr/sendr-backend:latest                     │ │
-│   │  docker pull ghcr.io/sendrr/sendr-frontend:latest                    │ │
+│   │  docker push ghcr.io/thephaseless/sendr/backend:latest                     │ │
+│   │  docker pull ghcr.io/thephaseless/sendr/frontend:latest                    │ │
 │   └──────────────────────────────────────────────────────────────────────┘ │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘

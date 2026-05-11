@@ -19,7 +19,7 @@ spec:
         - name: ghcr-secret
       containers:
         - name: frontend
-          image: ghcr.io/sendrr/sendr-frontend:latest
+          image: ghcr.io/thephaseless/sendr/frontend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

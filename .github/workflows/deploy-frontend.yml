@@ -9,7 +9,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: sendrr/sendr-frontend
+  IMAGE_NAME: thephaseless/sendr/frontend
 
 jobs:
   build-frontend:
