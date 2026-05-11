@@ -23,5 +23,10 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 
+# Ignore all .tfvars files as they may contain sensitive data (API tokens, passwords)
+# Use GitHub Secrets for sensitive values
+*.tfvars
+!*.tfvars.template
+
 # Include tfvars files to version control
 !terraform.tfvars.example

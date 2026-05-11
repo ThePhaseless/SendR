@@ -1,0 +1,11 @@
+do_token                 = "your_staging_do_token"
+region                   = "nyc"
+domain_name              = "sendr.app"
+domain_target_ip        = ""
+vpc_cidr                = "10.1.0.0/16"
+database_node_size      = "db-s-2vcpu-4gb"
+database_node_count     = 2
+database_engine_version = "16"
+kubernetes_version      = "1.30"
+kubernetes_node_size    = "s-4vcpu-4gb"
+kubernetes_node_count  = 2
