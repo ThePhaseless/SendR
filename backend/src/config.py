@@ -139,7 +139,6 @@ class Settings(BaseSettings):
             )
         return self
 
-
 settings = Settings()
 logger = logging.getLogger(__name__)
 logger.info("Configuration loaded: ENVIRONMENT=%s", settings.ENVIRONMENT)

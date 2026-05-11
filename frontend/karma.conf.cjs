@@ -1,6 +1,7 @@
 /**
  * @param {{ set: (options: Record<string, unknown>) => void }} config
  */
+
 module.exports = function configureKarma(config) {
   config.set({
     browsers: ["ChromeHeadlessNoSandbox"],
