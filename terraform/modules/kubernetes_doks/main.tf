@@ -4,10 +4,14 @@ data "digitalocean_kubernetes_versions" "current" {
 }
 
 resource "digitalocean_kubernetes_cluster" "cluster" {
-  name   = "sendr-k8s-${var.environment}"
-  region = var.region
+  name     = "sendr-k8s-${var.environment}"
+  region   = var.region
 
-  version  = data.digitalocean_kubernetes_versions.current.latest_version
+  version  = coalesce(
+    data.digitalocean_kubernetes_versions.current.latest_version,
+    data.digitalocean_kubernetes_versions.current.valid_versions[0],
+    "1.31.1-do.0"
+  )
   vpc_uuid = var.vpc_uuid
 
   node_pool {
