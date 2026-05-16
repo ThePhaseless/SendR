@@ -1,6 +1,4 @@
-data "digitalocean_kubernetes_versions" "current" {
-  version_prefix = "1.32."
-}
+data "digitalocean_kubernetes_versions" "current" {}
 
 resource "digitalocean_kubernetes_cluster" "cluster" {
   name     = "sendr-k8s-${var.environment}"
