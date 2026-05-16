@@ -20,6 +20,18 @@ variable "domain_name" {
   type        = string
 }
 
+variable "spaces_access_key" {
+  description = "Spaces Access Key"
+  type        = string
+  sensitive   = true
+}
+
+variable "spaces_secret_key" {
+  description = "Spaces Secret Key"
+  type        = string
+  sensitive   = true
+}
+
 variable "ingress_ip" {
   description = "Public IP of the K8s Load Balancer (leave blank if not yet provisioned)"
   type        = string
