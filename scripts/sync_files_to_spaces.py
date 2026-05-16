@@ -1,18 +1,47 @@
 import os
+import sys
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 
+# Obliczamy ścieżkę do root projektu względem lokalizacji tego skryptu
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+BACKEND_DIR = os.path.join(PROJECT_ROOT, "backend")
+
+# Wczytujemy .env ręcznie dla skryptu
+def load_env():
+    possible_paths = [os.path.join(BACKEND_DIR, ".env"), os.path.join(os.getcwd(), ".env")]
+    for path in possible_paths:
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                for line in f:
+                    if "=" in line and not line.startswith("#"):
+                        parts = line.strip().split("=", 1)
+                        if len(parts) == 2:
+                            k, v = parts
+                            os.environ.setdefault(k, v)
+                            # Mapujemy też wersję bez prefixu SENDR_
+                            if k.startswith("SENDR_"):
+                                os.environ.setdefault(k.replace("SENDR_", ""), v)
+
+load_env()
+
+# Konfiguracja DigitalOcean Spaces (S3 compatible)
 SPACES_ACCESS_KEY = os.getenv("SPACES_ACCESS_KEY")
 SPACES_SECRET_KEY = os.getenv("SPACES_SECRET_KEY")
 SPACES_BUCKET_NAME = os.getenv("SPACES_BUCKET_NAME")
 SPACES_REGION = os.getenv("SPACES_REGION", "fra1")
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "backend/uploads")
 
+# Ścieżka do folderu uploads
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.join(BACKEND_DIR, "uploads"))
+
+# Endpoint dla DO Spaces
 SPACES_ENDPOINT = f"https://{SPACES_REGION}.digitaloceanspaces.com"
 
 def sync_files():
     if not all([SPACES_ACCESS_KEY, SPACES_SECRET_KEY, SPACES_BUCKET_NAME]):
         print("BŁĄD: Musisz ustawić zmienne środowiskowe: SPACES_ACCESS_KEY, SPACES_SECRET_KEY, SPACES_BUCKET_NAME")
+        print("Upewnij się, że plik .env w folderu backend/ zawiera te klucze.")
         return
 
     # Inicjalizacja klienta S3 dla Spaces
@@ -30,8 +59,11 @@ def sync_files():
         return
 
     files = os.listdir(UPLOAD_DIR)
+    # Filtrujemy tylko pliki (ignorujemy .gitkeep itp.)
+    files = [f for f in files if os.path.isfile(os.path.join(UPLOAD_DIR, f)) and not f.startswith(".")]
+    
     if not files:
-        print("Brak plików do zsynchronizowania.")
+        print(f"Brak plików do zsynchronizowania w {UPLOAD_DIR}.")
         return
 
     print(f"--- START SYNCHRONIZACJI PLIKÓW: {UPLOAD_DIR} -> SPACES:{SPACES_BUCKET_NAME} ---")
@@ -42,12 +74,9 @@ def sync_files():
     for filename in files:
         file_path = os.path.join(UPLOAD_DIR, filename)
         
-        # Pomijamy podkatalogi
-        if not os.path.isfile(file_path):
-            continue
-
         print(f"Wysyłanie: {filename}...")
         try:
+            # Wysyłamy plik (Multipart upload jest automatyczny w boto3 dla dużych plików)
             client.upload_file(file_path, SPACES_BUCKET_NAME, filename)
             print(f"  - Sukces.")
             success_count += 1

@@ -20,7 +20,7 @@ def _default_trusted_proxy_ips() -> list[str]:
 
 
 class Settings(BaseSettings):
-    ENVIRONMENT: Literal["local", "production", "test"] = "test"
+    ENVIRONMENT: Literal["local", "production", "test"] = "local"
     DATABASE_URL: str = "sqlite+aiosqlite:///./sendr.db"
     SECRET_KEY: str = ""
     UPLOAD_DIR: str = "./uploads"
@@ -101,7 +101,11 @@ class Settings(BaseSettings):
     SPACES_BUCKET_NAME: str = ""
     SPACES_REGION: str = "fra1"
 
-    model_config = {"env_prefix": "SENDR_"}
+    model_config = {
+        "env_prefix": "SENDR_",
+        "env_file": ".env",
+        "extra": "ignore"
+    }
 
     @property
     def SPACES_ENDPOINT(self) -> str:
@@ -154,5 +158,9 @@ class Settings(BaseSettings):
         return self
 
 settings = Settings()
+print(f"--- CONFIG: Environment={settings.ENVIRONMENT} ---")
+print(f"--- CONFIG: S3 Configured={settings.is_s3_configured} ---")
+if settings.is_s3_configured:
+    print(f"--- CONFIG: S3 Bucket={settings.SPACES_BUCKET_NAME} ---")
+
 logger = logging.getLogger(__name__)
-logger.info("Configuration loaded: ENVIRONMENT=%s", settings.ENVIRONMENT)

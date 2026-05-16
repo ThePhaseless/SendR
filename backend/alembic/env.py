@@ -1,4 +1,6 @@
 import asyncio
+import os
+import sys
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
@@ -6,12 +8,24 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlmodel import SQLModel
 
+# Add 'src' to the path so we can import models
+sys.path.append(os.path.join(os.getcwd(), "src"))
+
+from config import settings
 import models  # noqa: F401
 from alembic import context
 
 _models = models
 
 config = context.config
+
+# Overwrite sqlalchemy.url with the one from our settings (which can come from .env)
+if settings.DATABASE_URL:
+    # Alembic online sync/async engines need a slightly different URL format
+    # than the one we use for AsyncEngine in the app sometimes.
+    # But here we just use what's in settings.
+    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+
 
 if (
     not config.attributes.get("skip_logging_config")

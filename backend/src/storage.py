@@ -24,8 +24,10 @@ class StorageManager:
         stored_filename = filename or str(uuid.uuid4())
         
         if settings.is_s3_configured:
+            logger.info(f"STORAGE: Storing file {stored_filename} in S3 (Bucket: {settings.SPACES_BUCKET_NAME})")
             return await self._store_s3(content, stored_filename)
         else:
+            logger.info(f"STORAGE: S3 not configured. Storing file {stored_filename} on LOCAL DISK.")
             return await self._store_local(content, stored_filename)
 
     async def _store_local(self, content: bytes, filename: str) -> str:

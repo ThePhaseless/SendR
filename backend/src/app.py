@@ -93,7 +93,8 @@ async def enforce_cookie_csrf(
     request: Request, call_next: Callable[[Request], Awaitable[StarletteResponse]]
 ) -> StarletteResponse:
     if (
-        request.method in {"POST", "PATCH", "PUT", "DELETE"}
+        not settings.is_local
+        and request.method in {"POST", "PATCH", "PUT", "DELETE"}
         and request.url.path.startswith("/api/")
         and settings.SESSION_COOKIE_NAME in request.cookies
     ):

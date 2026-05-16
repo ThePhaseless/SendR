@@ -10,7 +10,21 @@ from config import settings
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-engine = create_async_engine(settings.DATABASE_URL, echo=False)
+def _make_async_url(url: str) -> str:
+    """Ensure the URL uses an async driver and compatible parameters for PostgreSQL."""
+    if url.startswith("postgresql://"):
+        # Replace driver
+        if "+asyncpg" not in url:
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        
+        # asyncpg does not support 'sslmode'. It uses 'ssl'.
+        # We replace 'sslmode=require' with 'ssl=require' for better compatibility.
+        if "sslmode=" in url:
+            url = url.replace("sslmode=", "ssl=", 1)
+            
+    return url
+
+engine = create_async_engine(_make_async_url(settings.DATABASE_URL), echo=False)
 async_session: async_sessionmaker[AsyncSession] = async_sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
