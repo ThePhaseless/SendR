@@ -10,7 +10,6 @@ Zanim zaczniesz, upewnij się, że masz zainstalowane:
 1. **Git**
 2. **Python 3.11+**
 3. **uv** (nowoczesny manager pakietów Pythona): `pip install uv`
-4. **Terraform** (opcjonalnie, do testów lokalnych IaC)
 
 ---
 
@@ -19,126 +18,102 @@ Zanim zaczniesz, upewnij się, że masz zainstalowane:
 Zaloguj się na [cloud.digitalocean.com](https://cloud.digitalocean.com/).
 
 ### 1.1 Tworzenie miejsca na pliki stanu (Spaces)
-Terraform musi współdzielić stan infrastruktury z GitHubem.
-1. Z lewego menu wybierz: **Spaces Object Storage**.
-2. Kliknij: **Create Spaces Bucket**.
-3. Wybierz region: **Frankfurt (fra1)**.
-4. Wybierz unikalną nazwę (np. `sendr-tfstate-twojeinicjaly`).
-5. **Zapisz tę nazwę** - musisz ją wpisać do plików `terraform/environments/*/backend.conf` w polu `bucket`.
-6. Kliknij **Create a Spaces Bucket**.
+1. Z lewego menu wybierz: **Spaces Object Storage** -> **Create Spaces Bucket**.
+2. Wybierz region: **Frankfurt (fra1)**.
+3. Wybierz unikalną nazwę (np. `sendr-tfstate-twojeinicjaly`).
+4. **Zapisz tę nazwę** - wpisz ją w `terraform/environments/*/backend.conf`.
 
 ### 1.2 Pobieranie Kluczy S3 (Spaces Keys)
-Służą one do autoryzacji zapisu plików stanu oraz plików użytkowników.
-1. Z lewego menu wybierz: **API**.
-2. Kliknij zakładkę na górze: **Spaces Keys**.
-3. Kliknij przycisk: **Generate New Key**.
-4. Wpisz nazwę (np. `SendR-Admin`) i kliknij zielony ptaszek.
-5. **SKOPIUJ OD RAZU:**
-   * **Access Key** (np. `DO00PV...`)
-   * **Secret Key** (wyświetla się tylko raz!)
+1. Z lewego menu wybierz: **API** -> zakładka **Spaces Keys**.
+2. Kliknij **Generate New Key**. Zapisz **Access Key** i **Secret Key**.
 
 ### 1.3 Pobieranie Tokenu API (PAT)
-Służy do tworzenia klastrów K8s i baz danych.
-1. W tym samym menu **API**, zostań w zakładce: **Tokens/Keys**.
-2. Kliknij: **Generate New Token**.
-3. Nazwa: `Terraform-GitHub`.
-4. Uprawnienia: Zaznacz **Write** (zapis).
-5. Wygaśnięcie: **No expiration** (zalecane dla CI/CD).
-6. **SKOPIUJ TOKEN** (zaczyna się od `dop_v1_...`).
+1. W menu **API** -> zakładka **Tokens/Keys**.
+2. Kliknij **Generate New Token** (uprawnienia **Write**). Zapisz go.
+
+### 1.4 Odblokowanie Twojego IP (Krytyczne!)
+1. Wejdź w **Databases** -> wybierz swój klaster (np. `sendr-db-dev`).
+2. Wejdź w **Settings** -> sekcja **Trusted Sources**.
+3. Kliknij **Add Trusted Source** -> wybierz **"Add your current IP"** -> kliknij **Save**.
 
 ---
 
 ## 🔐 ETAP 2: Konfiguracja GitHub Secrets
 
-Przejdź do swojego repozytorium na GitHubie.
-1. Kliknij zakładkę: **Settings** (u góry).
-2. Z lewego menu wybierz: **Secrets and variables** -> **Actions**.
-3. Kliknij: **New repository secret** dla każdego z poniższych:
-
-| Nazwa (Name) | Wartość (Value) | Skąd wziąć? |
-| :--- | :--- | :--- |
-| `DO_PAT` | `dop_v1_...` | Z Etapu 1.3 |
-| `SPACES_ACCESS_KEY` | `DO00PV...` | Z Etapu 1.2 |
-| `SPACES_SECRET_KEY` | `twój_długi_klucz` | Z Etapu 1.2 |
+W Twoim repozytorium GitHub (Settings -> Secrets and variables -> Actions) dodaj:
+* `DO_PAT` (Z Etapu 1.3)
+* `SPACES_ACCESS_KEY` (Z Etapu 1.2)
+* `SPACES_SECRET_KEY` (Z Etapu 1.2)
 
 ---
 
 ## 🚀 ETAP 3: Budowa Infrastruktury
 
-Wpisz w terminalu na swoim komputerze:
-
+Wypchnij kod na gałąź `DO-implementation`:
 ```bash
-git checkout DO-implementation
 git push origin DO-implementation
 ```
-
-**Co się teraz dzieje?**
-1. Przejdź do zakładki **Actions** w GitHubie.
-2. Zobaczysz uruchomiony potok `Terraform CI/CD (DEV)`.
-3. Poczekaj ok. 15 minut. Gdy skończy, DigitalOcean wybuduje dla Ciebie bazę i klaster.
+Poczekaj ok. 15 minut, aż GitHub Actions zbuduje klaster i bazę danych.
 
 ---
 
-## 💾 ETAP 4: Migracja Danych (Local -> Cloud)
+## 💾 ETAP 4: Pełna Konfiguracja i Start (PowerShell)
 
-Gdy infrastruktura jest gotowa, musisz pobrać dane dostępowe do nowej bazy, aby przenieść do niej lokalnych użytkowników.
+Gdy chmura już działa, wykonaj poniższe kroki w jednym oknie terminala.
 
-### 4.1 Pobranie URL bazy danych
-1. W DigitalOcean wejdź w: **Databases**.
-2. Kliknij w: `sendr-db-dev`.
-3. W sekcji **Overview** znajdź ramkę **Connection Details**.
-4. Wybierz z list rozwijanych:
-   * **User:** `doadmin`
-   * **Database:** `sendr`
-   * **Network:** **Public Network** (ważne dla migracji z domu!).
-5. Wybierz format: **Connection string** i skopiuj go.
-
-### 4.2 Uruchomienie komend migracji (PowerShell)
-Otwórz terminal w głównym folderze `SendR` i wklej (podmień `...` na swoje dane):
+### KROK 1: Przygotowanie terminala
+Skopiuj i wklej poniższy blok, uzupełniając swoje dane (Connection String pobierzesz z zakładki "Connection Details" klastra bazy w DO):
 
 ```powershell
-# 1. Ustaw zmienne środowiskowe
-$env:DATABASE_URL="WLEJ_TUTAJ_SKOPIOWANY_CONNECTION_STRING_I_DODAJ_+asyncpg_PO_POSTGRESQL"
-# Przykład: postgresql+asyncpg://doadmin:haslo@host:port/sendr
+# 1. Dane z DigitalOcean (Connection String)
+# PAMIĘTAJ: na końcu musi być ?sslmode=require
+$env:DATABASE_URL="postgresql://doadmin:HASLO@HOST:PORT/sendr?sslmode=require"
 
+# 2. Klucze Spaces (S3)
 $env:SPACES_ACCESS_KEY="TWÓJ_ACCESS_KEY"
 $env:SPACES_SECRET_KEY="TWÓJ_SECRET_KEY"
 $env:SPACES_BUCKET_NAME="sendr-app-data-dev-fra1"
-$env:PYTHONPATH="backend/src"
+$env:SPACES_REGION="fra1"
 
-# 2. Zainstaluj zależności i zmigruj rekordy (Użytkownicy itp.)
-cd backend
-uv sync
-uv run python ../scripts/migrate_sqlite_to_postgres.py
-
-# 3. Wyślij stare pliki z dysku lokalnego do chmury S3
-uv run python ../scripts/sync_files_to_spaces.py
-```
-
----
-
-## 💻 ETAP 5: Uruchomienie Aplikacji w Trybie Chmury
-
-Jeśli chcesz pracować nad kodem lokalnie, ale korzystać z bazy i plików w DigitalOcean:
-
-```powershell
-# Będąc w folderze 'backend'
+# 3. Konfiguracja Systemowa (Kopie dla aplikacji)
 $env:SENDR_DATABASE_URL=$env:DATABASE_URL
 $env:SENDR_SPACES_ACCESS_KEY=$env:SPACES_ACCESS_KEY
 $env:SENDR_SPACES_SECRET_KEY=$env:SPACES_SECRET_KEY
 $env:SENDR_SPACES_BUCKET_NAME=$env:SPACES_BUCKET_NAME
-$env:PYTHONPATH="src"
+$env:SENDR_ENVIRONMENT="local"
+$env:PYTHONPATH="backend/src"
+```
 
+### KROK 2: Inicjalizacja Systemu (Jednorazowo)
+```powershell
+cd backend
+uv sync
+uv add argon2-cffi
+# Stworzenie tabel w chmurze
+uv run alembic upgrade head
+```
+
+### KROK 3: Migracja i Start
+```powershell
+# 1. Przenieś stare dane (opcjonalnie)
+uv run --project . python ../scripts/migrate_sqlite_to_postgres.py
+uv run --project . python ../scripts/sync_files_to_spaces.py
+
+# 2. Odblokuj port 8000 (na wszelki wypadek)
+Get-Process -Id (Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue).OwningProcess -ErrorAction SilentlyContinue | Stop-Process -Force
+
+# 3. Uruchom aplikację
 uv run uvicorn app:app --reload --app-dir src
 ```
 
-**Weryfikacja:** 
-Otwórz [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs). Jeśli widzisz listę endpointów, gratulacje! Twój lokalny komputer jest teraz połączony z profesjonalną chmurą.
-
 ---
 
-## ❓ Rozwiązywanie problemów (FAQ)
+## 🧪 ETAP 5: Testowanie w Swaggerze (Scenariusz Sukcesu)
 
-* **Błąd 404 na stronie głównej?** To normalne. Backend to API. Wejdź na `/docs`.
-* **Błąd "invalid version slug" w GitHub Actions?** Wypchnij najnowszy kod z gałęzi `DO-implementation`, poprawiliśmy to w module Kubernetes.
-* **Błąd "unable to open database file"?** Skrypt migracji nie widzi pliku `sendr.db`. Upewnij się, że uruchamiasz komendy z odpowiedniego folderu zgodnie z Etapem 4.2.
+1. Otwórz: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+2. **Zaloguj się:** Sekcja `dev` -> `POST /api/dev/login/premium` -> Try it out -> wpisz `premium` -> **Execute**. (Powinieneś dostać Code 200).
+3. **Uploaduj:** Sekcja `files` -> `POST /api/files/upload`.
+    * Wybierz plik.
+    * **Wyczyść wszystkie pola tekstowe** (usuń słowo "string" z altcha, emails, passwords, title, description).
+    * Kliknij **Execute**.
+4. **Wynik:** Otrzymasz **Code 201**. W terminalu zobaczysz `INFO: STORAGE: Storing file ... in S3`.
