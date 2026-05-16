@@ -1,14 +1,10 @@
-# We fetch available DO kubernetes versions
-data "digitalocean_kubernetes_versions" "current" {
-  version_prefix = "1.31."
-}
-
 resource "digitalocean_kubernetes_cluster" "cluster" {
   name     = "sendr-k8s-${var.environment}"
   region   = var.region
 
-  # DO API latest_version reliably pulls the currently supported slug
-  version  = data.digitalocean_kubernetes_versions.current.latest_version
+  # By-passing data source to avoid empty resolution during Apply.
+  # We use the current stable version '1.32.2-do.0' supported by DO.
+  version  = "1.32.2-do.0"
   vpc_uuid = var.vpc_uuid
 
   node_pool {
