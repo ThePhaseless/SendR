@@ -1,6 +1,7 @@
 # Przewodnik Konfiguracji (Setup Guide)
 
-Ten dokument opisuje krok po kroku, jak przygotować środowisko chmurowe DigitalOcean i repozytorium GitHub do automatycznego wdrażania infrastruktury przy pomocy Terraform.
+Ten dokument opisuje krok po kroku, jak przygotować środowisko chmurowe DigitalOcean i repozytorium GitHub do automatycznego wdrażania infrastruktury przy pomocy Terraform. 
+Jest to instrukcja dedykowana dla osoby (np. DevOps/Admin), która pierwszy raz uruchamia ten projekt na nowym koncie chmurowym.
 
 Wykonaj te czynności **tylko raz** dla całego projektu.
 
@@ -8,15 +9,15 @@ Wykonaj te czynności **tylko raz** dla całego projektu.
 
 ## KROK 1: Przygotowanie platformy DigitalOcean
 
-Aby Terraform miał gdzie zapisywać swój bezpieczny stan i mógł tworzyć serwery, musimy najpierw manualnie utworzyć miejsce na ten stan oraz pobrać odpowiednie klucze.
+Aby Terraform miał gdzie zapisywać swój bezpieczny stan (współdzielony w zespole) i mógł tworzyć serwery, musimy najpierw manualnie utworzyć miejsce na ten stan oraz pobrać klucze autoryzacyjne.
 
 ### 1.1 Tworzenie miejsca na pliki stanu (DO Spaces)
 1. Zaloguj się do panelu [DigitalOcean](https://cloud.digitalocean.com/).
 2. W lewym menu wybierz **Spaces Object Storage**.
 3. Kliknij **Create Spaces Bucket**.
-4. Wybierz region: **Frankfurt (fra1)** (lub inny, o ile zmienisz to w plikach konfiguracyjnych).
+4. Wybierz region: **Frankfurt (fra1)** (lub inny, o ile zmienisz to później w plikach konfiguracyjnych).
 5. Wybierz unikalną nazwę, np. `sendr-tfstate-12345`.
-   * *Ważne:* Ta nazwa musi być wpisana w plikach `terraform/environments/*/backend.conf`.
+   * *Ważne:* Tę dokładną nazwę musisz wpisać do 3 plików w kodzie: `terraform/environments/dev/backend.conf`, `staging/backend.conf` i `prod/backend.conf`.
 6. Ustaw "File Listing" na **Restrict File Access** (Prywatne!).
 7. Kliknij **Create a Spaces Bucket**.
 
@@ -25,7 +26,7 @@ Aby Terraform miał gdzie zapisywać swój bezpieczny stan i mógł tworzyć ser
 2. Na górze strony przejdź do zakładki **Spaces Keys**.
 3. Kliknij **Generate New Key** i nazwij go np. `terraform-state`.
 4. Platforma pokaże Ci dwa klucze:
-   * **Access Key** (krótszy).
+   * **Access Key** (krótszy, np. `DO00F...`).
    * **Secret** (dłuższy). 
    * ⚠️ **Zapisz "Secret" od razu**, ponieważ wyświetla się on tylko raz!
 
@@ -39,14 +40,14 @@ Aby Terraform miał gdzie zapisywać swój bezpieczny stan i mógł tworzyć ser
 
 ---
 
-## KROK 2: Konfiguracja GitHub Actions
+## KROK 2: Konfiguracja GitHub Actions (Zmienne Środowiskowe)
 
-Zdobyliśmy 3 wartości z DigitalOcean. Teraz musimy je bezpiecznie przekazać do GitHuba, aby automatyczne skrypty (CI/CD) mogły logować się w naszym imieniu.
+Zdobyliśmy 3 wartości z DigitalOcean. Teraz musimy je bezpiecznie przekazać do GitHuba, aby automatyczne skrypty (CI/CD) mogły logować się w naszym imieniu. Nie trzymamy ich w kodzie!
 
 1. Wejdź na stronę swojego repozytorium na **GitHubie**.
 2. Pod nazwą repozytorium kliknij w zakładkę **Settings** (Ustawienia).
 3. W lewym bocznym menu rozwiń **Secrets and variables** i kliknij **Actions**.
-4. W sekcji "Repository secrets" dodaj 3 nowe sekrety klikając **New repository secret**:
+4. W sekcji "Repository secrets" dodaj 3 nowe sekrety klikając zielony przycisk **New repository secret**:
 
 | Nazwa Sekretu (Name) | Wartość (Secret) | Skąd wziąć? |
 | :--- | :--- | :--- |
@@ -54,18 +55,33 @@ Zdobyliśmy 3 wartości z DigitalOcean. Teraz musimy je bezpiecznie przekazać d
 | `SPACES_ACCESS_KEY` | Wklej krótki klucz Access Key | Wygenerowany w Kroku 1.2 |
 | `SPACES_SECRET_KEY` | Wklej długi klucz Secret Key | Wygenerowany w Kroku 1.2 |
 
-*Upewnij się, że podczas wklejania na początku lub na końcu kluczy nie ma spacji!*
+*Upewnij się, że podczas wklejania na początku lub na końcu kluczy nie ma ukrytej spacji!*
 
 ---
 
-## KROK 3: Uruchomienie Automatyzacji
+## KROK 3: Pierwsze Uruchomienie (Wdrożenie środowiska DEV)
 
-Gdy powyższe kroki zostaną wykonane, cała magia dzieje się sama!
+Gdy powyższe sekrety są dodane, powoływanie infrastruktury działa w 100% automatycznie. Nasz projekt podzielony jest na 3 środowiska (DEV, STAGING, PROD).
 
-1. Na swoim komputerze wyślij kod na GitHuba:
+Aby wystartować po raz pierwszy i zbudować chmurę deweloperską (DEV):
+
+1. Sklonuj repozytorium na swój komputer.
+2. Zaktualizuj pliki `.conf` wpisując nazwę swojego bucketa (Krok 1.1).
+3. Wyślij te zmiany na gałąź główną (lub roboczą dla DEV) w GitHubie:
    ```bash
-   git push origin <nazwa-galezi>
+   git add .
+   git commit -m "chore: setup initial state bucket configuration"
+   git push origin main
    ```
-2. Przejdź do zakładki **Actions** w GitHubie. Zobaczysz uruchomiony potok "Terraform CI/CD".
-3. Jeśli wysyłasz kod na gałąź inną niż `main`, potok jedynie **zaplanuje** infrastrukturę (Terraform Plan). Wynik zobaczysz w logach oraz jako komentarz do Pull Requesta.
-4. Gdy kod trafi na gałąź domyślną (np. zrobisz merge do `main` lub wypchniesz nasz specjalny kod na `DO-implementation`), potok dodatkowo wykona operację **Apply**, co fizycznie powoła w chmurze klaster Kubernetes, bazę danych PostgreSQL oraz sieć VPC.
+4. Przejdź do zakładki **Actions** w GitHubie.
+5. Zobaczysz uruchomiony potok "Terraform CI/CD (DEV)".
+6. Potok automatycznie:
+   * Zainicjalizuje zdalny stan w S3 (DO Spaces).
+   * Utworzy Prywatną Sieć VPC (`sendr-vpc-dev`).
+   * Zbuduje chmurowy klaster PostgreSQL.
+   * Stworzy Bucket na pliki użytkowników.
+   * Na koniec powoła klaster Kubernetes (DOKS).
+
+Wdrażanie pierwszej infrastruktury zajmie ok. 10-15 minut (najdłużej tworzy się baza i Kubernetes).
+
+*Jeśli chcesz wdrożyć produkcję (PROD) lub przedprodukcję (STAGING), zapoznaj się z plikiem `ENVIRONMENTS_GUIDE.md` opisującym dokładnie jak nazywać gałęzie Git, by wyzwolić odpowiednie rurociągi.*
