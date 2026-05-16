@@ -2,14 +2,12 @@ import os
 import boto3
 from botocore.exceptions import NoCredentialsError, ClientError
 
-# Konfiguracja DigitalOcean Spaces (S3 compatible)
 SPACES_ACCESS_KEY = os.getenv("SPACES_ACCESS_KEY")
 SPACES_SECRET_KEY = os.getenv("SPACES_SECRET_KEY")
 SPACES_BUCKET_NAME = os.getenv("SPACES_BUCKET_NAME")
 SPACES_REGION = os.getenv("SPACES_REGION", "fra1")
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "backend/uploads")
 
-# Endpoint dla DO Spaces
 SPACES_ENDPOINT = f"https://{SPACES_REGION}.digitaloceanspaces.com"
 
 def sync_files():
@@ -50,7 +48,6 @@ def sync_files():
 
         print(f"Wysyłanie: {filename}...")
         try:
-            # Wysyłamy plik (Multipart upload jest automatyczny w boto3 dla dużych plików)
             client.upload_file(file_path, SPACES_BUCKET_NAME, filename)
             print(f"  - Sukces.")
             success_count += 1
