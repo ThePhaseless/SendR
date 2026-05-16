@@ -1,5 +1,5 @@
 output "domain_name" {
-  value = data.digitalocean_domain.main.name
+  value = length(data.digitalocean_domain.main) > 0 ? data.digitalocean_domain.main[0].name : ""
 }
 
 output "subdomain_fqdn" {
