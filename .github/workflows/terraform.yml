@@ -32,7 +32,7 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.5.0 # lub wyższa
+          terraform_version: 1.5.0 
 
       - name: Terraform Format
         id: fmt
@@ -62,10 +62,10 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
-            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
-            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
-            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+            const output = `#### Terraform Format and Style `${{ steps.fmt.outcome }}\`
+            #### Terraform Initialization \`${{ steps.init.outcome }}\`
+            #### Terraform Validation \`${{ steps.validate.outcome }}\`
+            #### Terraform Plan \`${{ steps.plan.outcome }}\`
 
             <details><summary>Show Plan</summary>
 
@@ -88,7 +88,6 @@ jobs:
         if: steps.plan.outcome == 'failure'
         run: exit 1
 
-      # Apply uruchamia się tylko gdy mergujemy do gałęzi main lub pushujemy do DO-implementation
       - name: Terraform Apply (DEV)
         if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/DO-implementation') && github.event_name == 'push'
         run: terraform apply -auto-approve -var-file=environments/dev/terraform.tfvars
