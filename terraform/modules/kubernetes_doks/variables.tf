@@ -12,3 +12,9 @@ variable "vpc_uuid" {
   description = "The UUID of the VPC where the DOKS cluster will reside"
   type        = string
 }
+
+variable "kubernetes_version" {
+  description = "Kubernetes version override (if empty, uses latest from DO API)"
+  type        = string
+  default     = ""
+}
