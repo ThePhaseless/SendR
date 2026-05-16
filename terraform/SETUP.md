@@ -95,11 +95,3 @@ uv run uvicorn app:app --reload --app-dir src
 ```
 **Test:** Wejdź na [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs). Każdy nowy upload i download będzie teraz obsługiwany przez DigitalOcean Spaces!
 
----
-
-## ⏭️ CO DALEJ?
-
-Aktualnie zakończyliśmy przygotowanie kodu i bazy. Następne kroki to:
-1. **Dockerfile:** Budowa kontenerów backendu i frontendu.
-2. **Kustomize:** Przygotowanie manifestów Kubernetes.
-3. **Traefik:** Konfiguracja domen i SSL (HTTPS).
