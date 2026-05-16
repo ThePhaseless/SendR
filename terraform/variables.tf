@@ -37,3 +37,9 @@ variable "ingress_ip" {
   type        = string
   default     = ""
 }
+
+variable "kubernetes_version" {
+  description = "Kubernetes version override (if empty, uses latest from DO API)"
+  type        = string
+  default     = ""
+}

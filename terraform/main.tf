@@ -5,10 +5,11 @@ module "network" {
 }
 
 module "kubernetes" {
-  source      = "./modules/kubernetes_doks"
-  environment = var.environment
-  region      = var.region
-  vpc_uuid    = module.network.vpc_id
+  source            = "./modules/kubernetes_doks"
+  environment      = var.environment
+  region           = var.region
+  vpc_uuid         = module.network.vpc_id
+  kubernetes_version = var.kubernetes_version
 }
 
 module "database" {

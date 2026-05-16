@@ -1,10 +1,11 @@
+data "digitalocean_kubernetes_versions" "current" {
+  version_prefix = "1.32."
+}
+
 resource "digitalocean_kubernetes_cluster" "cluster" {
   name     = "sendr-k8s-${var.environment}"
   region   = var.region
-
-  # By-passing data source to avoid empty resolution during Apply.
-  # We use the current stable version '1.32.2-do.0' supported by DO.
-  version  = "1.32.2-do.0"
+  version  = var.kubernetes_version != "" ? var.kubernetes_version : data.digitalocean_kubernetes_versions.current.latest_version
   vpc_uuid = var.vpc_uuid
 
   node_pool {
