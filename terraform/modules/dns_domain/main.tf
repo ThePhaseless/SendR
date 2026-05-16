@@ -15,9 +15,9 @@ resource "digitalocean_record" "ingress" {
   domain = data.digitalocean_domain.main[0].name
   type   = "A"
 
-  name   = var.environment == "prod" ? "@" : var.environment
-  value  = var.ingress_ip
-  ttl    = 300
+  name  = var.environment == "prod" ? "@" : var.environment
+  value = var.ingress_ip
+  ttl   = 300
 }
 
 # Zabezpieczenie dla prod (tworzymy też rekord www)

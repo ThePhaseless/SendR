@@ -4,15 +4,10 @@ data "digitalocean_kubernetes_versions" "current" {
 }
 
 resource "digitalocean_kubernetes_cluster" "cluster" {
-  name     = "sendr-k8s-${var.environment}"
-  region   = var.region
-  
-  # DO API latest_version can sometimes return null in CI/CD. 
-  # We use the first valid version from the array, or a hard fallback.
-  version  = try(
-    data.digitalocean_kubernetes_versions.current.valid_versions[0],
-    "1.31.1-do.5"
-  )
+  name   = "sendr-k8s-${var.environment}"
+  region = var.region
+
+  version  = data.digitalocean_kubernetes_versions.current.latest_version
   vpc_uuid = var.vpc_uuid
 
   node_pool {
