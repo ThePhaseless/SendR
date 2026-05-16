@@ -95,7 +95,21 @@ class Settings(BaseSettings):
     CLAMAV_PORT: int = 3310
     CLAMAV_UNIX_SOCKET: str = "/var/run/clamav/clamd.ctl"
 
+    # DigitalOcean Spaces (S3 compatible)
+    SPACES_ACCESS_KEY: str = ""
+    SPACES_SECRET_KEY: str = ""
+    SPACES_BUCKET_NAME: str = ""
+    SPACES_REGION: str = "fra1"
+
     model_config = {"env_prefix": "SENDR_"}
+
+    @property
+    def SPACES_ENDPOINT(self) -> str:
+        return f"https://{self.SPACES_REGION}.digitaloceanspaces.com"
+
+    @property
+    def is_s3_configured(self) -> bool:
+        return bool(self.SPACES_ACCESS_KEY and self.SPACES_SECRET_KEY and self.SPACES_BUCKET_NAME)
 
     @field_validator("ALLOWED_ORIGINS", "TRUSTED_PROXY_IPS", mode="before")
     @classmethod

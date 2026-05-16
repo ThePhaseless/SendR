@@ -29,7 +29,7 @@ from fastapi import (
     status,
 )
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse, RedirectResponse
 from sqlalchemy import update
 from sqlmodel import col, func, or_, select
 
@@ -459,14 +459,13 @@ async def _is_single_file_download_restricted(
     return _requires_group_archive_download(list(result.all()))
 
 
+from storage import storage
+
 async def _store_upload_content(
     session: AsyncSession, content: bytes
 ) -> tuple[str, str]:
     """Scan an upload and reuse an existing stored file when the checksum matches."""
     await run_in_threadpool(scan_upload_content, content)
-
-    upload_dir = Path(settings.UPLOAD_DIR)
-    upload_dir.mkdir(parents=True, exist_ok=True)
 
     content_hash = sha256(content).hexdigest()
     result = await session.exec(
@@ -476,12 +475,10 @@ async def _store_upload_content(
     )
 
     for stored_filename in result.all():
-        if stored_filename and (upload_dir / stored_filename).exists():
+        if stored_filename and await storage.file_exists(stored_filename):
             return stored_filename, content_hash
 
-    stored_filename = str(uuid.uuid4())
-    async with aiofiles.open(upload_dir / stored_filename, "wb") as output_file:
-        await output_file.write(content)
+    stored_filename = await storage.store_file(content)
 
     return stored_filename, content_hash
 
@@ -1196,6 +1193,12 @@ async def download_group(
             )
         )
         await session.commit()
+
+        # If S3 is configured, redirect to pre-signed URL for direct download
+        s3_url = await storage.get_download_url(files[0].stored_filename)
+        if s3_url:
+            return RedirectResponse(url=s3_url)
+
         return FileResponse(
             path=str(file_path),
             filename=files[0].original_filename,
@@ -1389,6 +1392,12 @@ async def download_file(
         )
     )
     await session.commit()
+
+    # If S3 is configured, redirect to pre-signed URL for direct download
+    s3_url = await storage.get_download_url(file_upload.stored_filename)
+    if s3_url:
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url=s3_url)
 
     return FileResponse(
         path=str(file_path),

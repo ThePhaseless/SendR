@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+from storage import storage
+
 async def cleanup_expired_files(session: AsyncSession) -> int:
     """Delete files past the grace period and return the cleanup count."""
     now = utcnow()
@@ -36,7 +38,6 @@ async def cleanup_expired_files(session: AsyncSession) -> int:
     expired_files = result.all()
 
     cleaned = 0
-    upload_dir = Path(settings.UPLOAD_DIR)
     cleaned_ids = {
         file_upload.id for file_upload in expired_files if file_upload.id is not None
     }
@@ -61,10 +62,8 @@ async def cleanup_expired_files(session: AsyncSession) -> int:
     if cleaned > 0:
         await session.commit()
         for stored_filename in stored_filenames_to_delete:
-            file_path = upload_dir / stored_filename
-            if file_path.exists():
-                file_path.unlink()
-                logger.info("Deleted expired file: %s", file_path)
+            await storage.delete_file(stored_filename)
+            logger.info("Deleted expired file: %s", stored_filename)
         logger.info("Cleaned up %d expired files", cleaned)
 
     return cleaned

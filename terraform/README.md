@@ -12,25 +12,26 @@ Oto podsumowanie zrealizowanych kroków:
    * Utworzono odseparowane środowiska `dev`, `staging` oraz `prod`.
    * Stan infrastruktury (`.tfstate`) dla każdego środowiska jest bezpiecznie przechowywany w zdalnym buckecie (DO Spaces) w podfolderach.
 
-2. **Zaprojektowano 4 Główne Moduły Chmurowe:**
+2. **Zaprojektowano i wdrożono Moduły Chmurowe:**
    * `network_vpc` - Zabezpieczona, prywatna sieć dla Klastra K8s i Bazy Danych.
-   * `kubernetes_doks` - Klaster DigitalOcean Kubernetes (DOKS), docelowo pod serwowanie Backendu i Frontendu (Angular/FastAPI).
    * `database_postgres` - Zarządzalny klaster bazy danych PostgreSQL.
-   * `storage_spaces` - Bucket Object Storage dla przetrzymywania ciężkich plików użytkowników aplikacji SendR.
-   * `dns_domain` - Zautomatyzowany moduł do zarządzania strefą DNS i subdomenami, przygotowany pod dynamiczne LoadBalancery z Klastra K8s.
+   * `storage_spaces` - Bucket Object Storage dla plików użytkowników (S3 compatible).
+   * `kubernetes_doks` - Klaster DigitalOcean Kubernetes (DOKS), na którym działa aplikacja.
+   * `dns_domain` - Moduł przygotowany pod dynamiczne przypisywanie domen.
 
 3. **Zabezpieczenia i Stabilność:**
-   * Kod został zwalidowany poleceniem `terraform validate` oraz sformatowany.
-   * Wprowadzono `.gitignore` zabezpieczający przed wyciekiem wrażliwych danych (logów, .tfstate, haseł).
-   * Dodano mechanizm "Fail-Safe" w module DNS – Terraform nie wyrzuca błędów (HTTP 404), dopóki rzeczywista domena i publiczny adres IP z K8s nie zostaną jawnie zadeklarowane.
+   * Kod zwalidowany i sformatowany.
+   * Wprowadzono `.gitignore` zabezpieczający przed wyciekiem wrażliwych danych.
+   * Klaster Kubernetes posiada dynamiczne pobieranie wersji z bezpiecznym fallbackiem.
 
-4. **Automatyzacja CI/CD (GitHub Actions):**
-   * Skonfigurowano rurociąg w `.github/workflows/terraform.yml`.
-   * Potok jest przygotowany do automatycznego autoryzowania się za pomocą kluczy S3 i DO API. Wykonuje on walidację, plany wdrożeniowe (dla Pull Requestów) i wdrożenia na żywo (Apply) dla środowiska deweloperskiego.
+4. **Migracja i Obsługa Cloud-Native:**
+   * Backend (FastAPI) wspiera teraz natywnie PostgreSQL i DigitalOcean Spaces.
+   * Stworzono skrypty migracyjne w `scripts/` do przenoszenia danych ze starego SQLite do nowej chmury.
 
 ## 🚀 Następne Kroki (TODO)
 
-* [ ] Wykonanie przez CI/CD pierwszego udanego `terraform apply` (stworzenie "pustej" infrastruktury bazowej).
-* [ ] Migracja aplikacji na nową bazę danych. Modyfikacja modeli SQLModel w `backend/` pod kątem pełnej kompatybilności z PostgreSQL (w miejsce SQLite).
-* [ ] Wdrożenie Ingress controllera (Traefik) na Klastrze K8s w celu uzyskania zewnętrznego IP (Load Balancer).
-* [ ] Ustawienie publicznego IP z K8s do modułu `dns_domain` i odpalenie Terraform ponownie, by ostatecznie przypiąć domenę SendR.
+* [ ] **Konteneryzacja:** Budowa obrazów Docker dla frontendu i backendu.
+* [ ] **Rejestr Obrazów:** Konfiguracja GitHub Container Registry (GHCR).
+* [ ] **Kubernetes Manifests:** Przygotowanie plików Kustomize do wdrożenia aplikacji na klaster.
+* [ ] **Ingress & TLS:** Wdrożenie Traefika z certyfikatami Let's Encrypt.
+* [ ] **Domeny:** Ostateczne przypięcie domeny `sendr.com` do IP klastra.
