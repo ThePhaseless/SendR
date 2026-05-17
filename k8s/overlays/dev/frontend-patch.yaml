@@ -10,4 +10,4 @@ spec:
         - name: frontend
           env:
             - name: API_URL
-              value: "http://sendr-backend:8000"
+              value: "http://sendr-backend.sendr.svc.cluster.local:8000"
