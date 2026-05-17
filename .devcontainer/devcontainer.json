@@ -8,8 +8,7 @@
   "containerEnv": {
     "SENDR_ENVIRONMENT": "local",
     "SENDR_DATABASE_URL": "sqlite+aiosqlite:///./sendr.db",
-    "SENDR_UPLOAD_DIR": "./uploads",
-    "API_URL": "http://localhost:8000"
+    "SENDR_UPLOAD_DIR": "./uploads"
   },
   "features": {
     "ghcr.io/devcontainers-extra/features/uv:1": {},
@@ -57,7 +56,8 @@
         "ms-python.python",
         "tamasfe.even-better-toml",
         "oven.bun-vscode",
-        "bradlc.vscode-tailwindcss"
+        "bradlc.vscode-tailwindcss",
+        "MermaidChart.vscode-mermaid-chart"
       ]
     }
   }

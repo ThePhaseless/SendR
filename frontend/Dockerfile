@@ -15,8 +15,6 @@ COPY docker-entrypoint.sh /custom-entrypoint.sh
 RUN chmod +x /custom-entrypoint.sh
 COPY --from=build /app/dist/frontend/browser /usr/share/nginx/html
 
-ENV API_URL=http://api:8000
-
 EXPOSE 8080
 
 ENTRYPOINT ["/custom-entrypoint.sh"]
