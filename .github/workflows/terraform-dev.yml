@@ -10,6 +10,7 @@ on:
   pull_request:
     paths:
       - 'terraform/**'
+  workflow_dispatch:
 
 env:
   TF_LOG: INFO
