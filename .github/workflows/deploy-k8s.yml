@@ -69,7 +69,7 @@ jobs:
         run: |
           echo "Waiting for Traefik LoadBalancer to get an external IP..."
           for i in {1..30}; do
-            IP=$(kubectl get svc traefik -n traefik -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            IP=$(kubectl get svc traefik -n sendr -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
             if [ -n "$IP" ]; then
               echo "Found IP: $IP"
               echo "TRAEFIK_IP=$IP" >> $GITHUB_ENV
