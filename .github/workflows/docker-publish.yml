@@ -11,8 +11,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository }}/backend
-  IMAGE_NAME_FRONTEND: ghcr.io/${{ github.repository }}/frontend
+  IMAGE_NAME_BACKEND: ghcr.io/kamilpihub/sendr/backend
+  IMAGE_NAME_FRONTEND: ghcr.io/kamilpihub/sendr/frontend
 
 jobs:
   build-and-push:
