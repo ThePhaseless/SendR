@@ -68,8 +68,8 @@ jobs:
       - name: Update Kustomize Image Tags
         run: |
           cd ${{ env.KUSTOMIZE_PATH }}
-          kustomize edit set image ${{ env.REGISTRY }}/backend=${{ env.REGISTRY }}/backend:sha-${GITHUB_SHA::7}
-          kustomize edit set image ${{ env.REGISTRY }}/frontend=${{ env.REGISTRY }}/frontend:sha-${GITHUB_SHA::7}
+          kustomize edit set image ${{ env.REGISTRY }}/backend=${{ env.REGISTRY }}/backend:sha-${GITHUB_SHA}
+          kustomize edit set image ${{ env.REGISTRY }}/frontend=${{ env.REGISTRY }}/frontend:sha-${GITHUB_SHA}
         continue-on-error: true
 
       - name: Wait for Traefik LoadBalancer IP
