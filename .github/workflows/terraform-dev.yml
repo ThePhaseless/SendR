@@ -47,7 +47,9 @@ jobs:
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
 
       - name: Set TF_VAR_ghcr_token
-        run: echo "TF_VAR_ghcr_token=${{ steps.generate-token.outputs.token }}" >> $GITHUB_ENV
+        run: |
+          echo "TF_VAR_ghcr_token=${{ steps.generate-token.outputs.token }}" >> $GITHUB_ENV
+          echo "TF_VAR_ghcr_username=sendr-deploy-bot" >> $GITHUB_ENV
 
       - name: Terraform Format
         id: fmt
