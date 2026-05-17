@@ -54,8 +54,7 @@ variable "ghcr_token" {
 variable "ghcr_username" {
   description = "GitHub username for GHCR authentication"
   type        = string
-  sensitive   = true
-  default     = "kamilPiHub"
+  default     = ""
 }
 
 variable "app_secret_key" {
