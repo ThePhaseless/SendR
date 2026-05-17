@@ -43,6 +43,12 @@ jobs:
             echo "KUSTOMIZE_PATH=k8s/overlays/dev" >> $GITHUB_ENV
             echo "TF_VAR_FILE=environments/dev/terraform.tfvars" >> $GITHUB_ENV
             echo "TF_BACKEND=environments/dev/backend.conf" >> $GITHUB_ENV
+          elif [[ "${{ github.ref }}" == refs/heads/release/* ]]; then
+            echo "ENV_NAME=staging" >> $GITHUB_ENV
+            echo "CLUSTER_NAME=sendr-k8s-staging" >> $GITHUB_ENV
+            echo "KUSTOMIZE_PATH=k8s/overlays/staging" >> $GITHUB_ENV
+            echo "TF_VAR_FILE=environments/staging/terraform.tfvars" >> $GITHUB_ENV
+            echo "TF_BACKEND=environments/staging/backend.conf" >> $GITHUB_ENV
           else
             echo "ENV_NAME=prod" >> $GITHUB_ENV
             echo "CLUSTER_NAME=sendr-k8s-prod" >> $GITHUB_ENV
@@ -60,9 +66,6 @@ jobs:
           kustomize edit set image ghcr.io/kamilpihub/sendr/backend=ghcr.io/kamilpihub/sendr/backend:sha-${GITHUB_SHA::7}
           kustomize edit set image ghcr.io/kamilpihub/sendr/frontend=ghcr.io/kamilpihub/sendr/frontend:sha-${GITHUB_SHA::7}
         continue-on-error: true
-
-      - name: Deploy to Kubernetes
-        run: kubectl apply -k ${{ env.KUSTOMIZE_PATH }}
 
       - name: Wait for Traefik LoadBalancer IP
         id: get-ip
@@ -83,6 +86,17 @@ jobs:
             echo "Failed to get Traefik IP"
             exit 1
           fi
+
+      - name: Inject nip.io Domain for testing
+        run: |
+          echo "Replacing hardcoded domains with $TRAEFIK_IP.nip.io for testing without a domain"
+          # Nadpisz hosty Ingressu
+          find ${{ env.KUSTOMIZE_PATH }} -type f -name "domain-patch.yaml" -exec sed -i "s/host: .*\.sendr\.com/host: api.$TRAEFIK_IP.nip.io/g; s/host: sendr\.com/host: $TRAEFIK_IP.nip.io/g; s/host: www\.sendr\.com/host: www.$TRAEFIK_IP.nip.io/g; s/host: dev\.sendr\.com/host: dev.$TRAEFIK_IP.nip.io/g; s/host: staging\.sendr\.com/host: staging.$TRAEFIK_IP.nip.io/g" {} +
+          # Nadpisz API_URL dla frontendu
+          find ${{ env.KUSTOMIZE_PATH }} -type f -name "frontend-patch.yaml" -exec sed -i "s|https://api\..*\.sendr\.com|http://api.$TRAEFIK_IP.nip.io|g; s|https://api\.sendr\.com|http://api.$TRAEFIK_IP.nip.io|g" {} +
+          
+      - name: Deploy to Kubernetes
+        run: kubectl apply -k ${{ env.KUSTOMIZE_PATH }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
