@@ -1,18 +1,32 @@
 import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import type {
   FileUploadResponse,
   RecipientStatsResponse,
+  ScanStatus,
   UploadGroupInfoResponse,
 } from '../../api/model';
 import { FileService } from '../../services';
 import {
   filenameToEmoji,
   formatFileSize,
+  getScanStatusDescription,
+  getScanStatusLabel,
+  getScanStatusTone,
+  isBlockedScanStatus,
   isExpired,
+  isPendingScanStatus,
   resolveAppUrl,
   toUserFacingErrorMessage,
 } from '../../utils/index';
@@ -57,7 +71,9 @@ interface SaveFilePickerWindow extends Window {
 })
 export class DownloadComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly fileService = inject(FileService);
+  private scanStatusPollTimer?: ReturnType<typeof setInterval>;
 
   private readonly token = this.route.snapshot.paramMap.get('token') ?? '';
   private readonly group = this.route.snapshot.paramMap.get('group') ?? '';
@@ -108,6 +124,19 @@ export class DownloadComponent {
 
   fileInfo = computed(() => this.fileInfoResource?.value() ?? null);
   groupInfo = computed(() => this.groupInfoResource?.value() ?? null);
+  scanStatus = computed<ScanStatus | null>(
+    () => this.fileInfo()?.scan_status ?? this.groupInfo()?.scan_status ?? null,
+  );
+  scanStatusLabel = computed(() => getScanStatusLabel(this.scanStatus()));
+  scanStatusMessage = computed(() =>
+    getScanStatusDescription(this.scanStatus(), this.group ? 'transfer' : 'file'),
+  );
+  scanStatusTone = computed(() => getScanStatusTone(this.scanStatus()));
+  showScanStatusNotice = computed(() => {
+    const status = this.scanStatus();
+    return isPendingScanStatus(status) || isBlockedScanStatus(status);
+  });
+  scanPending = computed(() => isPendingScanStatus(this.scanStatus()));
   error = computed(() => {
     if (this.token && this.fileInfoResource?.error()) {
       return 'File not found or has expired.';
@@ -245,6 +274,21 @@ export class DownloadComponent {
     return Boolean(group?.has_passwords && stats && stats.downloads.length > 0);
   });
 
+  constructor() {
+    effect(() => {
+      if (isPendingScanStatus(this.scanStatus())) {
+        this.startScanStatusPolling();
+        return;
+      }
+
+      this.stopScanStatusPolling();
+    });
+
+    this.destroyRef.onDestroy(() => {
+      this.stopScanStatusPolling();
+    });
+  }
+
   submitPassword(): void {
     const pw = this.enteredPassword().trim();
     if (!pw) {
@@ -304,6 +348,26 @@ export class DownloadComponent {
       },
       url,
     });
+  }
+
+  private startScanStatusPolling(): void {
+    if (this.scanStatusPollTimer) {
+      return;
+    }
+
+    this.scanStatusPollTimer = setInterval(() => {
+      this.fileInfoResource?.reload();
+      this.groupInfoResource?.reload();
+    }, 3000);
+  }
+
+  private stopScanStatusPolling(): void {
+    if (!this.scanStatusPollTimer) {
+      return;
+    }
+
+    clearInterval(this.scanStatusPollTimer);
+    this.scanStatusPollTimer = undefined;
   }
 
   private downloadFromUrl(options: DownloadRequestOptions): void {

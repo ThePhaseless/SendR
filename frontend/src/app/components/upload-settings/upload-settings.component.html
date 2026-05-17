@@ -1,276 +1,284 @@
-@if (showHeading()) {
-  <h3>Upload Settings</h3>
-}
+<fieldset class="settings-fieldset" [disabled]="disabled()">
+  @if (showHeading()) {
+    <h3>Upload Settings</h3>
+  }
 
-<div class="settings-row">
-  <input
-    type="text"
-    id="title"
-    class="form-input"
-    [ngModel]="title()"
-    (ngModelChange)="title.set($event)"
-    placeholder="Title"
-    maxlength="200"
-  />
-</div>
-
-<div class="settings-row">
-  <textarea
-    id="description"
-    class="form-input"
-    [ngModel]="description()"
-    (ngModelChange)="description.set($event)"
-    placeholder="Optional description"
-    maxlength="2000"
-    rows="2"
-  ></textarea>
-</div>
-
-<div class="settings-row">
-  <label for="expiry">Expires after</label>
-  <select id="expiry" [ngModel]="expiryHours()" (ngModelChange)="expiryHours.set($event)">
-    @for (opt of expiryOptions(); track opt.value) {
-      <option [ngValue]="opt.value">{{ opt.label }}</option>
-    }
-  </select>
-</div>
-
-<div class="settings-row">
-  <label for="max-downloads">Max downloads</label>
-  <div class="settings-control">
-    @if (useCustomDownloads()) {
-      <div class="input-with-toggle">
-        <button
-          type="button"
-          class="btn btn-secondary btn-sm"
-          [class.active]="maxDownloads() === 0"
-          (click)="maxDownloads.set(0)"
-        >
-          Unlimited
-        </button>
-        <input
-          type="number"
-          class="form-input"
-          [ngModel]="maxDownloads() || null"
-          (ngModelChange)="onMaxDownloadsChange($event)"
-          [max]="maxDownloadsLimit()"
-          placeholder="Custom"
-          [min]="1"
-        />
-      </div>
-      @if (maxDownloadsExceedsLimit()) {
-        <p class="validation-warning">
-          Maximum allowed is {{ maxDownloadsLimit() }} for your plan.
-        </p>
-      }
-    } @else {
-      <select
-        id="max-downloads"
-        [ngModel]="maxDownloads()"
-        (ngModelChange)="maxDownloads.set($event)"
-      >
-        @for (opt of maxDownloadsOptions(); track opt.value) {
-          <option [ngValue]="opt.value">{{ opt.label }}</option>
-        }
-      </select>
-    }
+  <div class="settings-row">
+    <input
+      type="text"
+      id="title"
+      class="form-input"
+      [ngModel]="title()"
+      (ngModelChange)="title.set($event)"
+      placeholder="Title"
+      maxlength="200"
+    />
   </div>
-</div>
 
-@if (showAccessControl()) {
-  <div class="access-section">
-    <h4 class="section-label">Access Control</h4>
+  <div class="settings-row">
+    <textarea
+      id="description"
+      class="form-input"
+      [ngModel]="description()"
+      (ngModelChange)="description.set($event)"
+      placeholder="Optional description"
+      maxlength="2000"
+      rows="2"
+    ></textarea>
+  </div>
 
-    <!-- Access status message -->
-    <div class="access-status">
-      @if (passwordCount() > 0 && emailCount() > 0) {
-        <span class="material-symbols-outlined access-status-icon">lock</span>
-        <span>Password required to download. Email invites will receive a direct link.</span>
-      } @else if (passwordCount() > 0) {
-        <span class="material-symbols-outlined access-status-icon">lock</span>
-        <span>Password required to download this file.</span>
-      } @else if (emailCount() > 0) {
-        <span class="material-symbols-outlined access-status-icon">mail_lock</span>
-        <span>Only email recipients will receive a download link.</span>
+  <div class="settings-row">
+    <label for="expiry">Expires after</label>
+    <select id="expiry" [ngModel]="expiryHours()" (ngModelChange)="expiryHours.set($event)">
+      @for (opt of expiryOptions(); track opt.value) {
+        <option [ngValue]="opt.value">{{ opt.label }}</option>
+      }
+    </select>
+  </div>
+
+  <div class="settings-row">
+    <label for="max-downloads">Max downloads</label>
+    <div class="settings-control">
+      @if (useCustomDownloads()) {
+        <div class="input-with-toggle">
+          <button
+            type="button"
+            class="btn btn-secondary btn-sm"
+            [class.active]="maxDownloads() === 0"
+            (click)="maxDownloads.set(0)"
+          >
+            Unlimited
+          </button>
+          <input
+            type="number"
+            class="form-input"
+            [ngModel]="maxDownloads() || null"
+            (ngModelChange)="onMaxDownloadsChange($event)"
+            [max]="maxDownloadsLimit()"
+            placeholder="Custom"
+            [min]="1"
+          />
+        </div>
+        @if (maxDownloadsExceedsLimit()) {
+          <p class="validation-warning">
+            Maximum allowed is {{ maxDownloadsLimit() }} for your plan.
+          </p>
+        }
       } @else {
-        <span class="material-symbols-outlined access-status-icon">public</span>
-        <span>Anyone with the link can download. Add a password or email to restrict access.</span>
+        <select
+          id="max-downloads"
+          [ngModel]="maxDownloads()"
+          (ngModelChange)="maxDownloads.set($event)"
+        >
+          @for (opt of maxDownloadsOptions(); track opt.value) {
+            <option [ngValue]="opt.value">{{ opt.label }}</option>
+          }
+        </select>
       }
     </div>
+  </div>
 
-    <!-- Require password for file details toggle (only shown when passwords exist) -->
-    @if (passwordCount() > 0) {
-      <div class="public-link-row">
-        <div class="public-link-info">
-          <span class="material-symbols-outlined public-link-icon">visibility_off</span>
-          <div>
-            <span class="public-link-label">Hide file details until password is entered</span>
-            <span class="public-link-hint">
-              @if (!isPublic()) {
-                File name, size, and other details are hidden until a valid password is provided
-              } @else {
-                File details are visible to everyone, but downloading still requires a password
-              }
-            </span>
-          </div>
-        </div>
-        <label class="switch">
-          <input type="checkbox" [ngModel]="!isPublic()" (ngModelChange)="isPublic.set(!$event)" />
-          <span class="switch-slider"></span>
-        </label>
+  @if (showAccessControl()) {
+    <div class="access-section">
+      <h4 class="section-label">Access Control</h4>
+
+      <!-- Access status message -->
+      <div class="access-status">
+        @if (passwordCount() > 0 && emailCount() > 0) {
+          <span class="material-symbols-outlined access-status-icon">lock</span>
+          <span>Password required to download. Email invites will receive a direct link.</span>
+        } @else if (passwordCount() > 0) {
+          <span class="material-symbols-outlined access-status-icon">lock</span>
+          <span>Password required to download this file.</span>
+        } @else if (emailCount() > 0) {
+          <span class="material-symbols-outlined access-status-icon">mail_lock</span>
+          <span>Only email recipients will receive a download link.</span>
+        } @else {
+          <span class="material-symbols-outlined access-status-icon">public</span>
+          <span
+            >Anyone with the link can download. Add a password or email to restrict access.</span
+          >
+        }
       </div>
-    }
 
-    <!-- Passwords accordion -->
-    <div class="accordion">
-      <button type="button" class="accordion-header" (click)="togglePasswordsExpanded()">
-        <span>
-          Passwords
-          @if (passwordCount() > 0) {
-            <span class="badge-count">{{ passwordCount() }}</span>
-          }
-        </span>
-        <span class="accordion-arrow" [class.open]="passwordsExpanded">
-          <span class="material-symbols-outlined">chevron_right</span>
-        </span>
-      </button>
-      @if (passwordsExpanded) {
-        <div class="accordion-body">
-          @for (entry of passwords(); track $index; let i = $index) {
-            <div class="pw-entry">
-              <input
-                type="text"
-                class="form-input pw-label"
-                [attr.aria-invalid]="entry.label.trim() && !entry.password.trim() ? 'true' : null"
-                [ngModel]="entry.label"
-                (ngModelChange)="updatePasswordLabel(i, $event)"
-                placeholder="Label"
-                [attr.aria-label]="'Password label ' + (i + 1)"
-              />
-              <div class="pw-value-wrapper">
+      <!-- Require password for file details toggle (only shown when passwords exist) -->
+      @if (passwordCount() > 0) {
+        <div class="public-link-row">
+          <div class="public-link-info">
+            <span class="material-symbols-outlined public-link-icon">visibility_off</span>
+            <div>
+              <span class="public-link-label">Hide file details until password is entered</span>
+              <span class="public-link-hint">
+                @if (!isPublic()) {
+                  File name, size, and other details are hidden until a valid password is provided
+                } @else {
+                  File details are visible to everyone, but downloading still requires a password
+                }
+              </span>
+            </div>
+          </div>
+          <label class="switch">
+            <input
+              type="checkbox"
+              [ngModel]="!isPublic()"
+              (ngModelChange)="isPublic.set(!$event)"
+            />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+      }
+
+      <!-- Passwords accordion -->
+      <div class="accordion">
+        <button type="button" class="accordion-header" (click)="togglePasswordsExpanded()">
+          <span>
+            Passwords
+            @if (passwordCount() > 0) {
+              <span class="badge-count">{{ passwordCount() }}</span>
+            }
+          </span>
+          <span class="accordion-arrow" [class.open]="passwordsExpanded">
+            <span class="material-symbols-outlined">chevron_right</span>
+          </span>
+        </button>
+        @if (passwordsExpanded) {
+          <div class="accordion-body">
+            @for (entry of passwords(); track $index; let i = $index) {
+              <div class="pw-entry">
                 <input
-                  [type]="passwordVisibility[i] ? 'text' : 'password'"
-                  class="form-input pw-value"
-                  [ngModel]="entry.password"
-                  (ngModelChange)="updatePasswordValue(i, $event)"
-                  placeholder="Password"
-                  autocomplete="off"
-                  [attr.aria-label]="'Password ' + (i + 1)"
+                  type="text"
+                  class="form-input pw-label"
+                  [attr.aria-invalid]="entry.label.trim() && !entry.password.trim() ? 'true' : null"
+                  [ngModel]="entry.label"
+                  (ngModelChange)="updatePasswordLabel(i, $event)"
+                  placeholder="Label"
+                  [attr.aria-label]="'Password label ' + (i + 1)"
                 />
+                <div class="pw-value-wrapper">
+                  <input
+                    [type]="passwordVisibility[i] ? 'text' : 'password'"
+                    class="form-input pw-value"
+                    [ngModel]="entry.password"
+                    (ngModelChange)="updatePasswordValue(i, $event)"
+                    placeholder="Password"
+                    autocomplete="off"
+                    [attr.aria-label]="'Password ' + (i + 1)"
+                  />
+                  <button
+                    type="button"
+                    class="btn-toggle-vis"
+                    (click)="togglePasswordVisibility(i)"
+                    [attr.aria-label]="passwordVisibility[i] ? 'Hide password' : 'Show password'"
+                  >
+                    <span class="material-symbols-outlined">
+                      {{ passwordVisibility[i] ? "visibility_off" : "visibility" }}
+                    </span>
+                  </button>
+                </div>
                 <button
                   type="button"
-                  class="btn-toggle-vis"
-                  (click)="togglePasswordVisibility(i)"
-                  [attr.aria-label]="passwordVisibility[i] ? 'Hide password' : 'Show password'"
+                  class="btn-remove"
+                  (click)="removePassword(i)"
+                  aria-label="Remove password"
+                  [style.visibility]="
+                    entry.password === '' && entry.label === '' && i === passwords().length - 1
+                      ? 'hidden'
+                      : 'visible'
+                  "
                 >
-                  <span class="material-symbols-outlined">
-                    {{ passwordVisibility[i] ? "visibility_off" : "visibility" }}
-                  </span>
+                  <span class="material-symbols-outlined">close</span>
                 </button>
               </div>
-              <button
-                type="button"
-                class="btn-remove"
-                (click)="removePassword(i)"
-                aria-label="Remove password"
-                [style.visibility]="
-                  entry.password === '' && entry.label === '' && i === passwords().length - 1
-                    ? 'hidden'
-                    : 'visible'
-                "
-              >
-                <span class="material-symbols-outlined">close</span>
-              </button>
-            </div>
-          }
-          @if (passwordLabelWithoutPassword()) {
-            <p class="validation-warning">Add a password before saving a label.</p>
-          }
-        </div>
-      }
-    </div>
-
-    <!-- Email invites accordion -->
-    <div class="accordion" [class.disabled]="!canUseEmails()">
-      <button
-        type="button"
-        class="accordion-header"
-        (click)="canUseEmails() && toggleEmailsExpanded()"
-      >
-        <span>
-          Email invites
-          @if (emailCount() > 0) {
-            <span class="badge-count">{{ emailCount() }}</span>
-          }
-        </span>
-        <span class="accordion-arrow" [class.open]="!canUseEmails() || emailsExpanded">
-          <span class="material-symbols-outlined">chevron_right</span>
-        </span>
-      </button>
-      @if (!canUseEmails()) {
-        <div class="accordion-body">
-          <div class="email-entry">
-            <input
-              type="email"
-              class="form-input"
-              disabled
-              placeholder="Create a free account to use email invites"
-            />
+            }
+            @if (passwordLabelWithoutPassword()) {
+              <p class="validation-warning">Add a password before saving a label.</p>
+            }
           </div>
-        </div>
-      } @else if (emailsExpanded) {
-        <div class="accordion-body">
-          @for (email of emails(); track $index; let i = $index) {
+        }
+      </div>
+
+      <!-- Email invites accordion -->
+      <div class="accordion" [class.disabled]="!canUseEmails()">
+        <button
+          type="button"
+          class="accordion-header"
+          (click)="canUseEmails() && toggleEmailsExpanded()"
+        >
+          <span>
+            Email invites
+            @if (emailCount() > 0) {
+              <span class="badge-count">{{ emailCount() }}</span>
+            }
+          </span>
+          <span class="accordion-arrow" [class.open]="!canUseEmails() || emailsExpanded">
+            <span class="material-symbols-outlined">chevron_right</span>
+          </span>
+        </button>
+        @if (!canUseEmails()) {
+          <div class="accordion-body">
             <div class="email-entry">
               <input
                 type="email"
                 class="form-input"
-                [ngModel]="email"
-                (ngModelChange)="updateEmail(i, $event)"
-                placeholder="email@example.com"
-                [attr.aria-label]="'Email ' + (i + 1)"
+                disabled
+                placeholder="Create a free account to use email invites"
               />
-              <button
-                type="button"
-                class="btn-remove"
-                (click)="removeEmail(i)"
-                aria-label="Remove email"
-                [style.visibility]="
-                  email === '' && i === emails().length - 1 ? 'hidden' : 'visible'
-                "
-              >
-                <span class="material-symbols-outlined">close</span>
-              </button>
             </div>
-          }
-          @if (canUseEmailStats()) {
-            <div class="public-link-row">
-              <div class="public-link-info">
-                <span class="material-symbols-outlined public-link-icon">visibility</span>
-                <div>
-                  <span class="public-link-label">Let recipients see download activity</span>
-                  <span class="public-link-hint">
-                    @if (showEmailStats()) {
-                      Recipients can see who else downloaded
-                    } @else {
-                      Download activity is hidden from recipients
-                    }
-                  </span>
-                </div>
-              </div>
-              <label class="switch">
+          </div>
+        } @else if (emailsExpanded) {
+          <div class="accordion-body">
+            @for (email of emails(); track $index; let i = $index) {
+              <div class="email-entry">
                 <input
-                  type="checkbox"
-                  id="show-email-stats"
-                  [ngModel]="showEmailStats()"
-                  (ngModelChange)="showEmailStats.set($event)"
+                  type="email"
+                  class="form-input"
+                  [ngModel]="email"
+                  (ngModelChange)="updateEmail(i, $event)"
+                  placeholder="email@example.com"
+                  [attr.aria-label]="'Email ' + (i + 1)"
                 />
-                <span class="switch-slider"></span>
-              </label>
-            </div>
-          }
-        </div>
-      }
+                <button
+                  type="button"
+                  class="btn-remove"
+                  (click)="removeEmail(i)"
+                  aria-label="Remove email"
+                  [style.visibility]="
+                    email === '' && i === emails().length - 1 ? 'hidden' : 'visible'
+                  "
+                >
+                  <span class="material-symbols-outlined">close</span>
+                </button>
+              </div>
+            }
+            @if (canUseEmailStats()) {
+              <div class="public-link-row">
+                <div class="public-link-info">
+                  <span class="material-symbols-outlined public-link-icon">visibility</span>
+                  <div>
+                    <span class="public-link-label">Let recipients see download activity</span>
+                    <span class="public-link-hint">
+                      @if (showEmailStats()) {
+                        Recipients can see who else downloaded
+                      } @else {
+                        Download activity is hidden from recipients
+                      }
+                    </span>
+                  </div>
+                </div>
+                <label class="switch">
+                  <input
+                    type="checkbox"
+                    id="show-email-stats"
+                    [ngModel]="showEmailStats()"
+                    (ngModelChange)="showEmailStats.set($event)"
+                  />
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
+            }
+          </div>
+        }
+      </div>
     </div>
-  </div>
-}
+  }
+</fieldset>

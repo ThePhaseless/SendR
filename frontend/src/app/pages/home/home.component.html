@@ -33,6 +33,29 @@
       </div>
       <p class="total-size">Total: {{ formatSize(getTotalResultSize()) }}</p>
 
+      @if (getResultScanStatus()) {
+        <div
+          class="scan-status-banner"
+          [class.scan-status-banner--danger]="getResultScanTone() === 'danger'"
+          [class.scan-status-banner--pending]="getResultScanTone() === 'pending'"
+          [class.scan-status-banner--success]="getResultScanTone() === 'success'"
+        >
+          <div class="scan-status-banner__header">
+            <span class="scan-status-pill">{{ getResultScanLabel() }}</span>
+            @if (isResultScanPending()) {
+              <span class="scan-status-live">Link is already live</span>
+            }
+          </div>
+          <p>{{ getResultScanDescription() }}</p>
+          @if (isResultScanPending()) {
+            <p class="scan-status-note">
+              Background scanning continues even if you close this page. Downloads stay blocked
+              until the scan finishes.
+            </p>
+          }
+        </div>
+      }
+
       <!-- Shareable link with access info -->
       <div class="result-access-section">
         <!-- Shareable link — always shown once -->
@@ -243,6 +266,7 @@
         <div class="upload-col-right">
           <app-upload-settings
             [tier]="userTier()"
+            [disabled]="isUploading()"
             [(expiryHours)]="expiryHours"
             [(maxDownloads)]="maxDownloads"
             [(isPublic)]="isPublic"

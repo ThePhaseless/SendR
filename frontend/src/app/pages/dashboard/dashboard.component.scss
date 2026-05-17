@@ -119,6 +119,26 @@
   @apply text-sm leading-none;
 }
 
+.badge-scan {
+  background: color-mix(in srgb, var(--color-text) 10%, transparent);
+  color: var(--color-text);
+
+  &.badge-scan--pending {
+    background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+    color: var(--color-primary);
+  }
+
+  &.badge-scan--danger {
+    background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+    color: var(--color-danger);
+  }
+
+  &.badge-scan--success {
+    background: color-mix(in srgb, var(--color-success) 16%, transparent);
+    color: var(--color-success);
+  }
+}
+
 .badge-new {
   background: color-mix(in srgb, var(--color-primary) 15%, transparent);
   color: var(--color-primary);
@@ -302,6 +322,21 @@
     .form-input {
       @apply flex-1 min-w-0;
     }
+  }
+}
+
+.access-fieldset {
+  border: 0;
+  margin: 0;
+  min-inline-size: 0;
+  padding: 0;
+
+  &:disabled {
+    opacity: 0.72;
+  }
+
+  &:disabled :is(button, input, select, textarea) {
+    cursor: not-allowed;
   }
 }
 

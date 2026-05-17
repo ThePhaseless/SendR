@@ -8,6 +8,21 @@
   border-radius: 0.5rem;
 }
 
+.settings-fieldset {
+  border: 0;
+  margin: 0;
+  min-inline-size: 0;
+  padding: 0;
+
+  &:disabled {
+    opacity: 0.72;
+  }
+
+  &:disabled :is(button, input, select, textarea) {
+    cursor: not-allowed;
+  }
+}
+
 h3 {
   @apply font-semibold mb-3;
   font-size: 0.9rem;

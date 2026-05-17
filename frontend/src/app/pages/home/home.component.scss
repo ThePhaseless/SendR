@@ -201,6 +201,51 @@
   color: var(--color-text-secondary);
 }
 
+.scan-status-banner {
+  @apply text-left rounded-xl mb-4 p-4;
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  background: color-mix(in srgb, var(--color-card-bg) 82%, white 18%);
+
+  p {
+    @apply m-0 text-sm;
+    color: var(--color-text);
+  }
+
+  &.scan-status-banner--pending {
+    border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 9%, var(--color-card-bg));
+  }
+
+  &.scan-status-banner--danger {
+    border-color: color-mix(in srgb, var(--color-danger) 28%, transparent);
+    background: color-mix(in srgb, var(--color-danger) 8%, var(--color-card-bg));
+  }
+
+  &.scan-status-banner--success {
+    border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
+    background: color-mix(in srgb, var(--color-success) 10%, var(--color-card-bg));
+  }
+}
+
+.scan-status-banner__header {
+  @apply flex items-center justify-between gap-3 mb-2 flex-wrap;
+}
+
+.scan-status-pill {
+  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide;
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+  color: var(--color-text);
+}
+
+.scan-status-live,
+.scan-status-note {
+  color: var(--color-text-secondary);
+}
+
+.scan-status-note {
+  @apply mt-2;
+}
+
 .upload-stats {
   @apply flex gap-2 justify-center text-sm mt-2;
   color: var(--color-text-secondary);

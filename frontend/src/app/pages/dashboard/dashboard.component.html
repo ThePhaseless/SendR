@@ -118,6 +118,14 @@
                 @if (isGroupExpired(group)) {
                   <span class="badge badge-expired">Expired</span>
                 }
+                <span
+                  class="badge badge-scan"
+                  [class.badge-scan--danger]="getGroupScanTone(group) === 'danger'"
+                  [class.badge-scan--pending]="getGroupScanTone(group) === 'pending'"
+                  [class.badge-scan--success]="getGroupScanTone(group) === 'success'"
+                >
+                  {{ getGroupScanLabel(group) }}
+                </span>
                 @if (group.files[0]?.has_passwords) {
                   <span class="badge badge-access" title="Password protected">🔑</span>
                 }
@@ -220,6 +228,14 @@
                     >
                       <span class="group-file-name">{{ file.original_filename }}</span>
                       <span class="group-file-size">{{ formatSize(file.file_size_bytes) }}</span>
+                      <span
+                        class="badge badge-scan"
+                        [class.badge-scan--danger]="getFileScanTone(file) === 'danger'"
+                        [class.badge-scan--pending]="getFileScanTone(file) === 'pending'"
+                        [class.badge-scan--success]="getFileScanTone(file) === 'success'"
+                      >
+                        {{ getFileScanLabel(file) }}
+                      </span>
                       <button
                         class="btn-file-action btn-file-remove"
                         (click)="removeFile(file, group)"
@@ -272,6 +288,7 @@
                 <h4>Settings</h4>
                 <app-upload-settings
                   [tier]="userTier()"
+                  [disabled]="isSaving()"
                   [(expiryHours)]="panelExpiryHours"
                   [(maxDownloads)]="panelMaxDownloads"
                   [(title)]="panelTitle"
@@ -330,151 +347,157 @@
                       </div>
                     </div>
 
-                    <!-- Hide file details toggle (only when passwords exist) -->
-                    @if (access.passwords.length > 0) {
-                      <div class="access-row">
-                        <div class="access-row-info">
-                          <span class="material-symbols-outlined">visibility_off</span>
-                          <span>Hide file details until password is entered</span>
+                    <fieldset class="access-fieldset" [disabled]="isSaving() || accessLoading()">
+                      <!-- Hide file details toggle (only when passwords exist) -->
+                      @if (access.passwords.length > 0) {
+                        <div class="access-row">
+                          <div class="access-row-info">
+                            <span class="material-symbols-outlined">visibility_off</span>
+                            <span>Hide file details until password is entered</span>
+                          </div>
+                          <label class="switch">
+                            <input
+                              type="checkbox"
+                              [checked]="!access.is_public"
+                              (change)="togglePublic(group.uploadGroup!, !access.is_public)"
+                              [disabled]="isSaving() || accessLoading()"
+                            />
+                            <span class="switch-slider"></span>
+                          </label>
                         </div>
-                        <label class="switch">
+                      }
+
+                      <!-- Passwords list -->
+                      <div class="access-subsection">
+                        <h5>Passwords</h5>
+                        @if (access.passwords.length === 0) {
+                          <p class="access-empty">No passwords configured</p>
+                        } @else {
+                          <div class="access-entry-list scroll-surface scroll-compact">
+                            @for (pw of access.passwords; track pw.id) {
+                              <div class="access-entry">
+                                <span class="access-entry-label">{{ pw.label }}</span>
+                                <span class="access-entry-value">•••••••</span>
+                                <button
+                                  class="btn-file-action btn-file-remove"
+                                  (click)="removePassword(group.uploadGroup!, pw.id)"
+                                  title="Remove password"
+                                  [disabled]="isSaving() || accessLoading()"
+                                >
+                                  <span class="material-symbols-outlined" style="font-size: 16px"
+                                    >close</span
+                                  >
+                                </button>
+                              </div>
+                            }
+                          </div>
+                        }
+                        <div class="access-add-row">
                           <input
-                            type="checkbox"
-                            [checked]="!access.is_public"
-                            (change)="togglePublic(group.uploadGroup!, !access.is_public)"
-                            [disabled]="accessLoading()"
+                            type="text"
+                            class="form-input form-input-sm"
+                            placeholder="Label"
+                            [ngModel]="newPasswordLabel()"
+                            (ngModelChange)="newPasswordLabel.set($event)"
+                            [disabled]="isSaving() || accessLoading()"
                           />
-                          <span class="switch-slider"></span>
-                        </label>
-                      </div>
-                    }
-
-                    <!-- Passwords list -->
-                    <div class="access-subsection">
-                      <h5>Passwords</h5>
-                      @if (access.passwords.length === 0) {
-                        <p class="access-empty">No passwords configured</p>
-                      } @else {
-                        <div class="access-entry-list scroll-surface scroll-compact">
-                          @for (pw of access.passwords; track pw.id) {
-                            <div class="access-entry">
-                              <span class="access-entry-label">{{ pw.label }}</span>
-                              <span class="access-entry-value">•••••••</span>
-                              <button
-                                class="btn-file-action btn-file-remove"
-                                (click)="removePassword(group.uploadGroup!, pw.id)"
-                                title="Remove password"
-                                [disabled]="accessLoading()"
-                              >
-                                <span class="material-symbols-outlined" style="font-size: 16px"
-                                  >close</span
-                                >
-                              </button>
-                            </div>
-                          }
-                        </div>
-                      }
-                      <div class="access-add-row">
-                        <input
-                          type="text"
-                          class="form-input form-input-sm"
-                          placeholder="Label"
-                          [ngModel]="newPasswordLabel()"
-                          (ngModelChange)="newPasswordLabel.set($event)"
-                        />
-                        <input
-                          type="password"
-                          class="form-input form-input-sm"
-                          placeholder="Password"
-                          [ngModel]="newPasswordValue()"
-                          (ngModelChange)="newPasswordValue.set($event)"
-                          (keydown.enter)="addPassword(group.uploadGroup!)"
-                        />
-                        <button
-                          class="btn btn-secondary btn-sm"
-                          (click)="addPassword(group.uploadGroup!)"
-                          [disabled]="
-                            !newPasswordValue().trim() ||
-                            newPasswordLabelWithoutValue() ||
-                            accessLoading()
-                          "
-                        >
-                          Add
-                        </button>
-                      </div>
-                      @if (newPasswordLabelWithoutValue()) {
-                        <p class="access-empty">Add a password before saving a label.</p>
-                      }
-                    </div>
-
-                    <!-- Emails list -->
-                    <div class="access-subsection">
-                      <h5>Email Invites</h5>
-                      @if (access.emails.length === 0) {
-                        <p class="access-empty">No email invites</p>
-                      } @else {
-                        <div class="access-entry-list scroll-surface scroll-compact">
-                          @for (er of access.emails; track er.id) {
-                            <div class="access-entry">
-                              <span class="access-entry-label">{{ er.email }}</span>
-                              @if (er.notified) {
-                                <span class="badge badge-notified">sent</span>
-                              } @else {
-                                <span class="badge badge-pending">pending</span>
-                              }
-                              <button
-                                class="btn-file-action btn-file-remove"
-                                (click)="removeEmail(group.uploadGroup!, er.id)"
-                                title="Remove email"
-                                [disabled]="accessLoading()"
-                              >
-                                <span class="material-symbols-outlined" style="font-size: 16px"
-                                  >close</span
-                                >
-                              </button>
-                            </div>
-                          }
-                        </div>
-                      }
-                      <div class="access-add-row">
-                        <input
-                          type="email"
-                          class="form-input form-input-sm"
-                          placeholder="email@example.com"
-                          [ngModel]="newEmail()"
-                          (ngModelChange)="newEmail.set($event)"
-                          (keydown.enter)="addEmail(group.uploadGroup!)"
-                        />
-                        <button
-                          class="btn btn-secondary btn-sm"
-                          (click)="addEmail(group.uploadGroup!)"
-                          [disabled]="!newEmail() || accessLoading()"
-                        >
-                          Add
-                        </button>
-                      </div>
-                    </div>
-
-                    <!-- Show email stats toggle -->
-                    @if (access.emails.length > 0) {
-                      <div class="access-row">
-                        <div class="access-row-info">
-                          <span class="material-symbols-outlined">visibility</span>
-                          <span>Let recipients see download activity</span>
-                        </div>
-                        <label class="switch">
                           <input
-                            type="checkbox"
-                            [checked]="access.show_email_stats"
-                            (change)="
-                              toggleShowEmailStats(group.uploadGroup!, !access.show_email_stats)
+                            type="password"
+                            class="form-input form-input-sm"
+                            placeholder="Password"
+                            [ngModel]="newPasswordValue()"
+                            (ngModelChange)="newPasswordValue.set($event)"
+                            (keydown.enter)="addPassword(group.uploadGroup!)"
+                            [disabled]="isSaving() || accessLoading()"
+                          />
+                          <button
+                            class="btn btn-secondary btn-sm"
+                            (click)="addPassword(group.uploadGroup!)"
+                            [disabled]="
+                              !newPasswordValue().trim() ||
+                              newPasswordLabelWithoutValue() ||
+                              accessLoading() ||
+                              isSaving()
                             "
-                            [disabled]="accessLoading()"
-                          />
-                          <span class="switch-slider"></span>
-                        </label>
+                          >
+                            Add
+                          </button>
+                        </div>
+                        @if (newPasswordLabelWithoutValue()) {
+                          <p class="access-empty">Add a password before saving a label.</p>
+                        }
                       </div>
-                    }
+
+                      <!-- Emails list -->
+                      <div class="access-subsection">
+                        <h5>Email Invites</h5>
+                        @if (access.emails.length === 0) {
+                          <p class="access-empty">No email invites</p>
+                        } @else {
+                          <div class="access-entry-list scroll-surface scroll-compact">
+                            @for (er of access.emails; track er.id) {
+                              <div class="access-entry">
+                                <span class="access-entry-label">{{ er.email }}</span>
+                                @if (er.notified) {
+                                  <span class="badge badge-notified">sent</span>
+                                } @else {
+                                  <span class="badge badge-pending">pending</span>
+                                }
+                                <button
+                                  class="btn-file-action btn-file-remove"
+                                  (click)="removeEmail(group.uploadGroup!, er.id)"
+                                  title="Remove email"
+                                  [disabled]="isSaving() || accessLoading()"
+                                >
+                                  <span class="material-symbols-outlined" style="font-size: 16px"
+                                    >close</span
+                                  >
+                                </button>
+                              </div>
+                            }
+                          </div>
+                        }
+                        <div class="access-add-row">
+                          <input
+                            type="email"
+                            class="form-input form-input-sm"
+                            placeholder="email@example.com"
+                            [ngModel]="newEmail()"
+                            (ngModelChange)="newEmail.set($event)"
+                            (keydown.enter)="addEmail(group.uploadGroup!)"
+                            [disabled]="isSaving() || accessLoading()"
+                          />
+                          <button
+                            class="btn btn-secondary btn-sm"
+                            (click)="addEmail(group.uploadGroup!)"
+                            [disabled]="!newEmail() || accessLoading() || isSaving()"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Show email stats toggle -->
+                      @if (access.emails.length > 0) {
+                        <div class="access-row">
+                          <div class="access-row-info">
+                            <span class="material-symbols-outlined">visibility</span>
+                            <span>Let recipients see download activity</span>
+                          </div>
+                          <label class="switch">
+                            <input
+                              type="checkbox"
+                              [checked]="access.show_email_stats"
+                              (change)="
+                                toggleShowEmailStats(group.uploadGroup!, !access.show_email_stats)
+                              "
+                              [disabled]="isSaving() || accessLoading()"
+                            />
+                            <span class="switch-slider"></span>
+                          </label>
+                        </div>
+                      }
+                    </fieldset>
                   }
                 </div>
               }

@@ -64,6 +64,20 @@
           </div>
           @if (!file.is_active || isExpired(file.expires_at)) {
             <div class="alert alert-error">This file has expired and is no longer available.</div>
+          } @else if (showScanStatusNotice()) {
+            <div
+              class="scan-status-card"
+              [class.scan-status-card--danger]="scanStatusTone() === 'danger'"
+              [class.scan-status-card--pending]="scanStatusTone() === 'pending'"
+            >
+              <span class="scan-status-card__badge">{{ scanStatusLabel() }}</span>
+              <p>{{ scanStatusMessage() }}</p>
+              @if (scanPending()) {
+                <p class="scan-status-card__note">
+                  This page refreshes automatically until malware scanning finishes.
+                </p>
+              }
+            </div>
           } @else if (singleFileGroupDownloadOnly()) {
             @if (file.upload_group) {
               <a class="btn btn-primary btn-lg" [href]="getGroupPageUrl(file.upload_group)">
@@ -126,7 +140,21 @@
               </div>
             }
           </div>
-          @if (needsPasswordToDownload()) {
+          @if (showScanStatusNotice()) {
+            <div
+              class="scan-status-card"
+              [class.scan-status-card--danger]="scanStatusTone() === 'danger'"
+              [class.scan-status-card--pending]="scanStatusTone() === 'pending'"
+            >
+              <span class="scan-status-card__badge">{{ scanStatusLabel() }}</span>
+              <p>{{ scanStatusMessage() }}</p>
+              @if (scanPending()) {
+                <p class="scan-status-card__note">
+                  This page refreshes automatically until malware scanning finishes.
+                </p>
+              }
+            </div>
+          } @else if (needsPasswordToDownload()) {
             <p class="password-hint">Enter the password to download these files.</p>
             <form class="password-form" (ngSubmit)="submitPassword()">
               <input

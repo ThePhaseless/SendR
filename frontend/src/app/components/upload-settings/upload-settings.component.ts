@@ -36,6 +36,9 @@ export class UploadSettingsComponent {
   /** User tier: 'temporary' | 'free' | 'premium'. */
   tier = input('temporary');
 
+  /** Whether the settings UI is temporarily locked. */
+  disabled = input(false);
+
   /** Selected expiry duration in hours. */
   expiryHours = model(168);
 

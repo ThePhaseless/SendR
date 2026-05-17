@@ -90,6 +90,38 @@
   color: var(--color-danger);
 }
 
+.scan-status-card {
+  @apply rounded-xl my-4 p-4 text-left;
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  background: color-mix(in srgb, var(--color-card-bg) 82%, white 18%);
+
+  p {
+    @apply m-0 text-sm;
+    color: var(--color-text);
+  }
+
+  &.scan-status-card--pending {
+    border-color: color-mix(in srgb, var(--color-primary) 28%, transparent);
+    background: color-mix(in srgb, var(--color-primary) 9%, var(--color-card-bg));
+  }
+
+  &.scan-status-card--danger {
+    border-color: color-mix(in srgb, var(--color-danger) 28%, transparent);
+    background: color-mix(in srgb, var(--color-danger) 8%, var(--color-card-bg));
+  }
+}
+
+.scan-status-card__badge {
+  @apply inline-flex items-center rounded-full px-3 py-1 mb-2 text-xs font-semibold uppercase tracking-wide;
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+  color: var(--color-text);
+}
+
+.scan-status-card__note {
+  @apply mt-2;
+  color: var(--color-text-secondary);
+}
+
 // Password prompt
 .password-hint {
   @apply text-sm mb-2;
