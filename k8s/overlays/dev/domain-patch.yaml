@@ -6,7 +6,7 @@ metadata:
   namespace: sendr
 spec:
   rules:
-    - host: api.dev.sendr.com
+    - host: api.dev.sendr.email
       http:
         paths:
           - path: /
@@ -24,7 +24,7 @@ metadata:
   namespace: sendr
 spec:
   rules:
-    - host: dev.sendr.com
+    - host: dev.sendr.email
       http:
         paths:
           - path: /

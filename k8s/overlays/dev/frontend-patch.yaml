@@ -10,4 +10,4 @@ spec:
         - name: frontend
           env:
             - name: API_URL
-              value: "https://api.dev.sendr.com"
+              value: "https://api.dev.sendr.email"

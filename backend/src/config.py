@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    SMTP_FROM: str = "noreply@sendr.app"
+    SMTP_FROM: str = "noreply@sendr.email"
     # File limits
     TEMPORARY_MAX_FILE_SIZE_MB: int = 100
     FREE_MAX_FILE_SIZE_MB: int = 1024

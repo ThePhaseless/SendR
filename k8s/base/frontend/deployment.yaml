@@ -27,7 +27,7 @@ spec:
               name: http
           env:
             - name: API_URL
-              value: "https://api.sendr.app"
+              value: "https://api.sendr.email"
           resources:
             requests:
               cpu: 50m
