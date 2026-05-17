@@ -9,3 +9,8 @@ dist/
 *.egg-info/
 package-lock.json
 
+# Terraform secrets
+*.tfvars
+*.tfvars.json
+
+
