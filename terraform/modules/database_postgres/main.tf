@@ -13,6 +13,11 @@ resource "digitalocean_database_db" "sendr_db" {
   name       = "sendr"
 }
 
+resource "digitalocean_database_user" "sendr_user" {
+  cluster_id = digitalocean_database_cluster.postgres.id
+  name       = "sendr"
+}
+
 # Firewall - zezwól klastrowi Kubernetes na dostęp do bazy
 resource "digitalocean_database_firewall" "postgres-fw" {
   cluster_id = digitalocean_database_cluster.postgres.id
