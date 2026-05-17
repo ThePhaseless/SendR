@@ -8,4 +8,4 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/thephaseless/sendr/frontend:staging-latest
+          image: ghcr.io/kamilpihub/sendr/frontend:staging-latest

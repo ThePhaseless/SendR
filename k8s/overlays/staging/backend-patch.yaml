@@ -10,4 +10,4 @@ spec:
         - name: backend
           env:
             - name: SENDR_ENVIRONMENT
-              value: "production"
+              value: "staging"

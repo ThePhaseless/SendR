@@ -17,11 +17,21 @@ resource "digitalocean_record" "ingress" {
   ttl   = 300
 }
 
-resource "digitalocean_record" "www_prod" {
+resource "digitalocean_record" "subdomains" {
+  count  = local.has_real_domain && var.ingress_ip != "" ? 1 : 0
+  domain = data.digitalocean_domain.main[0].name
+  type   = "A"
+
+  name  = var.environment == "prod" ? "www" : "*.${var.environment}"
+  value = var.ingress_ip
+  ttl   = 300
+}
+
+resource "digitalocean_record" "api_prod" {
   count  = local.has_real_domain && var.environment == "prod" && var.ingress_ip != "" ? 1 : 0
   domain = data.digitalocean_domain.main[0].name
   type   = "A"
-  name   = "www"
+  name   = "api"
   value  = var.ingress_ip
   ttl    = 300
 }

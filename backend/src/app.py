@@ -118,6 +118,11 @@ async def enforce_cookie_csrf(
     return await call_next(request)
 
 
+@app.get("/health", include_in_schema=False)
+async def health_check():
+    return {"status": "ok"}
+
+
 app.include_router(admin.router)
 app.include_router(altcha.router)
 app.include_router(auth.router)

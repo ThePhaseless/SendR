@@ -1,0 +1,59 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: sendr
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-ingress
+  namespace: sendr
+spec:
+  podSelector:
+    matchLabels:
+      app: sendr-backend
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: sendr-frontend
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: traefik
+  policyTypes:
+  - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-ingress
+  namespace: sendr
+spec:
+  podSelector:
+    matchLabels:
+      app: sendr-frontend
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: traefik
+  policyTypes:
+  - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-all-egress
+  namespace: sendr
+spec:
+  podSelector: {}
+  egress:
+  - {}
+  policyTypes:
+  - Egress

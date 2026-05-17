@@ -49,12 +49,15 @@ jobs:
             echo "KUSTOMIZE_PATH=k8s/overlays/staging" >> $GITHUB_ENV
             echo "TF_VAR_FILE=environments/staging/terraform.tfvars" >> $GITHUB_ENV
             echo "TF_BACKEND=environments/staging/backend.conf" >> $GITHUB_ENV
-          else
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "ENV_NAME=prod" >> $GITHUB_ENV
             echo "CLUSTER_NAME=sendr-k8s-prod" >> $GITHUB_ENV
             echo "KUSTOMIZE_PATH=k8s/overlays/prod" >> $GITHUB_ENV
             echo "TF_VAR_FILE=environments/prod/terraform.tfvars" >> $GITHUB_ENV
             echo "TF_BACKEND=environments/prod/backend.conf" >> $GITHUB_ENV
+          else
+            echo "Unknown ref: ${{ github.ref }}. Skipping deployment."
+            exit 1
           fi
 
       - name: Save DigitalOcean Kubeconfig

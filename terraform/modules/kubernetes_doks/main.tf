@@ -9,6 +9,9 @@ resource "digitalocean_kubernetes_cluster" "cluster" {
   node_pool {
     name       = "worker-pool"
     size       = "s-2vcpu-4gb"
-    node_count = 2
+    node_count = var.auto_scale ? null : var.node_count
+    auto_scale = var.auto_scale
+    min_nodes  = var.auto_scale ? var.min_nodes : null
+    max_nodes  = var.auto_scale ? var.max_nodes : null
   }
 }

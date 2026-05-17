@@ -18,3 +18,27 @@ variable "kubernetes_version" {
   type        = string
   default     = ""
 }
+
+variable "node_count" {
+  description = "Number of nodes (if auto_scale is false)"
+  type        = number
+  default     = 2
+}
+
+variable "auto_scale" {
+  description = "Enable auto-scaling for the node pool"
+  type        = bool
+  default     = false
+}
+
+variable "min_nodes" {
+  description = "Minimum number of nodes for auto-scaling"
+  type        = number
+  default     = 1
+}
+
+variable "max_nodes" {
+  description = "Maximum number of nodes for auto-scaling"
+  type        = number
+  default     = 5
+}
