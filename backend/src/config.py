@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
     SMTP_FROM: str = "noreply@sendr.email"
+    RESEND_API_KEY: str = ""
     # File limits
     TEMPORARY_MAX_FILE_SIZE_MB: int = 100
     FREE_MAX_FILE_SIZE_MB: int = 1024
@@ -147,14 +148,11 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_runtime_settings(self) -> Self:
-        if self.is_production and not self.SECRET_KEY:
-            raise ValueError(
-                "SENDR_SECRET_KEY must be set when SENDR_ENVIRONMENT is 'production'"
-            )
-        if self.is_production and not self.smtp_configured:
-            raise ValueError(
-                "SENDR_SMTP_HOST must be set when SENDR_ENVIRONMENT is 'production'"
-            )
+        if self.ENVIRONMENT == "production":
+            if not self.SECRET_KEY:
+                raise ValueError("SENDR_SECRET_KEY must be set in production")
+            if not (self.smtp_configured or self.RESEND_API_KEY):
+                raise ValueError("Either SMTP or RESEND_API_KEY must be set in production")
         return self
 
 settings = Settings()
