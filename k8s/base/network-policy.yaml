@@ -57,3 +57,17 @@ spec:
   - {}
   policyTypes:
   - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-ingress
+  namespace: sendr
+spec:
+  podSelector:
+    matchLabels:
+      app: traefik
+  ingress:
+  - {} # Pozwól na ruch z każdego źródła (wymagane dla LoadBalancera i Let's Encrypt)
+  policyTypes:
+  - Ingress
