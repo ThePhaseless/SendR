@@ -95,12 +95,6 @@ jobs:
       - name: Deploy to Kubernetes
         run: kubectl apply -k ${{ env.KUSTOMIZE_PATH }}
 
-      - name: Cleanup existing secret to avoid Terraform conflict
-        run: |
-          # Usuwamy sekrety przed apply, aby Terraform mógł je stworzyć na nowo bez konfliktów
-          kubectl delete secret sendr-secrets -n sendr --ignore-not-found
-          kubectl delete secret ghcr-secret -n sendr --ignore-not-found
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
