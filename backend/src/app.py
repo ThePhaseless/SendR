@@ -22,6 +22,9 @@ from routers import admin, altcha, auth, dev, files, subscription
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+_ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
+
 def _sync_database_url(url: str) -> str:
     # Handle both aiosqlite and asyncpg
     return url.replace("sqlite+aiosqlite://", "sqlite://").replace("postgresql+asyncpg://", "postgresql://")
