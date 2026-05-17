@@ -23,6 +23,7 @@ spec:
             - --entrypoints.web.address=:80
             - --entrypoints.websecure.address=:443
             - --providers.kubernetesingress
+            - --providers.kubernetesingress.namespaces=traefik,sendr
             - --certificatesresolvers.letsencrypt.acme.email=admin@sendr.email
             - --certificatesresolvers.letsencrypt.acme.storage=/data/acme.json
             - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
