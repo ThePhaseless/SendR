@@ -10,7 +10,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: api.sendr.app
+    - host: api.sendr.email
       http:
         paths:
           - path: /

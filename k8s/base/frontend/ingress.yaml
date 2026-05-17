@@ -10,7 +10,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - host: sendr.app
+    - host: sendr.email
       http:
         paths:
           - path: /
@@ -20,7 +20,7 @@ spec:
                 name: sendr-frontend
                 port:
                   number: 80
-    - host: www.sendr.app
+    - host: www.sendr.email
       http:
         paths:
           - path: /
