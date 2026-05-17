@@ -23,9 +23,9 @@ spec:
     - podSelector:
         matchLabels:
           app: sendr-frontend
-    - namespaceSelector:
+    - podSelector:
         matchLabels:
-          kubernetes.io/metadata.name: traefik
+          app: traefik
   policyTypes:
   - Ingress
 ---
@@ -40,9 +40,9 @@ spec:
       app: sendr-frontend
   ingress:
   - from:
-    - namespaceSelector:
+    - podSelector:
         matchLabels:
-          kubernetes.io/metadata.name: traefik
+          app: traefik
   policyTypes:
   - Ingress
 ---
