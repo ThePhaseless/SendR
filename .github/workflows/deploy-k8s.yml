@@ -90,10 +90,10 @@ jobs:
       - name: Inject nip.io Domain for testing
         run: |
           echo "Replacing hardcoded domains with $TRAEFIK_IP.nip.io for testing without a domain"
-          # Nadpisz hosty Ingressu
-          find ${{ env.KUSTOMIZE_PATH }} -type f -name "domain-patch.yaml" -exec sed -i "s/host: .*\.sendr\.com/host: api.$TRAEFIK_IP.nip.io/g; s/host: sendr\.com/host: $TRAEFIK_IP.nip.io/g; s/host: www\.sendr\.com/host: www.$TRAEFIK_IP.nip.io/g; s/host: dev\.sendr\.com/host: dev.$TRAEFIK_IP.nip.io/g; s/host: staging\.sendr\.com/host: staging.$TRAEFIK_IP.nip.io/g" {} +
-          # Nadpisz API_URL dla frontendu
-          find ${{ env.KUSTOMIZE_PATH }} -type f -name "frontend-patch.yaml" -exec sed -i "s|https://api\..*\.sendr\.com|http://api.$TRAEFIK_IP.nip.io|g; s|https://api\.sendr\.com|http://api.$TRAEFIK_IP.nip.io|g" {} +
+          # Nadpisz hosty Ingressu precyzyjnie
+          find ${{ env.KUSTOMIZE_PATH }} -type f -name "domain-patch.yaml" -exec sed -i "s/host: api\.dev\.sendr\.com/host: api.$TRAEFIK_IP.nip.io/g; s/host: dev\.sendr\.com/host: dev.$TRAEFIK_IP.nip.io/g; s/host: api\.staging\.sendr\.com/host: api.$TRAEFIK_IP.nip.io/g; s/host: staging\.sendr\.com/host: staging.$TRAEFIK_IP.nip.io/g; s/host: api\.sendr\.com/host: api.$TRAEFIK_IP.nip.io/g; s/host: www\.sendr\.com/host: www.$TRAEFIK_IP.nip.io/g; s/host: sendr\.com/host: $TRAEFIK_IP.nip.io/g" {} +
+          # Nadpisz API_URL dla frontendu precyzyjnie
+          find ${{ env.KUSTOMIZE_PATH }} -type f -name "frontend-patch.yaml" -exec sed -i "s|https://api\.dev\.sendr\.com|http://api.$TRAEFIK_IP.nip.io|g; s|https://api\.staging\.sendr\.com|http://api.$TRAEFIK_IP.nip.io|g; s|https://api\.sendr\.com|http://api.$TRAEFIK_IP.nip.io|g" {} +
           
       - name: Deploy to Kubernetes
         run: kubectl apply -k ${{ env.KUSTOMIZE_PATH }}

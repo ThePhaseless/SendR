@@ -1,0 +1,36 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sendr-backend
+  namespace: sendr
+spec:
+  rules:
+    - host: api.dev.sendr.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sendr-backend
+                port:
+                  number: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sendr-frontend
+  namespace: sendr
+spec:
+  rules:
+    - host: dev.sendr.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sendr-frontend
+                port:
+                  number: 80
