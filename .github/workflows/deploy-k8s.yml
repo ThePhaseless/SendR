@@ -3,7 +3,7 @@ name: 'Deploy K8s & Update DNS'
 on:
   push:
     branches:
-      - DO-implementation
+      - main
   workflow_run:
     workflows: ["Build and Publish Docker Images"]
     types:
@@ -39,13 +39,13 @@ jobs:
         id: set-env
         run: |
           REF="${{ github.ref }}"
-          if [[ "$REF" == "refs/heads/main" || "$REF" == "refs/heads/DO-implementation" ]]; then
+          if [[ "$REF" == "refs/heads/main" || "$REF" == "refs/heads/DO-implementation" || "${{ github.event.workflow_run.head_branch }}" == "DO-implementation" ]]; then
             echo "ENV_NAME=dev" >> $GITHUB_ENV
             echo "CLUSTER_NAME=sendr-k8s-dev" >> $GITHUB_ENV
             echo "KUSTOMIZE_PATH=k8s/overlays/dev" >> $GITHUB_ENV
             echo "TF_VAR_FILE=environments/dev/terraform.tfvars" >> $GITHUB_ENV
             echo "TF_BACKEND=environments/dev/backend.conf" >> $GITHUB_ENV
-          elif [[ "$REF" =~ ^refs/heads/release/ ]]; then
+          elif [[ "$REF" =~ ^refs/heads/release/ ]] || [[ "${{ github.event.workflow_run.head_branch }}" =~ ^release/ ]]; then
             echo "ENV_NAME=staging" >> $GITHUB_ENV
             echo "CLUSTER_NAME=sendr-k8s-staging" >> $GITHUB_ENV
             echo "KUSTOMIZE_PATH=k8s/overlays/staging" >> $GITHUB_ENV
@@ -68,8 +68,9 @@ jobs:
       - name: Update Kustomize Image Tags
         run: |
           cd ${{ env.KUSTOMIZE_PATH }}
-          kustomize edit set image ${{ env.REGISTRY }}/backend=${{ env.REGISTRY }}/backend:sha-${GITHUB_SHA}
-          kustomize edit set image ${{ env.REGISTRY }}/frontend=${{ env.REGISTRY }}/frontend:sha-${GITHUB_SHA}
+          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
+          kustomize edit set image ${{ env.REGISTRY }}/backend=${{ env.REGISTRY }}/backend:sha-$SHA
+          kustomize edit set image ${{ env.REGISTRY }}/frontend=${{ env.REGISTRY }}/frontend:sha-$SHA
         continue-on-error: true
 
       - name: Wait for Traefik LoadBalancer IP
@@ -103,17 +104,10 @@ jobs:
         with:
           terraform_version: 1.5.0 
 
-      - name: Generate GitHub App Token for Terraform
-        id: generate-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.GH_APP_ID }}
-          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-
       - name: Set TF_VAR_ghcr_token
         run: |
-          echo "TF_VAR_ghcr_token=${{ steps.generate-token.outputs.token }}" >> $GITHUB_ENV
-          echo "TF_VAR_ghcr_username=x-access-token" >> $GITHUB_ENV
+          echo "TF_VAR_ghcr_token=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+          echo "TF_VAR_ghcr_username=kamilPiHub" >> $GITHUB_ENV
 
       - name: Terraform Init & Apply (DNS Update)
         working-directory: ./terraform
