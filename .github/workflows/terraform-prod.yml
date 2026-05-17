@@ -34,6 +34,16 @@ jobs:
         with:
           terraform_version: 1.5.0 
 
+      - name: Generate GitHub App Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+      - name: Set TF_VAR_ghcr_token
+        run: echo "TF_VAR_ghcr_token=${{ steps.generate-token.outputs.token }}" >> $GITHUB_ENV
+
       - name: Terraform Init (PROD)
         id: init
         run: terraform init -backend-config=environments/prod/backend.conf

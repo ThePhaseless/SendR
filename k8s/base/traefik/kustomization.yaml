@@ -6,5 +6,6 @@ resources:
   - ingressclass.yaml
   - clusterrole.yaml
   - clusterrolebinding.yaml
+  - pvc.yaml
   - deployment.yaml
   - service.yaml

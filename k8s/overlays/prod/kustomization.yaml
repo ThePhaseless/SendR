@@ -6,6 +6,8 @@ bases:
 patches:
   - path: backend-image-tag.yaml
   - path: frontend-image-tag.yaml
+  - path: backend-patch.yaml
+  - path: domain-patch.yaml
 replicas:
   - name: sendr-backend
     count: 3

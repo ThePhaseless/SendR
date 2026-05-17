@@ -43,3 +43,10 @@ variable "kubernetes_version" {
   type        = string
   default     = ""
 }
+
+variable "ghcr_token" {
+  description = "GitHub App Token for GHCR authentication"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

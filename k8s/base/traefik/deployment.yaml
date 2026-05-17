@@ -46,4 +46,5 @@ spec:
               memory: 256Mi
       volumes:
         - name: acme
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: traefik-acme
