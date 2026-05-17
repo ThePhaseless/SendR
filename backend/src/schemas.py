@@ -3,6 +3,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
 
+from models import ScanStatus  # noqa: TC001
+
 
 def _serialize_utc_datetime(value: datetime) -> str:
     normalized = (
@@ -91,6 +93,7 @@ class FileUploadResponse(ApiModel):
     has_email_recipients: bool = False
     viewer_is_owner: bool = False
     group_download_only: bool = False
+    scan_status: ScanStatus | None = None
 
 
 class FileListResponse(ApiModel):
@@ -128,6 +131,7 @@ class MultiFileUploadResponse(ApiModel):
     total_size_bytes: int
     title: str | None = None
     description: str | None = None
+    scan_status: ScanStatus | None = None
 
 
 class UploadGroupInfoResponse(ApiModel):
@@ -143,6 +147,7 @@ class UploadGroupInfoResponse(ApiModel):
     title: str | None = None
     description: str | None = None
     viewer_is_owner: bool = False
+    scan_status: ScanStatus | None = None
 
 
 class TransferInfoResponse(ApiModel):

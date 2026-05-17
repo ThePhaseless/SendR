@@ -1,22 +1,48 @@
+import asyncio
 import secrets
 from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from fastapi import HTTPException, status
 from httpx import ASGITransport, AsyncClient
 from sqlmodel import col, select
 
 import database
 from app import app
-from models import FileUpload, utcnow
+from config import settings
+from models import AuthToken, FileUpload, ScanStatus, User, UserTier, require_id, utcnow
 from routers.altcha import verify_altcha_payload
+from scan_queue import (
+    claim_next_queued_upload,
+    clean_upload_path,
+    process_file_scan,
+    quarantine_upload_path,
+)
+from security import create_access_token, hash_token
 from tasks import cleanup_expired_files
 from tests.utils import get_error_message
 
 
 def _noop_altcha():
     return
+
+
+async def _create_user_headers(tier: UserTier) -> dict[str, str]:
+    async with database.async_session() as session:
+        user = User(email=f"test-{tier.value}@sendr.local", tier=tier)
+        session.add(user)
+        await session.flush()
+
+        raw_token, expires_at = create_access_token(user.id)
+        auth_token = AuthToken(
+            user_id=require_id(user.id, "User"),
+            token=hash_token(raw_token),
+            expires_at=expires_at,
+        )
+        session.add(auth_token)
+        await session.commit()
+
+    return {"Authorization": f"Bearer {raw_token}"}
 
 
 @pytest.fixture(autouse=True)
@@ -27,29 +53,144 @@ def override_altcha():
 
 
 @pytest.mark.asyncio
-async def test_upload_rejects_detected_malware(
+async def test_upload_is_queued_and_download_blocks_until_scan_completes(
     auth_headers: dict[str, str], monkeypatch: pytest.MonkeyPatch
 ):
-    def _raise_detected(_content: bytes) -> None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Upload blocked: malware detected (Test-Signature).",
-        )
-
-    monkeypatch.setattr("routers.files.scan_upload_content", _raise_detected)
+    monkeypatch.setattr(settings, "VIRUS_SCANNING_ENABLED", True)
+    monkeypatch.setattr(
+        "scan_queue.scan_upload_result",
+        lambda _content: (ScanStatus.clean, None),
+    )
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
-        response = await client.post(
+        upload_response = await client.post(
             "/api/files/upload",
-            files=[("file", ("infected.txt", b"bad", "text/plain"))],
+            files=[("file", ("queued.txt", b"safe", "text/plain"))],
             data={"altcha": "{}"},
             headers=auth_headers,
         )
 
-    assert response.status_code == 400
-    assert "malware detected" in get_error_message(response)
+        assert upload_response.status_code == 201
+        upload_payload = upload_response.json()
+        assert upload_payload["scan_status"] == "queued"
+
+        download_token = upload_payload["download_url"].split("/")[-1]
+        info_response = await client.get(f"/api/files/{download_token}/info")
+        assert info_response.status_code == 200
+        assert info_response.json()["scan_status"] == "queued"
+
+        blocked_download = await client.get(f"/api/files/{download_token}")
+        assert blocked_download.status_code == 409
+        assert blocked_download.json()["detail"]["code"] == "FILE_SCAN_PENDING"
+
+    async with database.async_session() as session:
+        result = await session.exec(select(FileUpload))
+        file_upload = result.one()
+        file_id = require_id(file_upload.id, "FileUpload")
+        queued_path = quarantine_upload_path(file_upload.stored_filename)
+        clean_path = clean_upload_path(file_upload.stored_filename)
+        assert queued_path.exists()
+        assert not clean_path.exists()
+
+    await process_file_scan(file_id)
+
+    async with database.async_session() as session:
+        refreshed = await session.get(FileUpload, file_id)
+        assert refreshed is not None
+        assert refreshed.scan_status == ScanStatus.clean
+        assert refreshed.scan_completed_at is not None
+        assert clean_upload_path(refreshed.stored_filename).exists()
+        assert not quarantine_upload_path(refreshed.stored_filename).exists()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        ready_info = await client.get(f"/api/files/{download_token}/info")
+        assert ready_info.status_code == 200
+        assert ready_info.json()["scan_status"] == "clean"
+
+        download_response = await client.get(f"/api/files/{download_token}")
+        assert download_response.status_code == 200
+        assert download_response.content == b"safe"
+
+
+@pytest.mark.asyncio
+async def test_infected_scan_deletes_payload_and_notifies_registered_owner(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    headers = await _create_user_headers(UserTier.free)
+    monkeypatch.setattr(settings, "VIRUS_SCANNING_ENABLED", True)
+    monkeypatch.setattr(
+        "scan_queue.scan_upload_result",
+        lambda _content: (ScanStatus.infected, "Test-Signature"),
+    )
+
+    notifications: list[tuple[str, list[str]]] = []
+
+    async def _capture_notification(
+        recipient_email: str, file_names: list[str]
+    ) -> None:
+        notifications.append((recipient_email, file_names))
+
+    monkeypatch.setattr(
+        "scan_queue.send_malware_detected_email",
+        _capture_notification,
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        upload_response = await client.post(
+            "/api/files/upload",
+            files=[("file", ("infected.txt", b"bad", "text/plain"))],
+            data={"altcha": "{}"},
+            headers=headers,
+        )
+
+        assert upload_response.status_code == 201
+        upload_payload = upload_response.json()
+        assert upload_payload["scan_status"] == "queued"
+        download_token = upload_payload["download_url"].split("/")[-1]
+
+    async with database.async_session() as session:
+        result = await session.exec(select(FileUpload))
+        file_upload = result.one()
+        file_id = require_id(file_upload.id, "FileUpload")
+        queued_path = quarantine_upload_path(file_upload.stored_filename)
+        assert queued_path.exists()
+
+    await process_file_scan(file_id)
+
+    async with database.async_session() as session:
+        refreshed = await session.get(FileUpload, file_id)
+        assert refreshed is not None
+        assert refreshed.scan_status == ScanStatus.infected
+        assert refreshed.scan_failure_code == "FILE_BLOCKED_MALWARE"
+        assert refreshed.malware_signature == "Test-Signature"
+        assert refreshed.scan_completed_at is not None
+        assert not quarantine_upload_path(refreshed.stored_filename).exists()
+        assert not clean_upload_path(refreshed.stored_filename).exists()
+
+    assert notifications == [
+        (
+            "test-free@sendr.local",
+            ["infected.txt"],
+        )
+    ]
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        info_response = await client.get(f"/api/files/{download_token}/info")
+        assert info_response.status_code == 200
+        assert info_response.json()["scan_status"] == "infected"
+
+        blocked_download = await client.get(f"/api/files/{download_token}")
+        assert blocked_download.status_code == 410
+        assert blocked_download.json()["detail"]["code"] == "FILE_BLOCKED_MALWARE"
+        assert "malware" in get_error_message(blocked_download).lower()
 
 
 @pytest.mark.asyncio
@@ -96,6 +237,64 @@ async def test_upload_response_serializes_expiry_as_utc(auth_headers: dict[str, 
 
     assert response.status_code == 201
     assert response.json()["expires_at"].endswith("Z")
+
+
+@pytest.mark.asyncio
+async def test_claim_next_queued_upload_only_claims_once_under_concurrency() -> None:
+    async with database.async_session() as session:
+        file_upload = FileUpload(
+            original_filename="queued-race.txt",
+            stored_filename="queued-race.bin",
+            content_hash="race-hash",
+            file_size_bytes=4,
+            download_token=secrets.token_urlsafe(8),
+            upload_group="group-race",
+            expires_at=utcnow() + timedelta(days=1),
+            scan_status=ScanStatus.queued,
+            scan_enqueued_at=utcnow(),
+        )
+        session.add(file_upload)
+        await session.commit()
+        file_id = require_id(file_upload.id, "FileUpload")
+
+    async with (
+        database.async_session() as first_session,
+        database.async_session() as second_session,
+    ):
+        first_claim, second_claim = await asyncio.gather(
+            claim_next_queued_upload(first_session),
+            claim_next_queued_upload(second_session),
+        )
+
+    claims = [claim for claim in (first_claim, second_claim) if claim is not None]
+    assert len(claims) == 1
+    assert require_id(claims[0].id, "FileUpload") == file_id
+    assert claims[0].scan_status == ScanStatus.scanning
+
+    async with database.async_session() as session:
+        refreshed = await session.get(FileUpload, file_id)
+        assert refreshed is not None
+        assert refreshed.scan_status == ScanStatus.scanning
+        assert refreshed.scan_started_at is not None
+
+
+@pytest.mark.asyncio
+async def test_upload_leaves_no_staging_files_after_success(
+    auth_headers: dict[str, str],
+):
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post(
+            "/api/files/upload",
+            files=[("file", ("staged.txt", b"payload", "text/plain"))],
+            data={"altcha": "{}"},
+            headers=auth_headers,
+        )
+
+    assert response.status_code == 201
+    assert list(Path(database.settings.UPLOAD_DIR).glob("*.part")) == []
+    assert list(Path(database.settings.UPLOAD_QUARANTINE_DIR).glob("*.part")) == []
 
 
 @pytest.mark.asyncio
@@ -146,3 +345,31 @@ async def test_cleanup_removes_shared_file_only_after_last_active_reference() ->
         assert cleaned == 1
 
     assert not shared_path.exists()
+
+
+@pytest.mark.asyncio
+async def test_cleanup_removes_expired_quarantined_file() -> None:
+    stored_filename = "queued-upload.bin"
+    quarantined_path = Path(database.settings.UPLOAD_QUARANTINE_DIR) / stored_filename
+    quarantined_path.write_bytes(b"queued")
+    expired_at = utcnow() - timedelta(days=database.settings.FILE_GRACE_PERIOD_DAYS + 1)
+
+    async with database.async_session() as session:
+        file_upload = FileUpload(
+            original_filename="queued.txt",
+            stored_filename=stored_filename,
+            content_hash="queued123",
+            file_size_bytes=6,
+            download_token=secrets.token_urlsafe(8),
+            upload_group="group-queued",
+            expires_at=expired_at,
+            scan_status=ScanStatus.queued,
+            scan_enqueued_at=utcnow(),
+        )
+        session.add(file_upload)
+        await session.commit()
+
+        cleaned = await cleanup_expired_files(session)
+
+    assert cleaned == 1
+    assert not quarantined_path.exists()

@@ -10,15 +10,10 @@ import type {
   AdminUserListResponse,
   AdminUserLoginListResponse,
   AdminUserStatsResponse,
-  DownloadFileApiFilesDownloadTokenGetParams,
-  DownloadGroupApiFilesGroupUploadGroupDownloadGetParams,
   DownloadStatsResponse,
   FileListResponse,
   FileUploadResponse,
   GetChallengeApiAltchaChallengeGet200,
-  GetFileInfoApiFilesDownloadTokenInfoGetParams,
-  GetGroupInfoApiFilesGroupUploadGroupGetParams,
-  GetRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetParams,
   LimitsResponse,
   ListUsersApiAdminUsersGetParams,
   QuotaResponse,
@@ -189,44 +184,24 @@ export function getQuotaApiAuthQuotaGetResource(options?: OrvalHttpResourceOptio
  * @experimental httpResource is experimental (Angular v19.2+)
  */
 export function getGroupInfoApiFilesGroupUploadGroupGetResource(uploadGroup: Signal<string>,
-    params: Signal<GetGroupInfoApiFilesGroupUploadGroupGetParams> | undefined,
   options: OrvalHttpResourceOptions<UploadGroupInfoResponse, unknown> & { defaultValue: NoInfer<UploadGroupInfoResponse> }): HttpResourceRef<UploadGroupInfoResponse>;
 export function getGroupInfoApiFilesGroupUploadGroupGetResource(uploadGroup: Signal<string>,
-    params?: Signal<GetGroupInfoApiFilesGroupUploadGroupGetParams>,
   options?: OrvalHttpResourceOptions<UploadGroupInfoResponse, unknown>): HttpResourceRef<UploadGroupInfoResponse | undefined>;
 export function getGroupInfoApiFilesGroupUploadGroupGetResource(uploadGroup: Signal<string>,
-    params?: Signal<GetGroupInfoApiFilesGroupUploadGroupGetParams>,
   options?: OrvalHttpResourceOptions<UploadGroupInfoResponse, unknown>): HttpResourceRef<UploadGroupInfoResponse | undefined> {
-  return httpResource<UploadGroupInfoResponse>(() => {
-    
-    const request = ({
-      url: `/api/files/group/${uploadGroup()}`,
-      params: filterParams(params?.() ?? {}, new Set<string>([]))
-    });
-    return request;
-  }, options);
+  return httpResource<UploadGroupInfoResponse>(() => `/api/files/group/${uploadGroup()}`, options);
 }
 
 /**
  * @experimental httpResource is experimental (Angular v19.2+)
  */
 export function downloadGroupApiFilesGroupUploadGroupDownloadGetResource(uploadGroup: Signal<string>,
-    params: Signal<DownloadGroupApiFilesGroupUploadGroupDownloadGetParams> | undefined,
   options: OrvalHttpResourceOptions<unknown, unknown> & { defaultValue: NoInfer<unknown> }): HttpResourceRef<unknown>;
 export function downloadGroupApiFilesGroupUploadGroupDownloadGetResource(uploadGroup: Signal<string>,
-    params?: Signal<DownloadGroupApiFilesGroupUploadGroupDownloadGetParams>,
   options?: OrvalHttpResourceOptions<unknown, unknown>): HttpResourceRef<unknown | undefined>;
 export function downloadGroupApiFilesGroupUploadGroupDownloadGetResource(uploadGroup: Signal<string>,
-    params?: Signal<DownloadGroupApiFilesGroupUploadGroupDownloadGetParams>,
   options?: OrvalHttpResourceOptions<unknown, unknown>): HttpResourceRef<unknown | undefined> {
-  return httpResource<unknown>(() => {
-    
-    const request = ({
-      url: `/api/files/group/${uploadGroup()}/download`,
-      params: filterParams(params?.() ?? {}, new Set<string>([]))
-    });
-    return request;
-  }, options);
+  return httpResource<unknown>(() => `/api/files/group/${uploadGroup()}/download`, options);
 }
 
 /**
@@ -242,44 +217,24 @@ export function listFilesApiFilesGetResource(options?: OrvalHttpResourceOptions<
  * @experimental httpResource is experimental (Angular v19.2+)
  */
 export function downloadFileApiFilesDownloadTokenGetResource(downloadToken: Signal<string>,
-    params: Signal<DownloadFileApiFilesDownloadTokenGetParams> | undefined,
   options: OrvalHttpResourceOptions<unknown, unknown> & { defaultValue: NoInfer<unknown> }): HttpResourceRef<unknown>;
 export function downloadFileApiFilesDownloadTokenGetResource(downloadToken: Signal<string>,
-    params?: Signal<DownloadFileApiFilesDownloadTokenGetParams>,
   options?: OrvalHttpResourceOptions<unknown, unknown>): HttpResourceRef<unknown | undefined>;
 export function downloadFileApiFilesDownloadTokenGetResource(downloadToken: Signal<string>,
-    params?: Signal<DownloadFileApiFilesDownloadTokenGetParams>,
   options?: OrvalHttpResourceOptions<unknown, unknown>): HttpResourceRef<unknown | undefined> {
-  return httpResource<unknown>(() => {
-    
-    const request = ({
-      url: `/api/files/${downloadToken()}`,
-      params: filterParams(params?.() ?? {}, new Set<string>([]))
-    });
-    return request;
-  }, options);
+  return httpResource<unknown>(() => `/api/files/${downloadToken()}`, options);
 }
 
 /**
  * @experimental httpResource is experimental (Angular v19.2+)
  */
 export function getFileInfoApiFilesDownloadTokenInfoGetResource(downloadToken: Signal<string>,
-    params: Signal<GetFileInfoApiFilesDownloadTokenInfoGetParams> | undefined,
   options: OrvalHttpResourceOptions<FileUploadResponse, unknown> & { defaultValue: NoInfer<FileUploadResponse> }): HttpResourceRef<FileUploadResponse>;
 export function getFileInfoApiFilesDownloadTokenInfoGetResource(downloadToken: Signal<string>,
-    params?: Signal<GetFileInfoApiFilesDownloadTokenInfoGetParams>,
   options?: OrvalHttpResourceOptions<FileUploadResponse, unknown>): HttpResourceRef<FileUploadResponse | undefined>;
 export function getFileInfoApiFilesDownloadTokenInfoGetResource(downloadToken: Signal<string>,
-    params?: Signal<GetFileInfoApiFilesDownloadTokenInfoGetParams>,
   options?: OrvalHttpResourceOptions<FileUploadResponse, unknown>): HttpResourceRef<FileUploadResponse | undefined> {
-  return httpResource<FileUploadResponse>(() => {
-    
-    const request = ({
-      url: `/api/files/${downloadToken()}/info`,
-      params: filterParams(params?.() ?? {}, new Set<string>([]))
-    });
-    return request;
-  }, options);
+  return httpResource<FileUploadResponse>(() => `/api/files/${downloadToken()}/info`, options);
 }
 
 /**
@@ -310,22 +265,12 @@ export function getGroupStatsApiFilesGroupUploadGroupStatsGetResource(uploadGrou
  * @experimental httpResource is experimental (Angular v19.2+)
  */
 export function getRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetResource(uploadGroup: Signal<string>,
-    params: Signal<GetRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetParams> | undefined,
   options: OrvalHttpResourceOptions<RecipientStatsResponse, unknown> & { defaultValue: NoInfer<RecipientStatsResponse> }): HttpResourceRef<RecipientStatsResponse>;
 export function getRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetResource(uploadGroup: Signal<string>,
-    params?: Signal<GetRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetParams>,
   options?: OrvalHttpResourceOptions<RecipientStatsResponse, unknown>): HttpResourceRef<RecipientStatsResponse | undefined>;
 export function getRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetResource(uploadGroup: Signal<string>,
-    params?: Signal<GetRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetParams>,
   options?: OrvalHttpResourceOptions<RecipientStatsResponse, unknown>): HttpResourceRef<RecipientStatsResponse | undefined> {
-  return httpResource<RecipientStatsResponse>(() => {
-    
-    const request = ({
-      url: `/api/files/group/${uploadGroup()}/recipient-stats`,
-      params: filterParams(params?.() ?? {}, new Set<string>([]))
-    });
-    return request;
-  }, options);
+  return httpResource<RecipientStatsResponse>(() => `/api/files/group/${uploadGroup()}/recipient-stats`, options);
 }
 
 /**

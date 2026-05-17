@@ -53,12 +53,16 @@ async def init_tables(tmp_path: Path) -> AsyncIterator[None]:
 
     # Use a temp upload dir per test
     original_upload_dir = settings.UPLOAD_DIR
+    original_quarantine_dir = settings.UPLOAD_QUARANTINE_DIR
     settings.UPLOAD_DIR = str(tmp_path / "uploads")
+    settings.UPLOAD_QUARANTINE_DIR = str(tmp_path / "uploads-quarantine")
     Path(settings.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
+    Path(settings.UPLOAD_QUARANTINE_DIR).mkdir(parents=True, exist_ok=True)
 
     yield
 
     settings.UPLOAD_DIR = original_upload_dir
+    settings.UPLOAD_QUARANTINE_DIR = original_quarantine_dir
     async with _test_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.drop_all)
 

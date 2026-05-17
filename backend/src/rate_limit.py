@@ -41,6 +41,11 @@ auth_rate_limiter = RateLimiter(
     window_seconds=60,
 )
 
+download_rate_limiter = RateLimiter(
+    max_requests=settings.DOWNLOAD_RATE_LIMIT_PER_MINUTE,
+    window_seconds=60,
+)
+
 
 def get_client_ip(request: Request) -> str:
     """Extract client IP from request, considering proxy headers."""

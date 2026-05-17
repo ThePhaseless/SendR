@@ -846,22 +846,6 @@
             }
           },
           {
-            "name": "password",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Password"
-            }
-          },
-          {
             "name": "X-Access-Token",
             "in": "header",
             "required": false,
@@ -981,22 +965,6 @@
             }
           },
           {
-            "name": "password",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Password"
-            }
-          },
-          {
             "name": "X-Access-Token",
             "in": "header",
             "required": false,
@@ -1084,22 +1052,6 @@
             }
           },
           {
-            "name": "password",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Password"
-            }
-          },
-          {
             "name": "X-Access-Token",
             "in": "header",
             "required": false,
@@ -1158,22 +1110,6 @@
             "schema": {
               "type": "string",
               "title": "Download Token"
-            }
-          },
-          {
-            "name": "password",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Password"
             }
           },
           {
@@ -1673,22 +1609,6 @@
             "schema": {
               "type": "string",
               "title": "Upload Group"
-            }
-          },
-          {
-            "name": "password",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Password"
             }
           },
           {
@@ -2642,6 +2562,16 @@
             "type": "boolean",
             "title": "Group Download Only",
             "default": false
+          },
+          "scan_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScanStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -2871,6 +2801,16 @@
               }
             ],
             "title": "Description"
+          },
+          "scan_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScanStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -3106,6 +3046,17 @@
         ],
         "title": "RecipientStatsResponse"
       },
+      "ScanStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "scanning",
+          "clean",
+          "infected",
+          "failed"
+        ],
+        "title": "ScanStatus"
+      },
       "SessionResponse": {
         "properties": {
           "expires_at": {
@@ -3245,6 +3196,16 @@
             "type": "boolean",
             "title": "Viewer Is Owner",
             "default": false
+          },
+          "scan_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScanStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",

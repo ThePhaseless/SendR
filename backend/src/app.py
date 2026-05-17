@@ -6,22 +6,19 @@ from hmac import compare_digest
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
-from alembic.config import Config
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import create_engine, inspect
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from alembic import command
 from config import settings
+from db_migrations import run_migrations_for_url
 from errors import http_exception_handler
 from routers import admin, altcha, auth, dev, files, subscription
 
 logger = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).resolve().parent.parent.parent.parent / "static"
-_ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -29,34 +26,8 @@ if TYPE_CHECKING:
     from starlette.responses import Response as StarletteResponse
 
 
-def _sync_database_url(url: str) -> str:
-    return url.replace("+aiosqlite", "").replace("+asyncpg", "")
-
-
 def run_migrations() -> None:
-    logger.info("Running database migrations...")
-    cfg = Config(str(_ALEMBIC_INI))
-    sync_url = _sync_database_url(settings.DATABASE_URL)
-    cfg.set_main_option("sqlalchemy.url", sync_url)
-    cfg.attributes["skip_logging_config"] = True
-
-    engine = create_engine(sync_url)
-    try:
-        with engine.connect() as connection:
-            inspector = inspect(connection)
-            tables = set(inspector.get_table_names())
-            if "user" in tables and "alembic_version" not in tables:
-                logger.info(
-                    "Existing schema without Alembic tracking detected; "
-                    "stamping at head."
-                )
-                command.stamp(cfg, "head")
-            else:
-                command.upgrade(cfg, "head")
-    finally:
-        engine.dispose()
-
-    logger.info("Database migrations complete.")
+    run_migrations_for_url(settings.DATABASE_URL)
 
 
 @asynccontextmanager
@@ -123,7 +94,7 @@ app.include_router(auth.router)
 app.include_router(files.router)
 app.include_router(subscription.router)
 
-if settings.is_local:
+if settings.is_local and settings.DEV_LOGIN_ENABLED:
     app.include_router(dev.router)
 
 if STATIC_DIR.is_dir():

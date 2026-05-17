@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./sendr.db"
     SECRET_KEY: str = ""
     UPLOAD_DIR: str = "./uploads"
+    UPLOAD_QUARANTINE_DIR: str = "./uploads-quarantine"
     # CORS
     ALLOWED_ORIGINS: list[str] = Field(default_factory=_default_allowed_origins)
     TRUSTED_PROXY_IPS: list[str] = Field(default_factory=_default_trusted_proxy_ips)
@@ -80,8 +81,10 @@ class Settings(BaseSettings):
     SESSION_COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
     CSRF_COOKIE_NAME: str = "sendr_csrf"
     CSRF_HEADER_NAME: str = "X-CSRF-Token"
+    DEV_LOGIN_ENABLED: bool = False
     # Rate limiting
     AUTH_RATE_LIMIT_PER_MINUTE: int = 5
+    DOWNLOAD_RATE_LIMIT_PER_MINUTE: int = 120
     # Altcha proof-of-work CAPTCHA
     ALTCHA_HMAC_KEY: str = Field(default_factory=_generate_hmac_key)
     ALTCHA_MAX_NUMBER: int = 100000
@@ -94,6 +97,7 @@ class Settings(BaseSettings):
     CLAMAV_HOST: str = "127.0.0.1"
     CLAMAV_PORT: int = 3310
     CLAMAV_UNIX_SOCKET: str = "/var/run/clamav/clamd.ctl"
+    SCAN_QUEUE_POLL_SECONDS: float = 1.0
 
     model_config = {"env_prefix": "SENDR_"}
 
@@ -136,6 +140,11 @@ class Settings(BaseSettings):
         if self.is_production and not self.smtp_configured:
             raise ValueError(
                 "SENDR_SMTP_HOST must be set when SENDR_ENVIRONMENT is 'production'"
+            )
+        if self.DEV_LOGIN_ENABLED and not self.is_local:
+            raise ValueError(
+                "SENDR_DEV_LOGIN_ENABLED can only be enabled when "
+                "SENDR_ENVIRONMENT is 'local'"
             )
         return self
 

@@ -19,6 +19,7 @@ from models import (
     UserTier,
     require_id,
 )
+from rate_limit import download_rate_limiter
 from routers.altcha import verify_altcha_payload
 from security import create_access_token, hash_token
 from tests.utils import get_error_message
@@ -229,11 +230,19 @@ async def test_password_protected_download(free_headers: dict[str, str]):
         assert dl_resp.status_code == 403
 
         # Download with wrong password should fail
-        dl_resp = await client.get(f"/api/files/{token}?password=wrong")
+        dl_resp = await client.get(
+            f"/api/files/{token}", headers={"X-Access-Token": "wrong"}
+        )
+        assert dl_resp.status_code == 403
+
+        # Query-string passwords are ignored on purpose
+        dl_resp = await client.get(f"/api/files/{token}?password=mypass")
         assert dl_resp.status_code == 403
 
         # Download with correct password should succeed
-        dl_resp = await client.get(f"/api/files/{token}?password=mypass")
+        dl_resp = await client.get(
+            f"/api/files/{token}", headers={"X-Access-Token": "mypass"}
+        )
         assert dl_resp.status_code == 200
 
 
@@ -269,7 +278,9 @@ async def test_public_flag_hides_details_but_requires_password_to_download(
         assert info_resp.json()["original_filename"] == "public.txt"
 
         # Download with correct password should work
-        dl_resp = await client.get(f"/api/files/{token}?password=bonus")
+        dl_resp = await client.get(
+            f"/api/files/{token}", headers={"X-Access-Token": "bonus"}
+        )
         assert dl_resp.status_code == 200
 
 
@@ -305,7 +316,8 @@ async def test_group_password_protected_download(free_headers: dict[str, str]):
 
         # With correct password
         dl_resp = await client.get(
-            f"/api/files/group/{group}/download?password=teampass"
+            f"/api/files/group/{group}/download",
+            headers={"X-Access-Token": "teampass"},
         )
         assert dl_resp.status_code == 200
 
@@ -892,7 +904,8 @@ async def test_recipient_stats_returns_email_download_counts(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         response = await client.get(
-            f"/api/files/group/{upload_group}/recipient-stats?password={raw_token}"
+            f"/api/files/group/{upload_group}/recipient-stats",
+            headers={"X-Access-Token": raw_token},
         )
 
     assert response.status_code == 200
@@ -951,7 +964,8 @@ async def test_group_zip_recipient_stats_count_one_download_event(
         assert download_resp.status_code == 200
 
         response = await client.get(
-            f"/api/files/group/{upload_group}/recipient-stats?password={raw_token}"
+            f"/api/files/group/{upload_group}/recipient-stats",
+            headers={"X-Access-Token": raw_token},
         )
 
     assert response.status_code == 200
@@ -959,6 +973,44 @@ async def test_group_zip_recipient_stats_count_one_download_event(
         "downloads": [{"email": "recipient@example.com", "download_count": 1}],
         "total_downloads": 1,
     }
+
+
+@pytest.mark.asyncio
+async def test_download_rate_limit_applies_to_file_downloads(
+    free_headers: dict[str, str],
+):
+    """File downloads should be throttled independently from auth rate limits."""
+    original_limit = download_rate_limiter.max_requests
+    download_rate_limiter.max_requests = 2
+    download_rate_limiter.reset()
+
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            upload_resp = await client.post(
+                "/api/files/upload",
+                files=[("file", ("limited.txt", b"data", "text/plain"))],
+                data={"altcha": json.dumps({"mock": True}), "is_public": "true"},
+                headers=free_headers,
+            )
+            assert upload_resp.status_code == 201
+            token = upload_resp.json()["download_url"].split("/")[-1]
+
+            first_resp = await client.get(f"/api/files/{token}")
+            second_resp = await client.get(f"/api/files/{token}")
+            third_resp = await client.get(f"/api/files/{token}")
+
+        assert first_resp.status_code == 200
+        assert second_resp.status_code == 200
+        assert third_resp.status_code == 429
+        assert (
+            get_error_message(third_resp)
+            == "Too many requests. Please try again later."
+        )
+    finally:
+        download_rate_limiter.max_requests = original_limit
+        download_rate_limiter.reset()
 
 
 @pytest.mark.asyncio

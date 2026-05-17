@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { FileUploadResponse } from './fileUploadResponse';
+import type { ScanStatus } from './scanStatus';
 
 export interface MultiFileUploadResponse {
   files: FileUploadResponse[];
@@ -13,4 +14,5 @@ export interface MultiFileUploadResponse {
   total_size_bytes: number;
   title?: string | null;
   description?: string | null;
+  scan_status?: ScanStatus | null;
 }
