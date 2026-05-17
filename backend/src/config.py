@@ -20,7 +20,7 @@ def _default_trusted_proxy_ips() -> list[str]:
 
 
 class Settings(BaseSettings):
-    ENVIRONMENT: Literal["local", "production", "test"] = "local"
+    ENVIRONMENT: Literal["local", "dev", "staging", "production", "test"] = "local"
     DATABASE_URL: str = "sqlite+aiosqlite:///./sendr.db"
     SECRET_KEY: str = ""
     UPLOAD_DIR: str = "./uploads"
@@ -139,7 +139,7 @@ class Settings(BaseSettings):
 
     @property
     def is_production(self) -> bool:
-        return self.ENVIRONMENT == "production"
+        return self.ENVIRONMENT in ("dev", "staging", "production")
 
     @property
     def smtp_configured(self) -> bool:
