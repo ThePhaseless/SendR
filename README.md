@@ -34,7 +34,8 @@ SENDR_ENVIRONMENT=production uv run uvicorn src.app:app --host 0.0.0.0 --port 80
 The backend now defaults to production-safe behavior:
 
 - `SENDR_ENVIRONMENT=production` keeps CAPTCHA enabled, sends verification codes via the configured SMTP server, and disables dev-only routes
-- `SENDR_ENVIRONMENT=local` is an explicit local-dev opt-in that logs verification codes to the terminal instead of sending email, relaxes CAPTCHA verification, and enables dev-only routes
+- `SENDR_ENVIRONMENT=local` is an explicit local-dev opt-in that logs verification codes to the terminal instead of sending email and relaxes CAPTCHA verification
+- `SENDR_DEV_LOGIN_ENABLED=true` must be set alongside `SENDR_ENVIRONMENT=local` before the backend exposes `/api/dev/login/*`
 
 **Frontend:**
 
@@ -114,16 +115,43 @@ docker build -t sendr-api ./backend
 docker build -t sendr-frontend ./frontend
 ```
 
-The frontend nginx container proxies `/api/*` requests to the backend. Set the `API_URL` environment variable on the frontend container to point to the backend (defaults to `http://api:8000`):
+The frontend image builds the production backend origin into [frontend/src/environments/environment.prod.ts](frontend/src/environments/environment.prod.ts). Local development still uses the Angular dev-server proxy from [frontend/proxy.conf.json](frontend/proxy.conf.json), but the production nginx container only serves the SPA and does not proxy `/api/*` requests:
 
 ```bash
 docker run -p 8000:8000 sendr-api
-docker run -p 8080:80 -e API_URL=http://sendr-api:8000 sendr-frontend
+docker run -p 8080:8080 sendr-frontend
 ```
 
-For production, put your own reverse proxy or load balancer in front of the two services.
+For production, put your own reverse proxy or load balancer in front of the two services and make sure the backend origin hardcoded in [frontend/src/environments/environment.prod.ts](frontend/src/environments/environment.prod.ts) matches the public API host.
 
 By default, the backend does not allow any cross-origin browser frontend origins. `SENDR_ALLOWED_ORIGINS` can be provided either as a JSON array or as a comma-separated list when you intentionally deploy the frontend and API on different origins.
+
+### Async Scan Topology
+
+If malware scanning is enabled, run three separate runtime roles:
+
+- the SendR API process
+- the SendR scan worker process
+- a separate ClamAV daemon that updates its own signatures independently of the backend image
+
+The API and worker should use the same backend image and point at the same database, clean upload directory, and quarantine upload directory. The application does not start the worker automatically from the API process.
+
+Minimum shared state for the API and worker:
+
+- `SENDR_DATABASE_URL`
+- `SENDR_UPLOAD_DIR`
+- `SENDR_UPLOAD_QUARANTINE_DIR`
+- `SENDR_VIRUS_SCANNING_ENABLED=true`
+- the same ClamAV endpoint, usually `SENDR_CLAMAV_HOST` and `SENDR_CLAMAV_PORT` or a shared `SENDR_CLAMAV_UNIX_SOCKET`
+
+Typical backend process commands inside the backend container are:
+
+```bash
+uvicorn app:app --host 0.0.0.0 --port 8000
+python src/scan_worker.py
+```
+
+The important operational rule is that ClamAV stays outside the backend image. That lets virus definitions update on their own schedule without rebuilding or redeploying the SendR application image.
 
 ## API Documentation
 
