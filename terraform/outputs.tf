@@ -3,7 +3,7 @@ output "kubernetes_cluster_id" {
 }
 
 output "database_host" {
-  value = module.database.db_host
+  value = module.database.database_host
 }
 
 output "vpc_id" {
