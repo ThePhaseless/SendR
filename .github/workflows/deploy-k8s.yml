@@ -1,6 +1,9 @@
 name: 'Deploy K8s & Update DNS'
 
 on:
+  push:
+    branches:
+      - DO-implementation
   workflow_run:
     workflows: ["Build and Publish Docker Images"]
     types:
@@ -20,7 +23,7 @@ jobs:
   deploy-and-dns:
     name: 'Deploy to Kubernetes and Update DNS'
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
     
     steps:
       - name: Checkout repository
