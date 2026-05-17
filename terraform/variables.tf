@@ -45,10 +45,17 @@ variable "kubernetes_version" {
 }
 
 variable "ghcr_token" {
-  description = "GitHub App Token for GHCR authentication"
+  description = "GitHub Token for GHCR authentication"
   type        = string
   sensitive   = true
   default     = ""
+}
+
+variable "ghcr_username" {
+  description = "GitHub username for GHCR authentication"
+  type        = string
+  sensitive   = true
+  default     = "kamilPiHub"
 }
 
 variable "app_secret_key" {

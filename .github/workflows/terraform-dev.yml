@@ -40,7 +40,9 @@ jobs:
           terraform_version: 1.5.0
 
       - name: Set TF_VAR_ghcr_token
-        run: echo "TF_VAR_ghcr_token=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+        run: |
+          echo "TF_VAR_ghcr_token=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+          echo "TF_VAR_ghcr_username=${{ github.actor }}" >> $GITHUB_ENV
 
       - name: Terraform Format
         id: fmt
