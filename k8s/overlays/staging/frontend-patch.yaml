@@ -10,4 +10,4 @@ spec:
         - name: frontend
           env:
             - name: API_URL
-              value: "https://api.staging.sendr.email"
+              value: "http://sendr-backend:8000"
