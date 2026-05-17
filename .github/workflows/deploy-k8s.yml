@@ -1,0 +1,104 @@
+name: 'Deploy K8s & Update DNS'
+
+on:
+  workflow_run:
+    workflows: ["Build and Publish Docker Images"]
+    types:
+      - completed
+  workflow_dispatch:
+
+env:
+  TF_LOG: INFO
+  TF_VAR_do_token: ${{ secrets.DO_PAT }}
+  TF_VAR_spaces_access_key: ${{ secrets.SPACES_ACCESS_KEY }}
+  TF_VAR_spaces_secret_key: ${{ secrets.SPACES_SECRET_KEY }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}
+  DO_PAT: ${{ secrets.DO_PAT }}
+
+jobs:
+  deploy-and-dns:
+    name: 'Deploy to Kubernetes and Update DNS'
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DO_PAT }}
+
+      - name: Set Environment
+        id: set-env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == "refs/heads/DO-implementation" ]]; then
+            echo "ENV_NAME=dev" >> $GITHUB_ENV
+            echo "CLUSTER_NAME=sendr-k8s-dev" >> $GITHUB_ENV
+            echo "KUSTOMIZE_PATH=k8s/overlays/dev" >> $GITHUB_ENV
+            echo "TF_VAR_FILE=environments/dev/terraform.tfvars" >> $GITHUB_ENV
+            echo "TF_BACKEND=environments/dev/backend.conf" >> $GITHUB_ENV
+          else
+            echo "ENV_NAME=prod" >> $GITHUB_ENV
+            echo "CLUSTER_NAME=sendr-k8s-prod" >> $GITHUB_ENV
+            echo "KUSTOMIZE_PATH=k8s/overlays/prod" >> $GITHUB_ENV
+            echo "TF_VAR_FILE=environments/prod/terraform.tfvars" >> $GITHUB_ENV
+            echo "TF_BACKEND=environments/prod/backend.conf" >> $GITHUB_ENV
+          fi
+
+      - name: Save DigitalOcean Kubeconfig
+        run: doctl kubernetes cluster kubeconfig save ${{ env.CLUSTER_NAME }}
+
+      - name: Update Kustomize Image Tags
+        run: |
+          cd ${{ env.KUSTOMIZE_PATH }}
+          kustomize edit set image ghcr.io/kamilpihub/sendr/backend=ghcr.io/kamilpihub/sendr/backend:sha-${GITHUB_SHA::7}
+          kustomize edit set image ghcr.io/kamilpihub/sendr/frontend=ghcr.io/kamilpihub/sendr/frontend:sha-${GITHUB_SHA::7}
+        continue-on-error: true
+
+      - name: Deploy to Kubernetes
+        run: kubectl apply -k ${{ env.KUSTOMIZE_PATH }}
+
+      - name: Wait for Traefik LoadBalancer IP
+        id: get-ip
+        run: |
+          echo "Waiting for Traefik LoadBalancer to get an external IP..."
+          for i in {1..30}; do
+            IP=$(kubectl get svc traefik -n traefik -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            if [ -n "$IP" ]; then
+              echo "Found IP: $IP"
+              echo "TRAEFIK_IP=$IP" >> $GITHUB_ENV
+              echo "TF_VAR_ingress_ip=$IP" >> $GITHUB_ENV
+              break
+            fi
+            echo "Still waiting..."
+            sleep 10
+          done
+          if [ -z "$IP" ]; then
+            echo "Failed to get Traefik IP"
+            exit 1
+          fi
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0 
+
+      - name: Generate GitHub App Token for Terraform
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+      - name: Set TF_VAR_ghcr_token
+        run: echo "TF_VAR_ghcr_token=${{ steps.generate-token.outputs.token }}" >> $GITHUB_ENV
+
+      - name: Terraform Init & Apply (DNS Update)
+        working-directory: ./terraform
+        run: |
+          terraform init -backend-config=${{ env.TF_BACKEND }}
+          # Apply specifically updates the infrastructure with the new TF_VAR_ingress_ip
+          terraform apply -auto-approve -var-file=${{ env.TF_VAR_FILE }}
