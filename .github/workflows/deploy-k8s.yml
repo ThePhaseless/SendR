@@ -18,6 +18,7 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}
   DO_PAT: ${{ secrets.DO_PAT }}
+  REGISTRY: ghcr.io/kamilpihub/sendr
 
 jobs:
   deploy-and-dns:
@@ -37,26 +38,27 @@ jobs:
       - name: Set Environment
         id: set-env
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == "refs/heads/DO-implementation" ]]; then
+          REF="${{ github.ref }}"
+          if [[ "$REF" == "refs/heads/main" || "$REF" == "refs/heads/DO-implementation" ]]; then
             echo "ENV_NAME=dev" >> $GITHUB_ENV
             echo "CLUSTER_NAME=sendr-k8s-dev" >> $GITHUB_ENV
             echo "KUSTOMIZE_PATH=k8s/overlays/dev" >> $GITHUB_ENV
             echo "TF_VAR_FILE=environments/dev/terraform.tfvars" >> $GITHUB_ENV
             echo "TF_BACKEND=environments/dev/backend.conf" >> $GITHUB_ENV
-          elif [[ "${{ github.ref }}" == refs/heads/release/* ]]; then
+          elif [[ "$REF" =~ ^refs/heads/release/ ]]; then
             echo "ENV_NAME=staging" >> $GITHUB_ENV
             echo "CLUSTER_NAME=sendr-k8s-staging" >> $GITHUB_ENV
             echo "KUSTOMIZE_PATH=k8s/overlays/staging" >> $GITHUB_ENV
             echo "TF_VAR_FILE=environments/staging/terraform.tfvars" >> $GITHUB_ENV
             echo "TF_BACKEND=environments/staging/backend.conf" >> $GITHUB_ENV
-          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+          elif [[ "$REF" =~ ^refs/tags/v ]]; then
             echo "ENV_NAME=prod" >> $GITHUB_ENV
             echo "CLUSTER_NAME=sendr-k8s-prod" >> $GITHUB_ENV
             echo "KUSTOMIZE_PATH=k8s/overlays/prod" >> $GITHUB_ENV
             echo "TF_VAR_FILE=environments/prod/terraform.tfvars" >> $GITHUB_ENV
             echo "TF_BACKEND=environments/prod/backend.conf" >> $GITHUB_ENV
           else
-            echo "Unknown ref: ${{ github.ref }}. Skipping deployment."
+            echo "Unknown ref: $REF. Skipping deployment."
             exit 1
           fi
 
@@ -66,8 +68,8 @@ jobs:
       - name: Update Kustomize Image Tags
         run: |
           cd ${{ env.KUSTOMIZE_PATH }}
-          kustomize edit set image ghcr.io/kamilpihub/sendr/backend=ghcr.io/kamilpihub/sendr/backend:sha-${GITHUB_SHA::7}
-          kustomize edit set image ghcr.io/kamilpihub/sendr/frontend=ghcr.io/kamilpihub/sendr/frontend:sha-${GITHUB_SHA::7}
+          kustomize edit set image ${{ env.REGISTRY }}/backend=${{ env.REGISTRY }}/backend:sha-${GITHUB_SHA::7}
+          kustomize edit set image ${{ env.REGISTRY }}/frontend=${{ env.REGISTRY }}/frontend:sha-${GITHUB_SHA::7}
         continue-on-error: true
 
       - name: Wait for Traefik LoadBalancer IP
@@ -92,6 +94,12 @@ jobs:
 
       - name: Deploy to Kubernetes
         run: kubectl apply -k ${{ env.KUSTOMIZE_PATH }}
+
+      - name: Cleanup existing secret to avoid Terraform conflict
+        run: |
+          # Usuwamy sekrety przed apply, aby Terraform mógł je stworzyć na nowo bez konfliktów
+          kubectl delete secret sendr-secrets -n sendr --ignore-not-found
+          kubectl delete secret ghcr-secret -n sendr --ignore-not-found
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3

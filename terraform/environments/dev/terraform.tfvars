@@ -14,8 +14,8 @@ spaces_secret_key = "gI8UphnLZzRr1xMH/hBLK89a5WO2NeWLPRscCewuTlE"
 k8s_node_count = 2
 k8s_auto_scale = false
 
-# --- OPCJONALNE SMTP (Zamiast Resend) ---
-# smtp_host     = "smtp.gmail.com"
-# smtp_port     = "587"
-# smtp_user     = "user@gmail.com"
-# smtp_password = "app-password"
+
+smtp_host = "smtp.resend.com"
+smtp_port = 587
+smtp_user = "resend"
+smtp_password = "re_92bt93Vp_KmKJqvaYtuTDPwmXw2Hgrh1U"

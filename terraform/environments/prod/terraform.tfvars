@@ -14,3 +14,8 @@ spaces_secret_key = "gI8UphnLZzRr1xMH/hBLK89a5WO2NeWLPRscCewuTlE"
 k8s_auto_scale = true
 k8s_min_nodes  = 3
 k8s_max_nodes  = 10
+
+smtp_host = "smtp.resend.com"
+smtp_port = 587
+smtp_user = "resend"
+smtp_password = "re_92bt93Vp_KmKJqvaYtuTDPwmXw2Hgrh1U"
