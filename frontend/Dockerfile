@@ -8,7 +8,7 @@ RUN bun install --frozen-lockfile
 COPY . ./
 RUN bunx ng build --configuration production
 
-FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:4c18337659c90a01627f2e152b7c89524521c82dcedb255dc83d3689642b0803
+FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:f10950a9f4e6f4dd28634c51bdb74ed4b0a76d50f4424516bc715e7b9188dd37
 
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY docker-entrypoint.sh /custom-entrypoint.sh
