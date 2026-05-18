@@ -63,7 +63,12 @@ jobs:
     name: Apply
     runs-on: ubuntu-24.04
     needs: validate
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || github.ref_type == 'tag'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (vars.SENDR_AUTO_DEPLOY_ENABLED == 'true' &&
+        (github.ref == 'refs/heads/main' ||
+          startsWith(github.ref, 'refs/heads/release/') ||
+          github.ref_type == 'tag'))
     environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_type == 'tag' && 'prod' || startsWith(github.ref, 'refs/heads/release/') && 'staging' || 'dev' }}
     defaults:
       run:
