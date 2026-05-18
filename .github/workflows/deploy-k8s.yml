@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - DO-implementation
       - release/**
     tags:
       - v*
@@ -13,6 +12,9 @@ on:
       - Build and Publish Docker Images
     types:
       - completed
+    branches:
+      - main
+      - release/**
   workflow_dispatch:
     inputs:
       environment:
@@ -37,7 +39,16 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-24.04
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' &&
+        (github.ref == 'refs/heads/main' ||
+          startsWith(github.ref, 'refs/heads/release/') ||
+          github.ref_type == 'tag')) ||
+      (github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        (github.event.workflow_run.head_branch == 'main' ||
+          startsWith(github.event.workflow_run.head_branch, 'release/')))
     environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_type == 'tag' && 'prod' || startsWith(github.ref, 'refs/heads/release/') && 'staging' || 'dev' }}
     env:
       DEPLOY_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_type == 'tag' && 'prod' || startsWith(github.ref, 'refs/heads/release/') && 'staging' || startsWith(github.event.workflow_run.head_branch, 'release/') && 'staging' || 'dev' }}

@@ -1,78 +1,59 @@
-# Przewodnik po Środowiskach i CI/CD (GitHub Actions)
+# Przewodnik po środowiskach i CI/CD
 
-Ten dokument wyjaśnia, jak dokładnie działa automatyzacja (CI/CD) w naszym projekcie i w jaki sposób kod zamienia się na fizyczną infrastrukturę w DigitalOcean w zależności od środowiska.
+Ten dokument opisuje, kiedy GitHub Actions waliduje kod Terraform, kiedy wykonuje realne zmiany w DigitalOcean i które gałęzie są traktowane jako wdrożeniowe.
 
-Wdrożyliśmy architekturę opartą na **GitOps**. Oznacza to, że to co znajduje się w Git, bezpośrednio odzwierciedla to, co działa na serwerach, a zmiany w chmurze są wprowadzane **wyłącznie** poprzez akcje na odpowiednich gałęziach.
+Infrastruktura jest obsługiwana przez jeden wspólny workflow Terraform: `.github/workflows/terraform.yml`. Wdrożenie aplikacji do Kubernetes obsługuje `.github/workflows/deploy-k8s.yml`, a obrazy kontenerów buduje `.github/workflows/docker-publish.yml`.
 
-Nasz projekt jest podzielony na 3 niezależne środowiska. Każde środowisko ma swój własny stan infrastruktury i własny dedykowany potok (pipeline) w folderze `.github/workflows/`.
+## Gałęzie i środowiska
 
----
+| Źródło uruchomienia | Środowisko | Zachowanie |
+| --- | --- | --- |
+| Pull request z plikami Terraform | brak | `terraform fmt`, `terraform init -backend=false`, `terraform validate` |
+| `DO-implementation` | brak | walidacja Terraform bez `apply` i bez deploymentu Kubernetes |
+| `main` | `dev` | Terraform `apply`, build obrazów i deployment Kubernetes |
+| `release/**` | `staging` | Terraform `apply`, build obrazów i deployment Kubernetes |
+| tag `v*` | `prod` | Terraform `apply` i deployment wydania produkcyjnego |
+| `workflow_dispatch` | wybrane ręcznie | ręczne uruchomienie dla `dev`, `staging` albo `prod` |
 
-## 🟢 Środowisko DEV (Development)
-**Plik rurociągu:** `terraform-dev.yml`
+`DO-implementation` jest gałęzią integracyjną. Może budować obrazy i walidować Terraform, ale nie powinna zużywać sekretów produkcyjnych ani wykonywać zmian w chmurze.
 
-Jest to środowisko robocze, najczęściej aktualizowane. Służy programistom do ciągłego testowania nowych funkcji.
+## DEV
 
-* **Kiedy Terraform generuje PLAN (sprawdza zmiany):** 
-  Za każdym razem, gdy otworzysz Pull Request do gałęzi `main`. Potok sprawdza, co nowy kod zmieniłby w chmurze i wrzuca wynik (Plan) jako komentarz pod Pull Requestem.
-* **Kiedy Terraform robi APPLY (wdraża na żywo):** 
-  Za każdym razem, gdy zatwierdzisz Pull Request i zmergujesz kod do gałęzi `main` (lub gdy po prostu zrobisz bezpośredni `git push origin main`).
+Środowisko `dev` jest aktualizowane z gałęzi `main` albo ręcznie przez `workflow_dispatch` z opcją `dev`.
 
-**Jak opublikować na DEV?**
 ```bash
 git checkout main
 git add .
-git commit -m "feat: nowa baza"
+git commit -m "feat: update infrastructure"
 git push origin main
 ```
 
----
+## STAGING
 
-## 🟡 Środowisko STAGING (Przedprodukcja)
-**Plik rurociągu:** `terraform-staging.yml`
+Środowisko `staging` jest aktualizowane z gałęzi `release/**` albo ręcznie przez `workflow_dispatch` z opcją `staging`.
 
-To środowisko służy jako "próba generalna" przed produkcją. Powinno być odzwierciedleniem 1:1 tego, co chcemy wypuścić dla klientów. Służy dla testerów (QA) i ostatecznej akceptacji.
-
-* **Kiedy uruchamia się potok STAGING:**
-  Gdy wypychasz kod na gałąź, która w nazwie zaczyna się od słowa `release/` (np. `release/v1.2.0`).
-
-**Jak opublikować na STAGING?**
-Gdy kod na `main` jest gotowy do testów akceptacyjnych:
 ```bash
 git checkout main
 git checkout -b release/v1.2.0
 git push origin release/v1.2.0
 ```
-*(GitHub Actions wykryje przedrostek `release/` i automatycznie utworzy klastry dla Stagingu)*
 
----
+## PROD
 
-## 🔴 Środowisko PROD (Produkcja)
-**Plik rurociągu:** `terraform-prod.yml`
+Środowisko `prod` jest aktualizowane przez tagi `v*` albo ręcznie przez `workflow_dispatch` z opcją `prod`.
 
-Docelowe, na żywo działające środowisko z prawdziwymi klientami. Jest ono maksymalnie restrykcyjne. Żaden bezpośredni `git push` nie podmieni tutaj infrastruktury.
-
-* **Kiedy uruchamia się potok PROD:**
-  Wdrażanie na produkcję jest wyzwalane **wyłącznie poprzez tworzenie Tagów** zaczynających się od litery `v` (np. `v1.2.0`). Tagi to swoiste "zakładki" w historii Git, które oznaczają konkretne, nienaruszalne wydanie.
-
-**Jak opublikować na PROD?**
-Gdy środowisko STAGING przeszło testy i chcesz wypuścić nową wersję do klientów:
 ```bash
 git checkout main
-# Zrób merge z gałęzi release (jeśli tam były poprawki)
 git tag v1.2.0
 git push origin v1.2.0
 ```
-*(GitHub Actions zignoruje zwykłe pliki i gałęzie. Wykryje tylko fakt wrzucenia Taga 'v1.2.0' i wdroży ten dokładnie zamrożony kod prosto do środowiska produkcyjnego).*
 
----
+## Manual approval
 
-### Dodatkowa Ochrona Produkcji (Manual Approval)
-Potok `terraform-prod.yml` posiada specjalny atrybut `environment: production`. 
-Dzięki temu, nawet jeśli ktoś wrzuci tag `v...`, możesz w ustawieniach repozytorium GitHub wymusić **Manual Approval**.
+Workflowy używają środowisk GitHub `dev`, `staging` i `prod`. Dla produkcji warto włączyć ręczne zatwierdzanie:
 
-**Jak to włączyć?**
-1. Na GitHubie wejdź w **Settings** -> **Environments**.
-2. Kliknij **New environment** i nazwij je `production`.
-3. Zaznacz pole **Required reviewers** i dodaj siebie.
-4. Od teraz, gdy rurociąg produkcyjny wystartuje, zatrzyma się w połowie i wyśle Ci maila. Dopiero po kliknięciu przez Ciebie "Approve" na GitHubie, Terraform zmodyfikuje infrastrukturę chmurową.
+1. Wejdź w **Settings** -> **Environments**.
+2. Utwórz albo otwórz środowisko `prod`.
+3. Włącz **Required reviewers** i dodaj osoby odpowiedzialne za wydania.
+
+Po tej zmianie deployment produkcyjny zatrzyma się przed wykonaniem kroków wymagających zatwierdzenia.
