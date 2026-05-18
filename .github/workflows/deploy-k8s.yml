@@ -111,7 +111,11 @@ jobs:
           SENDR_SPACES_REGION: fra1
         run: |
           kubectl apply -f k8s/base/namespace.yaml
-          export SENDR_ENVIRONMENT="$ENV_NAME"
+          if [ "$ENV_NAME" = "prod" ]; then
+            export SENDR_ENVIRONMENT="production"
+          else
+            export SENDR_ENVIRONMENT="$ENV_NAME"
+          fi
           bash ./scripts/create-secrets.sh "$ENV_NAME"
 
       - name: Deploy manifests
