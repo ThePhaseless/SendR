@@ -112,7 +112,7 @@ jobs:
         run: |
           kubectl apply -f k8s/base/namespace.yaml
           export SENDR_ENVIRONMENT="$ENV_NAME"
-          ./scripts/create-secrets.sh "$ENV_NAME"
+          bash ./scripts/create-secrets.sh "$ENV_NAME"
 
       - name: Deploy manifests
         run: |
