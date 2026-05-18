@@ -4,13 +4,15 @@ import logging
 import re
 import secrets
 import shutil
+import tempfile
 import threading
 import unicodedata
 import zipfile
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from datetime import datetime, timedelta
 from hashlib import sha256
 from hmac import compare_digest
+from pathlib import Path
 from queue import Full, Queue
 from typing import TYPE_CHECKING, Annotated, cast
 from urllib.parse import quote
@@ -25,7 +27,8 @@ from fastapi import (
     UploadFile,
     status,
 )
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from sqlalchemy import update
 from sqlmodel import col, func, or_, select
 
@@ -47,11 +50,11 @@ from models import (
 from rate_limit import download_rate_limiter, get_client_ip
 from routers.altcha import verify_altcha_payload
 from scan_queue import (
+    StoredUpload,
     aggregate_scan_status,
     discard_staged_uploads,
     discard_stored_uploads,
     finalize_staged_upload,
-    resolve_storage_path,
     stage_upload_file,
 )
 from schemas import (
@@ -72,14 +75,13 @@ from schemas import (
     UploadGroupInfoResponse,
 )
 from security import get_current_user, get_optional_user, hash_secret, verify_secret
+from storage import storage
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from _typeshed import ReadableBuffer
     from sqlmodel.ext.asyncio.session import AsyncSession
 
-    from scan_queue import StagedUpload, StoredUpload
+    from scan_queue import StagedUpload
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 logger = logging.getLogger(__name__)
@@ -163,7 +165,9 @@ class _QueuedZipWriter(io.RawIOBase):
                 continue
 
 
-def _stream_group_archive(files: list[tuple[Path, str]]):
+def _stream_group_archive(
+    files: list[tuple[Path, str]], cleanup: Callable[[], None] | None = None
+):
     output_queue: Queue[bytes | Exception | None] = Queue(maxsize=8)
     stop_event = threading.Event()
 
@@ -216,6 +220,8 @@ def _stream_group_archive(files: list[tuple[Path, str]]):
     finally:
         stop_event.set()
         worker.join(timeout=1)
+        if cleanup:
+            cleanup()
 
 
 def _get_limits(tier: UserTier) -> tuple[int, int]:
@@ -534,6 +540,41 @@ async def _store_upload_content(
     session: AsyncSession, staged_upload: StagedUpload
 ) -> StoredUpload:
     """Stage an upload and return its storage metadata and scan state."""
+    if settings.is_s3_configured and not settings.VIRUS_SCANNING_ENABLED:
+        result = await session.exec(
+            select(FileUpload.stored_filename)
+            .where(
+                FileUpload.content_hash == staged_upload.content_hash,
+                FileUpload.scan_status == ScanStatus.clean,
+                col(FileUpload.is_active).is_(True),
+            )
+            .order_by(col(FileUpload.created_at).desc())
+        )
+
+        for stored_filename in result.all():
+            if stored_filename and await storage.file_exists(stored_filename):
+                if staged_upload.temp_path.exists():
+                    staged_upload.temp_path.unlink()
+                return StoredUpload(
+                    stored_filename=stored_filename,
+                    content_hash=staged_upload.content_hash,
+                    file_size=staged_upload.file_size,
+                    scan_status=ScanStatus.clean,
+                    storage_path=None,
+                )
+
+        content = await run_in_threadpool(staged_upload.temp_path.read_bytes)
+        stored_filename = await storage.store_file(content)
+        if staged_upload.temp_path.exists():
+            staged_upload.temp_path.unlink()
+        return StoredUpload(
+            stored_filename=stored_filename,
+            content_hash=staged_upload.content_hash,
+            file_size=staged_upload.file_size,
+            scan_status=ScanStatus.clean,
+            storage_path=None,
+        )
+
     return await finalize_staged_upload(session, staged_upload)
 
 
@@ -543,6 +584,15 @@ async def _discard_pending_upload_artifacts(
 ) -> None:
     await discard_stored_uploads(stored_uploads)
     await discard_staged_uploads(staged_uploads)
+
+
+async def _ensure_stored_file_exists(stored_filename: str) -> None:
+    if await storage.file_exists(stored_filename):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="File not found in storage",
+    )
 
 
 def _get_password_limit(tier: UserTier) -> int:
@@ -1263,12 +1313,7 @@ async def download_group(
                 )
 
     if not _group_downloads_as_archive(files):
-        # Single file - serve directly
-        file_path = resolve_storage_path(files[0])
-        if not file_path.exists():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk"
-            )
+        await _ensure_stored_file_exists(files[0].stored_filename)
         await _consume_download_slot(
             session,
             files[0],
@@ -1286,6 +1331,19 @@ async def download_group(
             )
         )
         await session.commit()
+
+        s3_url = await storage.get_download_url(files[0].stored_filename)
+        if s3_url:
+            return RedirectResponse(url=s3_url)
+
+        if settings.is_s3_configured:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Could not create file download URL",
+            )
+
+        file_path = Path(settings.UPLOAD_DIR) / files[0].stored_filename
+
         return FileResponse(
             path=str(file_path),
             filename=files[0].original_filename,
@@ -1293,13 +1351,28 @@ async def download_group(
         )
 
     archive_files: list[tuple[Path, str]] = []
+    archive_temp_dir: tempfile.TemporaryDirectory[str] | None = None
+    if settings.is_s3_configured:
+        archive_temp_dir = tempfile.TemporaryDirectory(prefix="sendr-archive-")
+
     for f in files:
-        file_path = resolve_storage_path(f)
-        if not file_path.exists():
+        file_path = (
+            Path(archive_temp_dir.name) / f.stored_filename
+            if archive_temp_dir
+            else Path(settings.UPLOAD_DIR) / f.stored_filename
+        )
+        try:
+            if archive_temp_dir:
+                await storage.download_to_path(f.stored_filename, file_path)
+            else:
+                await _ensure_stored_file_exists(f.stored_filename)
+        except FileNotFoundError as exc:
+            if archive_temp_dir:
+                archive_temp_dir.cleanup()
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"File '{f.original_filename}' not found on disk",
-            )
+                detail=f"File '{f.original_filename}' not found in storage",
+            ) from exc
         archive_files.append((file_path, f.original_filename))
         await _consume_download_slot(
             session,
@@ -1325,7 +1398,9 @@ async def download_group(
         upload_group, group_settings.title if group_settings else None
     )
     return StreamingResponse(
-        _stream_group_archive(archive_files),
+        _stream_group_archive(
+            archive_files, archive_temp_dir.cleanup if archive_temp_dir else None
+        ),
         media_type="application/zip",
         headers={"Content-Disposition": _build_attachment_header(zip_name)},
     )
@@ -1453,11 +1528,7 @@ async def download_file(
                 status_code=status.HTTP_410_GONE, detail="Download limit reached"
             )
 
-    file_path = resolve_storage_path(file_upload)
-    if not file_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk"
-        )
+    await _ensure_stored_file_exists(file_upload.stored_filename)
 
     gs_result = await session.exec(
         select(UploadGroupSettings).where(
@@ -1483,6 +1554,18 @@ async def download_file(
         )
     )
     await session.commit()
+
+    s3_url = await storage.get_download_url(file_upload.stored_filename)
+    if s3_url:
+        return RedirectResponse(url=s3_url)
+
+    if settings.is_s3_configured:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not create file download URL",
+        )
+
+    file_path = Path(settings.UPLOAD_DIR) / file_upload.stored_filename
 
     return FileResponse(
         path=str(file_path),

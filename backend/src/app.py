@@ -17,8 +17,10 @@ from db_migrations import run_migrations_for_url
 from errors import http_exception_handler
 from routers import admin, altcha, auth, dev, files, subscription
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-STATIC_DIR = Path(__file__).resolve().parent.parent.parent.parent / "static"
+
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -86,6 +88,11 @@ async def enforce_cookie_csrf(
             )
 
     return await call_next(request)
+
+
+@app.get("/health", include_in_schema=False)
+async def health_check():
+    return {"status": "ok"}
 
 
 app.include_router(admin.router)

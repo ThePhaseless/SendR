@@ -20,7 +20,7 @@ def _default_trusted_proxy_ips() -> list[str]:
 
 
 class Settings(BaseSettings):
-    ENVIRONMENT: Literal["local", "production", "test"] = "test"
+    ENVIRONMENT: Literal["local", "dev", "staging", "production", "test"] = "local"
     DATABASE_URL: str = "sqlite+aiosqlite:///./sendr.db"
     SECRET_KEY: str = ""
     UPLOAD_DIR: str = "./uploads"
@@ -33,7 +33,8 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    SMTP_FROM: str = "noreply@sendr.app"
+    SMTP_FROM: str = "noreply@sendr.email"
+    RESEND_API_KEY: str = ""
     # File limits
     TEMPORARY_MAX_FILE_SIZE_MB: int = 100
     FREE_MAX_FILE_SIZE_MB: int = 1024
@@ -99,7 +100,28 @@ class Settings(BaseSettings):
     CLAMAV_UNIX_SOCKET: str = "/var/run/clamav/clamd.ctl"
     SCAN_QUEUE_POLL_SECONDS: float = 1.0
 
-    model_config = {"env_prefix": "SENDR_"}
+    # DigitalOcean Spaces (S3 compatible)
+    SPACES_ACCESS_KEY: str = ""
+    SPACES_SECRET_KEY: str = ""
+    SPACES_BUCKET_NAME: str = ""
+    SPACES_REGION: str = "fra1"
+
+    model_config = {
+        "env_prefix": "SENDR_",
+        "extra": "ignore",
+    }
+
+    @property
+    def spaces_endpoint(self) -> str:
+        return f"https://{self.SPACES_REGION}.digitaloceanspaces.com"
+
+    @property
+    def is_s3_configured(self) -> bool:
+        return bool(
+            self.SPACES_ACCESS_KEY
+            and self.SPACES_SECRET_KEY
+            and self.SPACES_BUCKET_NAME
+        )
 
     @field_validator("ALLOWED_ORIGINS", "TRUSTED_PROXY_IPS", mode="before")
     @classmethod
@@ -125,7 +147,7 @@ class Settings(BaseSettings):
 
     @property
     def is_production(self) -> bool:
-        return self.ENVIRONMENT == "production"
+        return self.ENVIRONMENT in ("dev", "staging", "production")
 
     @property
     def smtp_configured(self) -> bool:
@@ -133,13 +155,25 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_runtime_settings(self) -> Self:
-        if self.is_production and not self.SECRET_KEY:
+        if self.is_production:
+            if not self.SECRET_KEY:
+                raise ValueError(
+                    "SENDR_SECRET_KEY must be set outside local/test environments"
+                )
+            if not (self.smtp_configured or self.RESEND_API_KEY):
+                raise ValueError(
+                    "Either SENDR_SMTP_HOST or SENDR_RESEND_API_KEY must be set "
+                    "outside local/test environments"
+                )
+            if not self.is_s3_configured:
+                raise ValueError(
+                    "DigitalOcean Spaces settings must be set outside local/test "
+                    "environments"
+                )
+        if self.DEV_LOGIN_ENABLED and not self.is_local:
             raise ValueError(
-                "SENDR_SECRET_KEY must be set when SENDR_ENVIRONMENT is 'production'"
-            )
-        if self.is_production and not self.smtp_configured:
-            raise ValueError(
-                "SENDR_SMTP_HOST must be set when SENDR_ENVIRONMENT is 'production'"
+                "SENDR_DEV_LOGIN_ENABLED can only be enabled when "
+                "SENDR_ENVIRONMENT is 'local'"
             )
         if self.DEV_LOGIN_ENABLED and not self.is_local:
             raise ValueError(
@@ -151,4 +185,8 @@ class Settings(BaseSettings):
 
 settings = Settings()
 logger = logging.getLogger(__name__)
-logger.info("Configuration loaded: ENVIRONMENT=%s", settings.ENVIRONMENT)
+logger.info(
+    "Configuration loaded: ENVIRONMENT=%s, S3_CONFIGURED=%s",
+    settings.ENVIRONMENT,
+    settings.is_s3_configured,
+)

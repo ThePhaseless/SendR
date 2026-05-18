@@ -1,0 +1,94 @@
+name: Terraform
+
+on:
+  pull_request:
+    paths:
+      - terraform/**
+      - .github/workflows/terraform.yml
+  push:
+    branches:
+      - main
+      - DO-implementation
+      - release/**
+    tags:
+      - v*
+    paths:
+      - terraform/**
+      - .github/workflows/terraform.yml
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to plan/apply
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: dev
+
+permissions:
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: 1.15.3
+
+      - name: Format
+        run: terraform fmt -check -recursive
+
+      - name: Init without backend
+        run: terraform init -backend=false
+
+      - name: Validate
+        run: terraform validate -no-color
+
+  apply:
+    name: Apply
+    runs-on: ubuntu-24.04
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/') || github.ref_type == 'tag'
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_type == 'tag' && 'prod' || startsWith(github.ref, 'refs/heads/release/') && 'staging' || 'dev' }}
+    defaults:
+      run:
+        working-directory: terraform
+    env:
+      ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_type == 'tag' && 'prod' || startsWith(github.ref, 'refs/heads/release/') && 'staging' || 'dev' }}
+      TF_VAR_do_token: ${{ github.event_name == 'workflow_dispatch' && inputs.environment == 'prod' && secrets.PROD_DO_TOKEN || github.ref_type == 'tag' && secrets.PROD_DO_TOKEN || github.event_name == 'workflow_dispatch' && inputs.environment == 'staging' && secrets.STAGING_DO_TOKEN || startsWith(github.ref, 'refs/heads/release/') && secrets.STAGING_DO_TOKEN || secrets.DEV_DO_TOKEN }}
+      TF_VAR_spaces_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      TF_VAR_spaces_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: 1.15.3
+
+      - name: Init
+        run: terraform init -backend-config="environments/${ENVIRONMENT}/backend.conf"
+
+      - name: Plan
+        run: terraform plan -no-color -var-file="environments/${ENVIRONMENT}/terraform.tfvars.example" -out=tfplan
+
+      - name: Apply
+        run: terraform apply -auto-approve tfplan

@@ -11,8 +11,21 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
 
+def _make_async_url(url: str) -> str:
+    """Ensure the URL uses an async driver and compatible parameters for PostgreSQL."""
+    if url.startswith("postgresql+psycopg://"):
+        url = url.replace("postgresql+psycopg://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+    if url.startswith("postgresql+asyncpg://") and "sslmode=" in url:
+        url = url.replace("sslmode=", "ssl=", 1)
+
+    return url
+
+
 def build_async_engine(database_url: str, *, echo: bool = False) -> AsyncEngine:
-    return create_async_engine(database_url, echo=echo)
+    return create_async_engine(_make_async_url(database_url), echo=echo)
 
 
 def create_session_factory(

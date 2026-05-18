@@ -13,7 +13,12 @@ _ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
 
 
 def sync_database_url(url: str) -> str:
-    return url.replace("+aiosqlite", "").replace("+asyncpg", "")
+    return (
+        url.replace("sqlite+aiosqlite://", "sqlite://")
+        .replace("postgresql+asyncpg://", "postgresql://")
+        .replace("postgresql+psycopg://", "postgresql://")
+        .replace("ssl=", "sslmode=")
+    )
 
 
 def run_migrations_for_url(database_url: str) -> None:
@@ -23,7 +28,8 @@ def run_migrations_for_url(database_url: str) -> None:
     cfg.set_main_option("sqlalchemy.url", sync_url)
     cfg.attributes["skip_logging_config"] = True
 
-    engine = create_engine(sync_url)
+    connect_args = {"connect_timeout": 10} if sync_url.startswith("postgresql") else {}
+    engine = create_engine(sync_url, connect_args=connect_args)
     try:
         with engine.connect() as connection:
             inspector = inspect(connection)
