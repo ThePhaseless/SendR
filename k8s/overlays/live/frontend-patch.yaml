@@ -8,4 +8,6 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/thephaseless/sendr/frontend:latest
+          env:
+            - name: API_URL
+              value: "http://sendr-backend.sendr.svc.cluster.local:8000"

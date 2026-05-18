@@ -1,37 +1,43 @@
-# Infrastruktura jako Kod (IaC) - SendR
+# SendR Infrastructure
 
-Ten folder zawiera kod Terraform odpowiedzialny za zautomatyzowane budowanie i zarządzanie infrastrukturą chmurową na platformie DigitalOcean dla projektu SendR.
+This directory contains the Terraform configuration for the single live SendR deployment on DigitalOcean.
 
-## 🏗️ Co udało się dotychczas zbudować (Stan obecny)
+## Model
 
-Zaprojektowaliśmy w pełni modułową architekturę, zgodną z najlepszymi praktykami "Infrastruktury jako Kodu", gotową do zautomatyzowanego wdrożenia przez GitHub Actions. 
+SendR now has one cloud deployment named `live`. Local development still uses local services and `SENDR_ENVIRONMENT=local`, but the repository no longer models separate dev, staging, and production cloud environments.
 
-Oto podsumowanie zrealizowanych kroków:
+The live deployment currently reuses the original DigitalOcean resources that were first created for the earlier dev deployment. To avoid replacing the existing DOKS cluster, PostgreSQL database, VPC, and Spaces bucket, [terraform/environments/live/terraform.tfvars.example](environments/live/terraform.tfvars.example) sets:
 
-1. **Podział na środowiska (Environments):**
-   * Utworzono odseparowane środowiska `dev`, `staging` oraz `prod`.
-   * Stan infrastruktury (`.tfstate`) dla każdego środowiska jest bezpiecznie przechowywany w zdalnym buckecie (DO Spaces) w podfolderach.
+- `environment = "live"` for the logical deployment and DNS label.
+- `resource_suffix = "dev"` for existing physical resource names.
 
-2. **Zaprojektowano i wdrożono Moduły Chmurowe:**
-   * `network_vpc` - Zabezpieczona, prywatna sieć dla Klastra K8s i Bazy Danych.
-   * `database_postgres` - Zarządzalny klaster bazy danych PostgreSQL.
-   * `storage_spaces` - Bucket Object Storage dla plików użytkowników (S3 compatible).
-   * `kubernetes_doks` - Klaster DigitalOcean Kubernetes (DOKS), na którym działa aplikacja.
-   * `dns_domain` - Moduł przygotowany pod dynamiczne przypisywanie domen.
+Do not remove `resource_suffix = "dev"` unless you intentionally plan and execute a resource rename or migration.
 
-3. **Zabezpieczenia i Stabilność:**
-   * Kod zwalidowany i sformatowany.
-   * Wprowadzono `.gitignore` zabezpieczający przed wyciekiem wrażliwych danych.
-   * Klaster Kubernetes posiada dynamiczne pobieranie wersji z bezpiecznym fallbackiem.
+## Modules
 
-4. **Migracja i Obsługa Cloud-Native:**
-   * Backend (FastAPI) wspiera teraz natywnie PostgreSQL i DigitalOcean Spaces.
-   * Stworzono skrypty migracyjne w `scripts/` do przenoszenia danych ze starego SQLite do nowej chmury.
+- `network_vpc` creates the private DigitalOcean VPC.
+- `kubernetes_doks` creates the DOKS cluster.
+- `database_postgres` creates PostgreSQL and allows the cluster as a trusted source.
+- `storage_spaces` creates the Spaces bucket for uploaded files.
+- `dns_domain` points live DNS records at the Traefik load balancer.
 
-## 🚀 Następne Kroki (TODO)
+## Validation
 
-* [ ] **Konteneryzacja:** Budowa obrazów Docker dla frontendu i backendu.
-* [ ] **Rejestr Obrazów:** Konfiguracja GitHub Container Registry (GHCR).
-* [ ] **Kubernetes Manifests:** Przygotowanie plików Kustomize do wdrożenia aplikacji na klaster.
-* [ ] **Ingress & TLS:** Wdrożenie Traefika z certyfikatami Let's Encrypt.
-* [ ] **Domeny:** Ostateczne przypięcie domeny `sendr.com` do IP klastra.
+Run static validation without cloud credentials:
+
+```bash
+cd terraform
+mise x terraform@latest -- terraform fmt -check -recursive
+mise x terraform@latest -- terraform init -backend=false -no-color
+mise x terraform@latest -- terraform validate -no-color
+```
+
+Run an authenticated plan only with the live backend and reviewed credentials. Include the current Traefik IP when DNS records already exist:
+
+```bash
+cd terraform
+mise x terraform@latest -- terraform init -backend-config="environments/live/backend.conf" -reconfigure -no-color
+mise x terraform@latest -- terraform plan -no-color -var-file="environments/live/terraform.tfvars.example" -var="ingress_ip=$TRAEFIK_IP"
+```
+
+A safe live plan must not replace the DOKS cluster, PostgreSQL database, VPC, or Spaces bucket. DNS changes should only rename or point live records.

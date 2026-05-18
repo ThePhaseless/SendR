@@ -48,12 +48,12 @@ SendR follows a classic client-server architecture, split into two independently
 - **Frontend** — an Angular single-page application served by an nginx web server
 - **Backend** — a Python REST API built with FastAPI
 
-The two services communicate exclusively through a well-defined HTTP API. The frontend never accesses the database directly. In local development, the Angular dev server proxies relative `/api/*` requests to the backend. In production, the built SPA calls the backend origin configured in [frontend/src/environments/environment.prod.ts](frontend/src/environments/environment.prod.ts) directly, and nginx only serves static frontend assets.
+The two services communicate exclusively through a well-defined HTTP API. The frontend never accesses the database directly. In local development, the Angular dev server proxies relative `/api/*` requests to the backend. In the live Kubernetes deployment, the built SPA keeps relative `/api/*` calls and nginx proxies them to the backend service through the runtime `API_URL` environment variable.
 
 > **Architecture Summary**
 > **Local dev:** **Frontend** (Angular dev server) → **/api/\* proxy** → **Backend** (FastAPI) → **Database** (SQLite)
 >
-> **Production:** **Frontend** (Angular + nginx) → **Backend origin from environment.prod.ts** → **Backend** (FastAPI) → **Database** (SQLite)
+> **Live:** **Frontend** (Angular + nginx) → **/api/* nginx proxy** → **Backend** (FastAPI) → **PostgreSQL + Spaces**
 
 ### Frontend
 
@@ -168,7 +168,7 @@ SendR uses environment variables to control runtime behaviour. The table below d
 - `SENDR_DEV_LOGIN_ENABLED` (default `false`): Exposes `/api/dev/login/*` only when this is `true` and `SENDR_ENVIRONMENT=local`. Never enable outside local dev.
 - `SENDR_ALLOWED_ORIGINS`: Comma-separated list or JSON array of allowed CORS origins. Required when frontend and API are on different origins.
 - SMTP settings: SMTP host, port, and credentials required for production email delivery. Not needed in local mode.
-- Frontend production API origin: configured at build time in [frontend/src/environments/environment.prod.ts](frontend/src/environments/environment.prod.ts). Update that file before building if your public API host is different.
+- Frontend live API origin: [frontend/src/environments/environment.prod.ts](frontend/src/environments/environment.prod.ts) keeps a relative API base, and nginx receives the upstream backend URL through `API_URL` at runtime.
 
 > **💡 In local development mode (`SENDR_ENVIRONMENT=local`), verification codes are printed to the server log instead of being sent by email, and CAPTCHA verification is relaxed. Set `SENDR_DEV_LOGIN_ENABLED=true` only when you explicitly want dev-login shortcuts.**
 

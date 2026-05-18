@@ -5,8 +5,14 @@ variable "do_token" {
 }
 
 variable "environment" {
-  description = "Environment name (e.g. dev, staging, prod)"
+  description = "Logical deployment name. The live deployment uses this for DNS."
   type        = string
+}
+
+variable "resource_suffix" {
+  description = "Existing physical resource suffix to preserve during deployment renames. Leave empty to use environment."
+  type        = string
+  default     = ""
 }
 
 variable "region" {

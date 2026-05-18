@@ -1,12 +1,16 @@
+locals {
+  resource_suffix = var.resource_suffix != "" ? var.resource_suffix : var.environment
+}
+
 module "network" {
   source      = "./modules/network_vpc"
-  environment = var.environment
+  environment = local.resource_suffix
   region      = var.region
 }
 
 module "kubernetes" {
   source             = "./modules/kubernetes_doks"
-  environment        = var.environment
+  environment        = local.resource_suffix
   region             = var.region
   vpc_uuid           = module.network.vpc_id
   kubernetes_version = var.kubernetes_version
@@ -18,7 +22,7 @@ module "kubernetes" {
 
 module "database" {
   source         = "./modules/database_postgres"
-  environment    = var.environment
+  environment    = local.resource_suffix
   region         = var.region
   vpc_uuid       = module.network.vpc_id
   k8s_cluster_id = module.kubernetes.cluster_id
@@ -26,7 +30,7 @@ module "database" {
 
 module "storage" {
   source      = "./modules/storage_spaces"
-  environment = var.environment
+  environment = local.resource_suffix
   region      = var.region
 }
 

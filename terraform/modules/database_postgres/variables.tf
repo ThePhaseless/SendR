@@ -1,5 +1,5 @@
 variable "environment" {
-  description = "The environment name (e.g. dev, staging, prod)"
+  description = "Physical deployment suffix used in DigitalOcean resource names"
   type        = string
 }
 

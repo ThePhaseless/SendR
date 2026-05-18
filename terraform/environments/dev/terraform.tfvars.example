@@ -1,5 +1,0 @@
-environment    = "dev"
-region         = "fra1"
-domain_name    = "sendr.email"
-k8s_node_count = 2
-k8s_auto_scale = false

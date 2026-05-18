@@ -3,7 +3,6 @@ resource "digitalocean_spaces_bucket" "app_storage" {
   region = var.region
   acl    = "private"
 
-  # Blokada przed przypadkowym zniszczeniem (na dev ustawione na false, na prod warto dać true)
   lifecycle {
     prevent_destroy = false
   }

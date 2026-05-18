@@ -1,11 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sendr-backend
+  name: sendr-frontend
   namespace: sendr
 spec:
   template:
     spec:
       containers:
-        - name: backend
-          image: ghcr.io/thephaseless/sendr/backend:latest
+        - name: frontend
+          image: ghcr.io/thephaseless/sendr/frontend:latest

@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Usage: ./scripts/create-secrets.sh <env> (dev|staging|prod)
+# Usage: ./scripts/create-secrets.sh <deployment-name>
 
 set -euo pipefail
 
-ENV=${1:-dev}
+DEPLOYMENT=${1:-live}
 NAMESPACE=sendr
+RUNTIME_ENVIRONMENT=${SENDR_ENVIRONMENT:-production}
 
 : "${SENDR_DATABASE_URL:?Set SENDR_DATABASE_URL}"
 : "${SENDR_SECRET_KEY:?Set SENDR_SECRET_KEY}"
@@ -17,11 +18,11 @@ if [ -z "${SENDR_SMTP_HOST:-}" ] && [ -z "${SENDR_RESEND_API_KEY:-}" ]; then
   exit 1
 fi
 
-echo "Creating secrets for environment: $ENV"
+echo "Creating secrets for deployment: $DEPLOYMENT"
 
 kubectl create secret generic sendr-secrets \
   --namespace="$NAMESPACE" \
-  --from-literal=environment="${SENDR_ENVIRONMENT:-$ENV}" \
+  --from-literal=environment="${RUNTIME_ENVIRONMENT}" \
   --from-literal=database-url="${SENDR_DATABASE_URL}" \
   --from-literal=secret-key="${SENDR_SECRET_KEY}" \
   --from-literal=smtp-host="${SENDR_SMTP_HOST:-}" \
@@ -35,4 +36,4 @@ kubectl create secret generic sendr-secrets \
   --from-literal=spaces-region="${SENDR_SPACES_REGION:-fra1}" \
   --dry-run=client -o yaml | kubectl apply -f -
 
-echo "Secrets created successfully for $ENV"
+echo "Secrets created successfully for $DEPLOYMENT"

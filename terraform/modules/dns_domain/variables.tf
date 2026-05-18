@@ -4,7 +4,7 @@ variable "domain_name" {
 }
 
 variable "environment" {
-  description = "The environment name (e.g., dev, staging, prod)"
+  description = "Logical deployment DNS label"
   type        = string
 }
 

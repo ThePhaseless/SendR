@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - main
-      - release/**
-    tags:
-      - v*
   workflow_run:
     workflows:
       - Build and Publish Docker Images
@@ -14,18 +11,7 @@ on:
       - completed
     branches:
       - main
-      - release/**
   workflow_dispatch:
-    inputs:
-      environment:
-        description: Environment to deploy
-        required: true
-        type: choice
-        options:
-          - dev
-          - staging
-          - prod
-        default: dev
 
 permissions:
   contents: read
@@ -43,18 +29,15 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (vars.SENDR_AUTO_DEPLOY_ENABLED == 'true' &&
         ((github.event_name == 'push' &&
-          (github.ref == 'refs/heads/main' ||
-            startsWith(github.ref, 'refs/heads/release/') ||
-            github.ref_type == 'tag')) ||
+          github.ref == 'refs/heads/main') ||
         (github.event_name == 'workflow_run' &&
           github.event.workflow_run.conclusion == 'success' &&
-          (github.event.workflow_run.head_branch == 'main' ||
-            startsWith(github.event.workflow_run.head_branch, 'release/')))))
-    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_type == 'tag' && 'prod' || startsWith(github.ref, 'refs/heads/release/') && 'staging' || 'dev' }}
+          github.event.workflow_run.head_branch == 'main')))
+    environment: live
     env:
-      DEPLOY_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_type == 'tag' && 'prod' || startsWith(github.ref, 'refs/heads/release/') && 'staging' || startsWith(github.event.workflow_run.head_branch, 'release/') && 'staging' || 'dev' }}
-      DIGITALOCEAN_ACCESS_TOKEN: ${{ github.event_name == 'workflow_dispatch' && inputs.environment == 'prod' && secrets.PROD_DO_TOKEN || github.ref_type == 'tag' && secrets.PROD_DO_TOKEN || github.event_name == 'workflow_dispatch' && inputs.environment == 'staging' && secrets.STAGING_DO_TOKEN || startsWith(github.ref, 'refs/heads/release/') && secrets.STAGING_DO_TOKEN || startsWith(github.event.workflow_run.head_branch, 'release/') && secrets.STAGING_DO_TOKEN || secrets.DEV_DO_TOKEN }}
-      TF_VAR_do_token: ${{ github.event_name == 'workflow_dispatch' && inputs.environment == 'prod' && secrets.PROD_DO_TOKEN || github.ref_type == 'tag' && secrets.PROD_DO_TOKEN || github.event_name == 'workflow_dispatch' && inputs.environment == 'staging' && secrets.STAGING_DO_TOKEN || startsWith(github.ref, 'refs/heads/release/') && secrets.STAGING_DO_TOKEN || startsWith(github.event.workflow_run.head_branch, 'release/') && secrets.STAGING_DO_TOKEN || secrets.DEV_DO_TOKEN }}
+      DEPLOY_ENVIRONMENT: live
+      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DO_TOKEN }}
+      TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
       TF_VAR_spaces_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
       TF_VAR_spaces_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -81,7 +64,6 @@ jobs:
           ENV_NAME="$DEPLOY_ENVIRONMENT"
 
           echo "ENV_NAME=$ENV_NAME" >> "$GITHUB_ENV"
-          echo "CLUSTER_NAME=sendr-k8s-$ENV_NAME" >> "$GITHUB_ENV"
           echo "KUSTOMIZE_PATH=k8s/overlays/$ENV_NAME" >> "$GITHUB_ENV"
           echo "TF_VAR_FILE=environments/$ENV_NAME/terraform.tfvars.example" >> "$GITHUB_ENV"
           echo "TF_BACKEND=environments/$ENV_NAME/backend.conf" >> "$GITHUB_ENV"
@@ -90,8 +72,21 @@ jobs:
         working-directory: terraform
         run: |
           terraform init -backend-config="$TF_BACKEND"
-          terraform plan -no-color -var-file="$TF_VAR_FILE" -out=tfplan
+
+          EXISTING_CLUSTER_NAME=$(terraform output -raw kubernetes_cluster_name 2>/dev/null || true)
+          if [ -n "$EXISTING_CLUSTER_NAME" ]; then
+            doctl kubernetes cluster kubeconfig save "$EXISTING_CLUSTER_NAME"
+            EXISTING_TRAEFIK_IP=$(kubectl get svc traefik -n sendr -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+          fi
+
+          PLAN_ARGS=(-no-color -var-file="$TF_VAR_FILE")
+          if [ -n "${EXISTING_TRAEFIK_IP:-}" ]; then
+            PLAN_ARGS+=("-var=ingress_ip=$EXISTING_TRAEFIK_IP")
+          fi
+
+          terraform plan "${PLAN_ARGS[@]}" -out=tfplan
           terraform apply -auto-approve tfplan
+          echo "CLUSTER_NAME=$(terraform output -raw kubernetes_cluster_name)" >> "$GITHUB_ENV"
           echo "SENDR_DATABASE_URL=$(terraform output -raw database_url)" >> "$GITHUB_ENV"
           echo "SENDR_SPACES_BUCKET_NAME=$(terraform output -raw spaces_bucket_name)" >> "$GITHUB_ENV"
 
@@ -111,11 +106,7 @@ jobs:
           SENDR_SPACES_REGION: fra1
         run: |
           kubectl apply -f k8s/base/namespace.yaml
-          if [ "$ENV_NAME" = "prod" ]; then
-            export SENDR_ENVIRONMENT="production"
-          else
-            export SENDR_ENVIRONMENT="$ENV_NAME"
-          fi
+          export SENDR_ENVIRONMENT="production"
           bash ./scripts/create-secrets.sh "$ENV_NAME"
 
       - name: Deploy manifests

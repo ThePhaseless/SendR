@@ -1,6 +1,0 @@
-environment    = "prod"
-region         = "fra1"
-domain_name    = "sendr.email"
-k8s_auto_scale = true
-k8s_min_nodes  = 3
-k8s_max_nodes  = 10

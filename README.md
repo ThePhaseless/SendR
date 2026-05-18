@@ -16,7 +16,7 @@ A WeTransfer-like file sharing service built with Angular and FastAPI.
 - **Frontend**: Angular 19, SCSS, OpenAPI-generated client
 - **Backend**: FastAPI, SQLModel, Alembic migrations, SQLite
 - **Tooling**: uv (Python), bun (JS runtime and package manager), ruff (Python linter), oxlint (TS linter)
-- **Deployment**: Single Docker image
+- **Deployment**: Separate backend and frontend images deployed to one live Kubernetes environment
 
 ## Quick Start
 
@@ -115,14 +115,14 @@ docker build -t sendr-api ./backend
 docker build -t sendr-frontend ./frontend
 ```
 
-The frontend image builds the production backend origin into [frontend/src/environments/environment.prod.ts](frontend/src/environments/environment.prod.ts). Local development still uses the Angular dev-server proxy from [frontend/proxy.conf.json](frontend/proxy.conf.json), but the production nginx container only serves the SPA and does not proxy `/api/*` requests:
+The frontend image uses a relative API origin in [frontend/src/environments/environment.prod.ts](frontend/src/environments/environment.prod.ts). Local development uses the Angular dev-server proxy from [frontend/proxy.conf.json](frontend/proxy.conf.json), and the production nginx container proxies `/api/*` to the backend through its runtime `API_URL` environment variable:
 
 ```bash
 docker run -p 8000:8000 sendr-api
 docker run -p 8080:8080 sendr-frontend
 ```
 
-For production, put your own reverse proxy or load balancer in front of the two services and make sure the backend origin hardcoded in [frontend/src/environments/environment.prod.ts](frontend/src/environments/environment.prod.ts) matches the public API host.
+For the live Kubernetes deployment, GitHub Actions renders [k8s/overlays/live](k8s/overlays/live) and sets the frontend `API_URL` to the in-cluster backend service.
 
 By default, the backend does not allow any cross-origin browser frontend origins. `SENDR_ALLOWED_ORIGINS` can be provided either as a JSON array or as a comma-separated list when you intentionally deploy the frontend and API on different origins.
 

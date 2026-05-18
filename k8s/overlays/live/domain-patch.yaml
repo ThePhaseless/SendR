@@ -6,7 +6,7 @@ metadata:
   namespace: sendr
 spec:
   rules:
-    - host: api.sendr.email
+    - host: api.live.sendr.email
       http:
         paths:
           - path: /
@@ -24,17 +24,7 @@ metadata:
   namespace: sendr
 spec:
   rules:
-    - host: sendr.email
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: sendr-frontend
-                port:
-                  number: 80
-    - host: www.sendr.email
+    - host: live.sendr.email
       http:
         paths:
           - path: /

@@ -2,6 +2,10 @@ output "kubernetes_cluster_id" {
   value = module.kubernetes.cluster_id
 }
 
+output "kubernetes_cluster_name" {
+  value = module.kubernetes.cluster_name
+}
+
 output "database_host" {
   value = module.database.database_host
 }
