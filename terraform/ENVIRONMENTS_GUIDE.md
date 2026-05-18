@@ -10,16 +10,22 @@ Infrastruktura jest obsługiwana przez jeden wspólny workflow Terraform: `.gith
 | --- | --- | --- |
 | Pull request z plikami Terraform | brak | `terraform fmt`, `terraform init -backend=false`, `terraform validate` |
 | `DO-implementation` | brak | walidacja Terraform bez `apply` i bez deploymentu Kubernetes |
-| `main` | `dev` | Terraform `apply`, build obrazów i deployment Kubernetes |
-| `release/**` | `staging` | Terraform `apply`, build obrazów i deployment Kubernetes |
-| tag `v*` | `prod` | Terraform `apply` i deployment wydania produkcyjnego |
-| `workflow_dispatch` | wybrane ręcznie | ręczne uruchomienie dla `dev`, `staging` albo `prod` |
+| `main` | `dev` | build obrazów i walidacja; `apply` oraz deployment tylko gdy `SENDR_AUTO_DEPLOY_ENABLED=true` |
+| `release/**` | `staging` | build obrazów i walidacja; `apply` oraz deployment tylko gdy `SENDR_AUTO_DEPLOY_ENABLED=true` |
+| tag `v*` | `prod` | build obrazów i walidacja; `apply` oraz deployment tylko gdy `SENDR_AUTO_DEPLOY_ENABLED=true` |
+| `workflow_dispatch` | wybrane ręcznie | ręczne uruchomienie `apply` i deploymentu dla `dev`, `staging` albo `prod` |
 
 `DO-implementation` jest gałęzią integracyjną. Może budować obrazy i walidować Terraform, ale nie powinna zużywać sekretów produkcyjnych ani wykonywać zmian w chmurze.
 
+## Włączanie automatycznych deploymentów
+
+Realne zmiany w DigitalOcean są domyślnie bezpiecznie zatrzymane po walidacji, dopóki repozytorium nie ma poprawnych sekretów DigitalOcean i Spaces. Aby włączyć automatyczny `apply` i deployment z gałęzi/tagów, ustaw zmienną repozytorium GitHub `SENDR_AUTO_DEPLOY_ENABLED` na `true` w **Settings** -> **Secrets and variables** -> **Actions** -> **Variables**.
+
+Ręczne uruchomienia przez `workflow_dispatch` zawsze wymagają sekretów wybranego środowiska, ale nie wymagają tej zmiennej.
+
 ## DEV
 
-Środowisko `dev` jest aktualizowane z gałęzi `main` albo ręcznie przez `workflow_dispatch` z opcją `dev`.
+Środowisko `dev` jest aktualizowane ręcznie przez `workflow_dispatch` z opcją `dev`. Push na `main` może wdrażać automatycznie tylko po ustawieniu `SENDR_AUTO_DEPLOY_ENABLED=true`.
 
 ```bash
 git checkout main
@@ -30,7 +36,7 @@ git push origin main
 
 ## STAGING
 
-Środowisko `staging` jest aktualizowane z gałęzi `release/**` albo ręcznie przez `workflow_dispatch` z opcją `staging`.
+Środowisko `staging` jest aktualizowane ręcznie przez `workflow_dispatch` z opcją `staging`. Gałęzie `release/**` mogą wdrażać automatycznie tylko po ustawieniu `SENDR_AUTO_DEPLOY_ENABLED=true`.
 
 ```bash
 git checkout main
@@ -40,7 +46,7 @@ git push origin release/v1.2.0
 
 ## PROD
 
-Środowisko `prod` jest aktualizowane przez tagi `v*` albo ręcznie przez `workflow_dispatch` z opcją `prod`.
+Środowisko `prod` jest aktualizowane ręcznie przez `workflow_dispatch` z opcją `prod`. Tagi `v*` mogą wdrażać automatycznie tylko po ustawieniu `SENDR_AUTO_DEPLOY_ENABLED=true`.
 
 ```bash
 git checkout main

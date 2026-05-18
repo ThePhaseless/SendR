@@ -61,6 +61,8 @@ W repozytorium (Settings -> Secrets and variables -> Actions) dodaj:
 
 Sekrety produkcyjne najlepiej dodać jako sekrety środowiska GitHub (`dev`, `staging`, `prod`), aby wdrożenia mogły korzystać z innych wartości dla każdego środowiska.
 
+Automatyczne deploymenty z gałęzi/tagów są wyłączone, dopóki zmienna repozytorium `SENDR_AUTO_DEPLOY_ENABLED` nie ma wartości `true`. Ręczne uruchomienie przez `workflow_dispatch` nadal działa po podaniu poprawnych sekretów.
+
 ---
 
 ## ⚙️ ETAP 3: Konfiguracja Środowisk
@@ -73,9 +75,9 @@ Backend stanu Terraform używa `terraform/environments/*/backend.conf`. W tych p
 
 ## 🚀 ETAP 4: Wdrożenie (GitFlow)
 
-- **DEV:** Push na `main` lub `DO-implementation`.
-- **STAGING:** Push na gałąź `release/*`.
-- **PROD:** Push Taga wersji (np. `v1.0.0`).
+- **DEV:** Ręcznie uruchom `.github/workflows/terraform.yml` i `.github/workflows/deploy-k8s.yml` z opcją `dev`; push na `main` wdraża automatycznie tylko gdy `SENDR_AUTO_DEPLOY_ENABLED=true`.
+- **STAGING:** Ręczne uruchomienie z opcją `staging`; gałąź `release/*` wdraża automatycznie tylko gdy `SENDR_AUTO_DEPLOY_ENABLED=true`.
+- **PROD:** Ręczne uruchomienie z opcją `prod`; tag wersji (np. `v1.0.0`) wdraża automatycznie tylko gdy `SENDR_AUTO_DEPLOY_ENABLED=true`.
 
 ---
 
