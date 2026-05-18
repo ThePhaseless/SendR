@@ -1,124 +1,131 @@
-name: 'Deploy K8s & Update DNS'
+name: Deploy Kubernetes
 
 on:
   push:
     branches:
       - main
+      - DO-implementation
+      - release/**
+    tags:
+      - v*
   workflow_run:
-    workflows: ["Build and Publish Docker Images"]
+    workflows:
+      - Build and Publish Docker Images
     types:
       - completed
   workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: dev
+
+permissions:
+  contents: read
 
 env:
-  TF_LOG: INFO
-  TF_VAR_do_token: ${{ secrets.DO_PAT }}
-  TF_VAR_spaces_access_key: ${{ secrets.SPACES_ACCESS_KEY }}
-  TF_VAR_spaces_secret_key: ${{ secrets.SPACES_SECRET_KEY }}
-  AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}
-  DO_PAT: ${{ secrets.DO_PAT }}
-  REGISTRY: ghcr.io/kamilpihub/sendr
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
+  REGISTRY: ghcr.io/thephaseless/sendr
 
 jobs:
-  deploy-and-dns:
-    name: 'Deploy to Kubernetes and Update DNS'
-    runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
-    
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-24.04
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_type == 'tag' && 'prod' || startsWith(github.ref, 'refs/heads/release/') && 'staging' || 'dev' }}
+    env:
+      DEPLOY_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_type == 'tag' && 'prod' || startsWith(github.ref, 'refs/heads/release/') && 'staging' || startsWith(github.event.workflow_run.head_branch, 'release/') && 'staging' || 'dev' }}
+      DIGITALOCEAN_ACCESS_TOKEN: ${{ github.event_name == 'workflow_dispatch' && inputs.environment == 'prod' && secrets.PROD_DO_TOKEN || github.ref_type == 'tag' && secrets.PROD_DO_TOKEN || github.event_name == 'workflow_dispatch' && inputs.environment == 'staging' && secrets.STAGING_DO_TOKEN || startsWith(github.ref, 'refs/heads/release/') && secrets.STAGING_DO_TOKEN || startsWith(github.event.workflow_run.head_branch, 'release/') && secrets.STAGING_DO_TOKEN || secrets.DEV_DO_TOKEN }}
+      TF_VAR_do_token: ${{ github.event_name == 'workflow_dispatch' && inputs.environment == 'prod' && secrets.PROD_DO_TOKEN || github.ref_type == 'tag' && secrets.PROD_DO_TOKEN || github.event_name == 'workflow_dispatch' && inputs.environment == 'staging' && secrets.STAGING_DO_TOKEN || startsWith(github.ref, 'refs/heads/release/') && secrets.STAGING_DO_TOKEN || startsWith(github.event.workflow_run.head_branch, 'release/') && secrets.STAGING_DO_TOKEN || secrets.DEV_DO_TOKEN }}
+      TF_VAR_spaces_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      TF_VAR_spaces_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Install doctl
-        uses: digitalocean/action-doctl@v2
-        with:
-          token: ${{ secrets.DO_PAT }}
-
-      - name: Set Environment
-        id: set-env
-        run: |
-          REF="${{ github.ref }}"
-          if [[ "$REF" == "refs/heads/main" || "$REF" == "refs/heads/DO-implementation" || "${{ github.event.workflow_run.head_branch }}" == "DO-implementation" ]]; then
-            echo "ENV_NAME=dev" >> $GITHUB_ENV
-            echo "CLUSTER_NAME=sendr-k8s-dev" >> $GITHUB_ENV
-            echo "KUSTOMIZE_PATH=k8s/overlays/dev" >> $GITHUB_ENV
-            echo "TF_VAR_FILE=environments/dev/terraform.tfvars" >> $GITHUB_ENV
-            echo "TF_BACKEND=environments/dev/backend.conf" >> $GITHUB_ENV
-          elif [[ "$REF" =~ ^refs/heads/release/ ]] || [[ "${{ github.event.workflow_run.head_branch }}" =~ ^release/ ]]; then
-            echo "ENV_NAME=staging" >> $GITHUB_ENV
-            echo "CLUSTER_NAME=sendr-k8s-staging" >> $GITHUB_ENV
-            echo "KUSTOMIZE_PATH=k8s/overlays/staging" >> $GITHUB_ENV
-            echo "TF_VAR_FILE=environments/staging/terraform.tfvars" >> $GITHUB_ENV
-            echo "TF_BACKEND=environments/staging/backend.conf" >> $GITHUB_ENV
-          elif [[ "$REF" =~ ^refs/tags/v ]]; then
-            echo "ENV_NAME=prod" >> $GITHUB_ENV
-            echo "CLUSTER_NAME=sendr-k8s-prod" >> $GITHUB_ENV
-            echo "KUSTOMIZE_PATH=k8s/overlays/prod" >> $GITHUB_ENV
-            echo "TF_VAR_FILE=environments/prod/terraform.tfvars" >> $GITHUB_ENV
-            echo "TF_BACKEND=environments/prod/backend.conf" >> $GITHUB_ENV
-          else
-            echo "Unknown ref: $REF. Skipping deployment."
-            exit 1
-          fi
-
-      - name: Save DigitalOcean Kubeconfig
-        run: doctl kubernetes cluster kubeconfig save ${{ env.CLUSTER_NAME }}
-
-      - name: Update Kustomize Image Tags
-        run: |
-          cd ${{ env.KUSTOMIZE_PATH }}
-          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
-          kustomize edit set image ${{ env.REGISTRY }}/backend=${{ env.REGISTRY }}/backend:sha-$SHA
-          kustomize edit set image ${{ env.REGISTRY }}/frontend=${{ env.REGISTRY }}/frontend:sha-$SHA
-        continue-on-error: true
-
-      - name: Wait for Traefik LoadBalancer IP
-        id: get-ip
-        run: |
-          echo "Waiting for Traefik LoadBalancer to get an external IP..."
-          for i in {1..30}; do
-            IP=$(kubectl get svc traefik -n sendr -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-            if [ -n "$IP" ]; then
-              echo "Found IP: $IP"
-              echo "TRAEFIK_IP=$IP" >> $GITHUB_ENV
-              echo "TF_VAR_ingress_ip=$IP" >> $GITHUB_ENV
-              break
-            fi
-            echo "Still waiting..."
-            sleep 10
-          done
-          if [ -z "$IP" ]; then
-            echo "Failed to get Traefik IP"
-            exit 1
-          fi
-
-      - name: Deploy to Kubernetes
-        run: kubectl apply -k ${{ env.KUSTOMIZE_PATH }}
-
-      - name: Cleanup existing GHCR secret
-        run: kubectl delete secret ghcr-secret -n sendr --ignore-not-found
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
         with:
-          terraform_version: 1.5.0 
+          terraform_version: 1.15.3
 
-      - name: Generate GitHub App Token for Terraform
-        id: generate-token
-        uses: actions/create-github-app-token@v1
+      - name: Install doctl
+        uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f
         with:
-          app-id: ${{ secrets.GH_APP_ID }}
-          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          token: ${{ env.DIGITALOCEAN_ACCESS_TOKEN }}
 
-      - name: Set TF_VAR_ghcr_token
-        run: |
-          echo "TF_VAR_ghcr_token=${{ steps.generate-token.outputs.token }}" >> $GITHUB_ENV
-          echo "TF_VAR_ghcr_username=x-access-token" >> $GITHUB_ENV
+      - name: Install kubectl
+        uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415
 
-      - name: Terraform Init & Apply (DNS Update)
-        working-directory: ./terraform
+      - name: Set deployment context
         run: |
-          terraform init -backend-config=${{ env.TF_BACKEND }}
-          # Apply specifically updates the infrastructure with the new TF_VAR_ingress_ip
-          terraform apply -auto-approve -var-file=${{ env.TF_VAR_FILE }}
+          ENV_NAME="$DEPLOY_ENVIRONMENT"
+
+          echo "ENV_NAME=$ENV_NAME" >> "$GITHUB_ENV"
+          echo "CLUSTER_NAME=sendr-k8s-$ENV_NAME" >> "$GITHUB_ENV"
+          echo "KUSTOMIZE_PATH=k8s/overlays/$ENV_NAME" >> "$GITHUB_ENV"
+          echo "TF_VAR_FILE=environments/$ENV_NAME/terraform.tfvars.example" >> "$GITHUB_ENV"
+          echo "TF_BACKEND=environments/$ENV_NAME/backend.conf" >> "$GITHUB_ENV"
+
+      - name: Terraform apply infrastructure
+        working-directory: terraform
+        run: |
+          terraform init -backend-config="$TF_BACKEND"
+          terraform plan -no-color -var-file="$TF_VAR_FILE" -out=tfplan
+          terraform apply -auto-approve tfplan
+          echo "SENDR_DATABASE_URL=$(terraform output -raw database_url)" >> "$GITHUB_ENV"
+          echo "SENDR_SPACES_BUCKET_NAME=$(terraform output -raw spaces_bucket_name)" >> "$GITHUB_ENV"
+
+      - name: Save DigitalOcean kubeconfig
+        run: doctl kubernetes cluster kubeconfig save "$CLUSTER_NAME"
+
+      - name: Create application secrets
+        env:
+          SENDR_SECRET_KEY: ${{ secrets.SENDR_SECRET_KEY }}
+          SENDR_SMTP_HOST: ${{ secrets.SENDR_SMTP_HOST }}
+          SENDR_SMTP_PORT: ${{ secrets.SENDR_SMTP_PORT }}
+          SENDR_SMTP_USER: ${{ secrets.SENDR_SMTP_USER }}
+          SENDR_SMTP_PASSWORD: ${{ secrets.SENDR_SMTP_PASSWORD }}
+          SENDR_RESEND_API_KEY: ${{ secrets.SENDR_RESEND_API_KEY }}
+          SENDR_SPACES_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          SENDR_SPACES_SECRET_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          SENDR_SPACES_REGION: fra1
+        run: |
+          kubectl apply -f k8s/base/namespace.yaml
+          export SENDR_ENVIRONMENT="$ENV_NAME"
+          ./scripts/create-secrets.sh "$ENV_NAME"
+
+      - name: Deploy manifests
+        run: |
+          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
+          kubectl kustomize "$KUSTOMIZE_PATH" \
+            | sed \
+              -e "s|ghcr.io/thephaseless/sendr/backend:[^[:space:]]*|$REGISTRY/backend:sha-$SHA|g" \
+              -e "s|ghcr.io/thephaseless/sendr/frontend:[^[:space:]]*|$REGISTRY/frontend:sha-$SHA|g" \
+            | kubectl apply -f -
+
+      - name: Wait for Traefik LoadBalancer IP
+        run: |
+          for attempt in {1..30}; do
+            TRAEFIK_IP=$(kubectl get svc traefik -n sendr -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            if [ -n "$TRAEFIK_IP" ]; then
+              echo "TRAEFIK_IP=$TRAEFIK_IP" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Failed to get Traefik LoadBalancer IP" >&2
+          exit 1
+
+      - name: Terraform apply DNS
+        working-directory: terraform
+        run: |
+          terraform plan -no-color -var-file="$TF_VAR_FILE" -var="ingress_ip=$TRAEFIK_IP" -out=dns.tfplan
+          terraform apply -auto-approve dns.tfplan

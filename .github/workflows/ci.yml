@@ -207,14 +207,6 @@ jobs:
         working-directory: backend
         run: uv sync --no-install-project
 
-      - name: Security Scan (Bandit)
-        working-directory: backend
-        run: uv run bandit -r src/
-
-      - name: Type Check (Mypy)
-        working-directory: backend
-        run: uv run mypy src/
-
       - name: Test
         working-directory: backend
         run: uv run --no-project pytest

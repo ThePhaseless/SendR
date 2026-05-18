@@ -44,57 +44,6 @@ variable "kubernetes_version" {
   default     = ""
 }
 
-variable "ghcr_token" {
-  description = "GitHub Token for GHCR authentication"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "ghcr_username" {
-  description = "GitHub username for GHCR authentication"
-  type        = string
-  default     = ""
-}
-
-variable "app_secret_key" {
-  description = "Application secret key"
-  type        = string
-  sensitive   = true
-}
-
-variable "smtp_host" {
-  description = "SMTP host"
-  type        = string
-  default     = ""
-}
-
-variable "smtp_port" {
-  description = "SMTP port"
-  type        = string
-  default     = "587"
-}
-
-variable "smtp_user" {
-  description = "SMTP user"
-  type        = string
-  default     = ""
-}
-
-variable "smtp_password" {
-  description = "SMTP password"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "resend_api_key" {
-  description = "Resend API Key"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 variable "k8s_node_count" {
   description = "Number of nodes in the K8s cluster"
   type        = number

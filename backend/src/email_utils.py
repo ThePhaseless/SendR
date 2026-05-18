@@ -15,13 +15,15 @@ if settings.RESEND_API_KEY:
 
 def _should_log_email_delivery() -> bool:
     return settings.is_local or (
-        settings.ENVIRONMENT == "test" and not settings.smtp_configured and not settings.RESEND_API_KEY
+        settings.ENVIRONMENT == "test"
+        and not settings.smtp_configured
+        and not settings.RESEND_API_KEY
     )
 
 
 def _log_missing_smtp_configuration(email_kind: str) -> None:
     logger.warning(
-        "Neither SMTP nor Resend API is configured in %s mode; logging %s instead.",
+        "SMTP host is not configured in %s mode; logging %s instead.",
         settings.ENVIRONMENT,
         email_kind,
     )
@@ -45,12 +47,14 @@ def _send_email_via_resend(to: str, subject: str, body: str) -> bool:
     if not settings.RESEND_API_KEY:
         return False
     try:
-        resend.Emails.send({
-            "from": settings.SMTP_FROM,
-            "to": to,
-            "subject": subject,
-            "text": body,
-        })
+        resend.Emails.send(
+            {
+                "from": settings.SMTP_FROM,
+                "to": to,
+                "subject": subject,
+                "text": body,
+            }
+        )
         logger.info("Email sent via Resend API to %s", to)
         return True
     except Exception as e:
@@ -68,11 +72,6 @@ def _send_verification_email_sync(email: str, code: str) -> None:
 
     # Try Resend API first
     if _send_email_via_resend(email, subject, body):
-        return
-
-    # Fallback to SMTP
-    if not settings.smtp_configured:
-        logger.error("SMTP not configured and Resend API failed/unavailable")
         return
 
     message = _build_verification_message(email, code)
@@ -145,11 +144,6 @@ def _send_invite_email_sync(
     if _send_email_via_resend(recipient_email, subject, body):
         return
 
-    # Fallback to SMTP
-    if not settings.smtp_configured:
-        logger.error("SMTP not configured and Resend API failed/unavailable")
-        return
-
     msg = _build_invite_message(
         recipient_email, sender_email, download_url, file_names, message
     )
@@ -192,4 +186,3 @@ async def send_file_invite_email(
         file_names,
         message,
     )
-

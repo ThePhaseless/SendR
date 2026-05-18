@@ -8,7 +8,7 @@ Ten dokument zawiera szczegółową instrukcję konfiguracji, wdrożenia oraz za
 
 - **3 Odizolowane Klastry:** DEV, STAGING, PROD (osobne klastry K8s i bazy danych).
 - **Bezpieczeństwo:** Izolacja NetworkPolicy, RBAC, Firewall bazy danych (Trusted Sources).
-- **Automatyzacja:** Pełne CI/CD (GitHub Actions) z autoryzacją przez GitHub App (Bot).
+- **Automatyzacja:** GitHub Actions z sekretami repozytorium i środowisk GitHub.
 - **SSL/TLS:** Automatyczne certyfikaty Let's Encrypt zarządzane przez Traefik.
 
 ---
@@ -51,37 +51,27 @@ Terraform musi gdzieś bezpiecznie przechowywać informację o tym, co już zbud
 
 ---
 
-## 🔐 ETAP 2: Konfiguracja GitHub App (Bot GHCR)
-
-Aby klastry mogły pobierać obrazy bez haseł PAT:
-1. Przejdź do **GitHub Settings** -> **Developer settings** -> **GitHub Apps** -> **New GitHub App**.
-2. **App name**: `SendR-Deploy-Bot-TwojNick`.
-3. **Webhook**: Odznacz pole **Active**.
-4. **Permissions**: **Repository permissions -> Packages -> Access: Read-only**.
-5. Kliknij **Create GitHub App**.
-6. Wygeneruj **Private Key** (plik `.pem`), zanotuj **App ID** oraz **Installation ID** (po instalacji na repozytorium).
-
----
-
-## 🔑 ETAP 3: GitHub Secrets
+## 🔑 ETAP 2: GitHub Secrets
 
 W repozytorium (Settings -> Secrets and variables -> Actions) dodaj:
-* `DO_PAT`, `SPACES_ACCESS_KEY`, `SPACES_SECRET_KEY`
-* `GH_APP_ID`, `GH_APP_INSTALLATION_ID`, `GH_APP_PRIVATE_KEY`
+* `DEV_DO_TOKEN`, `STAGING_DO_TOKEN`, `PROD_DO_TOKEN`
+* `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (DigitalOcean Spaces key pair)
+* `SENDR_SECRET_KEY` (wygeneruj: `openssl rand -base64 32`)
+* `SENDR_RESEND_API_KEY` albo komplet `SENDR_SMTP_HOST`, `SENDR_SMTP_PORT`, `SENDR_SMTP_USER`, `SENDR_SMTP_PASSWORD`
+
+Sekrety produkcyjne najlepiej dodać jako sekrety środowiska GitHub (`dev`, `staging`, `prod`), aby wdrożenia mogły korzystać z innych wartości dla każdego środowiska.
 
 ---
 
-## ⚙️ ETAP 4: Konfiguracja Środowisk (.tfvars)
+## ⚙️ ETAP 3: Konfiguracja Środowisk
 
-Uzupełnij pliki `terraform/environments/*/terraform.tfvars`:
-- `domain_name = "sendr.email"`
-- `app_secret_key = "..."` (wygeneruj: `openssl rand -base64 32`)
-- `resend_api_key = "re_..."`
-- `spaces_access_key` i `spaces_secret_key` (te same co w Etapie 1.1)
+Pliki `terraform/environments/*/terraform.tfvars.example` zawierają tylko niesekretne wartości środowiskowe, takie jak domena, region i rozmiar klastra. Nie commituj plików `terraform.tfvars` z realnymi sekretami.
+
+Backend stanu Terraform używa `terraform/environments/*/backend.conf`. W tych plikach trzymaj tylko niesekretne ustawienia, np. nazwę bucketa i klucz stanu. Dane dostępowe Spaces są przekazywane przez `AWS_ACCESS_KEY_ID` i `AWS_SECRET_ACCESS_KEY` z sekretów GitHub.
 
 ---
 
-## 🚀 ETAP 5: Wdrożenie (GitFlow)
+## 🚀 ETAP 4: Wdrożenie (GitFlow)
 
 - **DEV:** Push na `main` lub `DO-implementation`.
 - **STAGING:** Push na gałąź `release/*`.
@@ -89,7 +79,7 @@ Uzupełnij pliki `terraform/environments/*/terraform.tfvars`:
 
 ---
 
-## 💾 ETAP 6: Migracja Danych i Plików
+## 💾 ETAP 5: Migracja Danych i Plików
 
 ### 6.1 Przygotowanie terminala (PowerShell)
 ```powershell
@@ -112,7 +102,7 @@ uv run --project . python ../scripts/sync_files_to_spaces.py
 
 ---
 
-## 📊 ETAP 7: Diagnostyka (Po wdrożeniu)
+## 📊 ETAP 6: Diagnostyka (Po wdrożeniu)
 
 ### 7.1 Firewall Bazy Danych
 Domyślnie tylko klaster K8s ma dostęp. Aby uruchomić skrypty z punktu 6.2, musisz dodać swoje IP w panelu DO: **Databases -> Settings -> Trusted Sources**.

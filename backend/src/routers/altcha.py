@@ -81,9 +81,6 @@ def _ensure_altcha_within_upload_grace(payload_data: dict[str, object]) -> None:
 
 def verify_altcha_payload(payload: str = Form("", alias="altcha")) -> None:
     """FastAPI dependency that verifies an Altcha solution from form data."""
-    if settings.is_local:
-        return
-
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

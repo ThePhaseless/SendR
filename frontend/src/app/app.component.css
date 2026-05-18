@@ -1,8 +1,0 @@
-@reference "tailwindcss";
-:host {
-  @apply flex flex-col min-h-screen;
-}
-
-.main-content {
-  @apply flex-1 py-8 px-4 max-w-[1200px] mx-auto w-full box-border;
-}/*# sourceMappingURL=app.component.css.map */

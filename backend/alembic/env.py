@@ -1,7 +1,7 @@
 import asyncio
-import os
 import sys
 from logging.config import fileConfig
+from pathlib import Path
 
 from sqlalchemy import engine_from_config, pool
 from sqlalchemy.engine import Connection
@@ -9,11 +9,11 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlmodel import SQLModel
 
 # Add 'src' to the path so we can import models
-sys.path.append(os.path.join(os.getcwd(), "src"))
+sys.path.append(str(Path.cwd() / "src"))
 
-from config import settings
 import models  # noqa: F401
 from alembic import context
+from config import settings
 
 _models = models
 

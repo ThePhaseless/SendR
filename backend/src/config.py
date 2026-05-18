@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./sendr.db"
     SECRET_KEY: str = ""
     UPLOAD_DIR: str = "./uploads"
+    UPLOAD_QUARANTINE_DIR: str = "./uploads-quarantine"
     # CORS
     ALLOWED_ORIGINS: list[str] = Field(default_factory=_default_allowed_origins)
     TRUSTED_PROXY_IPS: list[str] = Field(default_factory=_default_trusted_proxy_ips)
@@ -81,8 +82,10 @@ class Settings(BaseSettings):
     SESSION_COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
     CSRF_COOKIE_NAME: str = "sendr_csrf"
     CSRF_HEADER_NAME: str = "X-CSRF-Token"
+    DEV_LOGIN_ENABLED: bool = False
     # Rate limiting
     AUTH_RATE_LIMIT_PER_MINUTE: int = 5
+    DOWNLOAD_RATE_LIMIT_PER_MINUTE: int = 120
     # Altcha proof-of-work CAPTCHA
     ALTCHA_HMAC_KEY: str = Field(default_factory=_generate_hmac_key)
     ALTCHA_MAX_NUMBER: int = 100000
@@ -95,6 +98,7 @@ class Settings(BaseSettings):
     CLAMAV_HOST: str = "127.0.0.1"
     CLAMAV_PORT: int = 3310
     CLAMAV_UNIX_SOCKET: str = "/var/run/clamav/clamd.ctl"
+    SCAN_QUEUE_POLL_SECONDS: float = 1.0
 
     # DigitalOcean Spaces (S3 compatible)
     SPACES_ACCESS_KEY: str = ""
@@ -104,17 +108,20 @@ class Settings(BaseSettings):
 
     model_config = {
         "env_prefix": "SENDR_",
-        "env_file": ".env",
-        "extra": "ignore"
+        "extra": "ignore",
     }
 
     @property
-    def SPACES_ENDPOINT(self) -> str:
+    def spaces_endpoint(self) -> str:
         return f"https://{self.SPACES_REGION}.digitaloceanspaces.com"
 
     @property
     def is_s3_configured(self) -> bool:
-        return bool(self.SPACES_ACCESS_KEY and self.SPACES_SECRET_KEY and self.SPACES_BUCKET_NAME)
+        return bool(
+            self.SPACES_ACCESS_KEY
+            and self.SPACES_SECRET_KEY
+            and self.SPACES_BUCKET_NAME
+        )
 
     @field_validator("ALLOWED_ORIGINS", "TRUSTED_PROXY_IPS", mode="before")
     @classmethod
@@ -148,17 +155,33 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_runtime_settings(self) -> Self:
-        if self.ENVIRONMENT == "production":
+        if self.is_production:
             if not self.SECRET_KEY:
-                raise ValueError("SENDR_SECRET_KEY must be set in production")
+                raise ValueError(
+                    "SENDR_SECRET_KEY must be set outside local/test environments"
+                )
             if not (self.smtp_configured or self.RESEND_API_KEY):
-                raise ValueError("Either SMTP or RESEND_API_KEY must be set in production")
+                raise ValueError(
+                    "Either SENDR_SMTP_HOST or SENDR_RESEND_API_KEY must be set "
+                    "outside local/test environments"
+                )
+            if not self.is_s3_configured:
+                raise ValueError(
+                    "DigitalOcean Spaces settings must be set outside local/test "
+                    "environments"
+                )
+        if self.DEV_LOGIN_ENABLED and not self.is_local:
+            raise ValueError(
+                "SENDR_DEV_LOGIN_ENABLED can only be enabled when "
+                "SENDR_ENVIRONMENT is 'local'"
+            )
         return self
 
-settings = Settings()
-print(f"--- CONFIG: Environment={settings.ENVIRONMENT} ---")
-print(f"--- CONFIG: S3 Configured={settings.is_s3_configured} ---")
-if settings.is_s3_configured:
-    print(f"--- CONFIG: S3 Bucket={settings.SPACES_BUCKET_NAME} ---")
 
+settings = Settings()
 logger = logging.getLogger(__name__)
+logger.info(
+    "Configuration loaded: ENVIRONMENT=%s, S3_CONFIGURED=%s",
+    settings.ENVIRONMENT,
+    settings.is_s3_configured,
+)

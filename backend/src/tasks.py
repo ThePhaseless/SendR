@@ -1,20 +1,18 @@
 import logging
 from datetime import timedelta
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from sqlmodel import and_, col, func, or_, select
 
 from config import settings
 from models import FileUpload, utcnow
+from storage import storage
 
 if TYPE_CHECKING:
     from sqlmodel.ext.asyncio.session import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-
-from storage import storage
 
 async def cleanup_expired_files(session: AsyncSession) -> int:
     """Delete files past the grace period and return the cleanup count."""

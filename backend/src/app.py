@@ -25,9 +25,19 @@ logger = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 _ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
 
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from starlette.responses import Response as StarletteResponse
+
+
 def _sync_database_url(url: str) -> str:
-    # Handle both aiosqlite and asyncpg
-    return url.replace("sqlite+aiosqlite://", "sqlite://").replace("postgresql+asyncpg://", "postgresql://")
+    return (
+        url.replace("sqlite+aiosqlite://", "sqlite://")
+        .replace("postgresql+asyncpg://", "postgresql://")
+        .replace("postgresql+psycopg://", "postgresql://")
+        .replace("ssl=", "sslmode=")
+    )
 
 
 def run_migrations() -> None:
@@ -38,8 +48,11 @@ def run_migrations() -> None:
         cfg.set_main_option("sqlalchemy.url", sync_url)
         cfg.attributes["skip_logging_config"] = True
 
-        logger.info(f"Connecting to database for migrations...")
-        engine = create_engine(sync_url, connect_args={"connect_timeout": 10})
+        logger.info("Connecting to database for migrations...")
+        connect_args = (
+            {"connect_timeout": 10} if sync_url.startswith("postgresql") else {}
+        )
+        engine = create_engine(sync_url, connect_args=connect_args)
         with engine.connect() as connection:
             logger.info("Connected to database. Checking schema...")
             inspector = inspect(connection)
@@ -52,10 +65,9 @@ def run_migrations() -> None:
                 command.upgrade(cfg, "head")
         engine.dispose()
         logger.info("Database migrations complete.")
-    except Exception as e:
-        logger.error(f"Migration failed: {e}")
-        # Don't raise on dev/staging to allow app to start even if DB is not ready yet
-        if settings.ENVIRONMENT == "production":
+    except Exception:
+        logger.exception("Migration failed")
+        if settings.is_production:
             raise
 
 
@@ -129,7 +141,7 @@ app.include_router(auth.router)
 app.include_router(files.router)
 app.include_router(subscription.router)
 
-if settings.is_local:
+if settings.is_local and settings.DEV_LOGIN_ENABLED:
     app.include_router(dev.router)
 
 if STATIC_DIR.is_dir():
