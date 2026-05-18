@@ -15,8 +15,7 @@ spec:
       labels:
         app: sendr-backend
     spec:
-      imagePullSecrets:
-        - name: ghcr-secret
+      serviceAccountName: sendr-app
       containers:
         - name: backend
           image: ghcr.io/thephaseless/sendr/backend:latest
@@ -25,6 +24,11 @@ spec:
             - containerPort: 8000
               name: http
           env:
+            - name: SENDR_ENVIRONMENT
+              valueFrom:
+                secretKeyRef:
+                  name: sendr-secrets
+                  key: environment
             - name: SENDR_DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -60,6 +64,26 @@ spec:
                 secretKeyRef:
                   name: sendr-secrets
                   key: resend-api-key
+            - name: SENDR_SPACES_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sendr-secrets
+                  key: spaces-access-key
+            - name: SENDR_SPACES_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sendr-secrets
+                  key: spaces-secret-key
+            - name: SENDR_SPACES_BUCKET_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: sendr-secrets
+                  key: spaces-bucket-name
+            - name: SENDR_SPACES_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: sendr-secrets
+                  key: spaces-region
           resources:
             requests:
               cpu: 100m
@@ -71,11 +95,13 @@ spec:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 10
-            periodSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 5
           readinessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 5
-            periodSeconds: 5
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 10

@@ -1,0 +1,97 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: sendr
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-ingress
+  namespace: sendr
+spec:
+  podSelector:
+    matchLabels:
+      app: sendr-backend
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: sendr-frontend
+    - podSelector:
+        matchLabels:
+          app: traefik
+  policyTypes:
+  - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-ingress
+  namespace: sendr
+spec:
+  podSelector:
+    matchLabels:
+      app: sendr-frontend
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: traefik
+  policyTypes:
+  - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-egress
+  namespace: sendr
+spec:
+  podSelector:
+    matchLabels:
+      app: sendr-backend
+  egress:
+  - to: [] # Pozwól na DNS (port 53) - wymagane przez Kubernetes
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  - ports:
+    - protocol: TCP
+      port: 5432 # PostgreSQL
+    - protocol: TCP
+      port: 443  # HTTPS (Spaces, Resend)
+  policyTypes:
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-all-egress
+  namespace: sendr
+spec:
+  podSelector: {}
+  egress:
+  - {}
+  policyTypes:
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-ingress
+  namespace: sendr
+spec:
+  podSelector:
+    matchLabels:
+      app: traefik
+  ingress:
+  - {} # Pozwól na ruch z każdego źródła (wymagane dla LoadBalancera i Let's Encrypt)
+  policyTypes:
+  - Ingress

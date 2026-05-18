@@ -1,12 +1,12 @@
 import logging
 from datetime import timedelta
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from sqlmodel import and_, col, func, or_, select
 
 from config import settings
 from models import FileUpload, utcnow
+from storage import storage
 
 if TYPE_CHECKING:
     from sqlmodel.ext.asyncio.session import AsyncSession
@@ -36,7 +36,6 @@ async def cleanup_expired_files(session: AsyncSession) -> int:
     expired_files = result.all()
 
     cleaned = 0
-    upload_dir = Path(settings.UPLOAD_DIR)
     cleaned_ids = {
         file_upload.id for file_upload in expired_files if file_upload.id is not None
     }
@@ -61,10 +60,8 @@ async def cleanup_expired_files(session: AsyncSession) -> int:
     if cleaned > 0:
         await session.commit()
         for stored_filename in stored_filenames_to_delete:
-            file_path = upload_dir / stored_filename
-            if file_path.exists():
-                file_path.unlink()
-                logger.info("Deleted expired file: %s", file_path)
+            await storage.delete_file(stored_filename)
+            logger.info("Deleted expired file: %s", stored_filename)
         logger.info("Cleaned up %d expired files", cleaned)
 
     return cleaned

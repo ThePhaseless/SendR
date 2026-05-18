@@ -19,8 +19,10 @@ from config import settings
 from errors import http_exception_handler
 from routers import admin, altcha, auth, dev, files, subscription
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-STATIC_DIR = Path(__file__).resolve().parent.parent.parent.parent / "static"
+
+STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 _ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
 
 if TYPE_CHECKING:
@@ -30,33 +32,43 @@ if TYPE_CHECKING:
 
 
 def _sync_database_url(url: str) -> str:
-    return url.replace("+aiosqlite", "").replace("+asyncpg", "")
+    return (
+        url.replace("sqlite+aiosqlite://", "sqlite://")
+        .replace("postgresql+asyncpg://", "postgresql://")
+        .replace("postgresql+psycopg://", "postgresql://")
+        .replace("ssl=", "sslmode=")
+    )
 
 
 def run_migrations() -> None:
-    logger.info("Running database migrations...")
-    cfg = Config(str(_ALEMBIC_INI))
-    sync_url = _sync_database_url(settings.DATABASE_URL)
-    cfg.set_main_option("sqlalchemy.url", sync_url)
-    cfg.attributes["skip_logging_config"] = True
-
-    engine = create_engine(sync_url)
+    logger.info("Starting database migrations...")
     try:
+        cfg = Config(str(_ALEMBIC_INI))
+        sync_url = _sync_database_url(settings.DATABASE_URL)
+        cfg.set_main_option("sqlalchemy.url", sync_url)
+        cfg.attributes["skip_logging_config"] = True
+
+        logger.info("Connecting to database for migrations...")
+        connect_args = (
+            {"connect_timeout": 10} if sync_url.startswith("postgresql") else {}
+        )
+        engine = create_engine(sync_url, connect_args=connect_args)
         with engine.connect() as connection:
+            logger.info("Connected to database. Checking schema...")
             inspector = inspect(connection)
             tables = set(inspector.get_table_names())
             if "user" in tables and "alembic_version" not in tables:
-                logger.info(
-                    "Existing schema without Alembic tracking detected; "
-                    "stamping at head."
-                )
+                logger.info("Existing schema detected; stamping at head.")
                 command.stamp(cfg, "head")
             else:
+                logger.info("Running alembic upgrade head...")
                 command.upgrade(cfg, "head")
-    finally:
         engine.dispose()
-
-    logger.info("Database migrations complete.")
+        logger.info("Database migrations complete.")
+    except Exception:
+        logger.exception("Migration failed")
+        if settings.is_production:
+            raise
 
 
 @asynccontextmanager
@@ -93,7 +105,8 @@ async def enforce_cookie_csrf(
     request: Request, call_next: Callable[[Request], Awaitable[StarletteResponse]]
 ) -> StarletteResponse:
     if (
-        request.method in {"POST", "PATCH", "PUT", "DELETE"}
+        not settings.is_local
+        and request.method in {"POST", "PATCH", "PUT", "DELETE"}
         and request.url.path.startswith("/api/")
         and settings.SESSION_COOKIE_NAME in request.cookies
     ):
@@ -117,13 +130,18 @@ async def enforce_cookie_csrf(
     return await call_next(request)
 
 
+@app.get("/health", include_in_schema=False)
+async def health_check():
+    return {"status": "ok"}
+
+
 app.include_router(admin.router)
 app.include_router(altcha.router)
 app.include_router(auth.router)
 app.include_router(files.router)
 app.include_router(subscription.router)
 
-if settings.is_local:
+if settings.is_local and settings.DEV_LOGIN_ENABLED:
     app.include_router(dev.router)
 
 if STATIC_DIR.is_dir():

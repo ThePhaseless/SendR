@@ -1,41 +1,20 @@
-output "vpc_id" {
-  description = "VPC ID"
-  value       = module.vpc.vpc_id
+output "kubernetes_cluster_id" {
+  value = module.kubernetes.cluster_id
 }
 
 output "database_host" {
-  description = "Database host"
-  value       = module.database.host
+  value = module.database.database_host
 }
 
-output "database_connection_string" {
-  description = "PostgreSQL connection string"
-  value       = module.database.connection_string
-  sensitive   = true
+output "database_url" {
+  value     = "postgresql+psycopg://${module.database.database_user}:${module.database.database_password}@${module.database.database_host}:${module.database.database_port}/${module.database.database_name}?sslmode=require"
+  sensitive = true
 }
 
-output "domain_name" {
-  description = "Domain name"
-  value       = module.domain.domain_name
+output "spaces_bucket_name" {
+  value = module.storage.bucket_name
 }
 
-output "kubernetes_cluster_id" {
-  description = "Kubernetes cluster ID"
-  value       = module.kubernetes.cluster_id
-}
-
-output "kubernetes_cluster_endpoint" {
-  description = "Kubernetes cluster endpoint"
-  value       = module.kubernetes.cluster_endpoint
-}
-
-output "kubernetes_cluster_urn" {
-  description = "Kubernetes cluster URN"
-  value       = module.kubernetes.cluster_urn
-}
-
-output "kubernetes_kubeconfig" {
-  description = "Kubernetes kubeconfig"
-  value       = module.kubernetes.kubeconfig
-  sensitive   = true
+output "vpc_id" {
+  value = module.network.vpc_id
 }

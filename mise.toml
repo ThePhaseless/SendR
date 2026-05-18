@@ -1,0 +1,6 @@
+[tools]
+doctl = "latest"
+gemini-cli = "latest"
+k9s = "latest"
+kubectl = "latest"
+terraform = "latest"

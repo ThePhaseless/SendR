@@ -1,0 +1,21 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sendr-backend-pdb
+  namespace: sendr
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: sendr-backend
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: sendr-frontend-pdb
+  namespace: sendr
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: sendr-frontend

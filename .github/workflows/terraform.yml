@@ -1,198 +1,94 @@
 name: Terraform
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'terraform/**'
   pull_request:
-    branches: [main]
     paths:
-      - 'terraform/**'
+      - terraform/**
+      - .github/workflows/terraform.yml
+  push:
+    branches:
+      - main
+      - DO-implementation
+      - release/**
+    tags:
+      - v*
+    paths:
+      - terraform/**
+      - .github/workflows/terraform.yml
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to plan/apply
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: dev
+
+permissions:
+  contents: read
 
 env:
-  TF_VERSION: '1.11.0'
-  AWS_REGION: 'us-east-1'
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
 
 jobs:
-  terraform:
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-
+  validate:
+    name: Validate
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: terraform
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
         with:
-          terraform_version: ${{ env.TF_VERSION }}
-          terraform_wrapper: true
+          terraform_version: 1.15.3
 
-      - name: Configure AWS Credentials for DO Spaces
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Set AWS_PROFILE
-        run: echo "AWS_PROFILE=digitalocean" >> $GITHUB_ENV
-
-      - name: Terraform Init
-        working-directory: terraform
-        run: terraform init -upgrade
-
-      - name: Terraform Format
-        working-directory: terraform
+      - name: Format
         run: terraform fmt -check -recursive
 
-      - name: Terraform Validate
+      - name: Init without backend
+        run: terraform init -backend=false
+
+      - name: Validate
+        run: terraform validate -no-color
+
+  apply:
+    name: Apply
+    runs-on: ubuntu-24.04
+    needs: validate
+    if: github.event_name != 'pull_request'
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_type == 'tag' && 'prod' || startsWith(github.ref, 'refs/heads/release/') && 'staging' || 'dev' }}
+    defaults:
+      run:
         working-directory: terraform
-        run: terraform validate
-
-  terraform-dev:
-    runs-on: ubuntu-latest
-    needs: terraform
-    environment: dev
-    permissions:
-      id-token: write
-      contents: read
-
+    env:
+      ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_type == 'tag' && 'prod' || startsWith(github.ref, 'refs/heads/release/') && 'staging' || 'dev' }}
+      TF_VAR_do_token: ${{ github.event_name == 'workflow_dispatch' && inputs.environment == 'prod' && secrets.PROD_DO_TOKEN || github.ref_type == 'tag' && secrets.PROD_DO_TOKEN || github.event_name == 'workflow_dispatch' && inputs.environment == 'staging' && secrets.STAGING_DO_TOKEN || startsWith(github.ref, 'refs/heads/release/') && secrets.STAGING_DO_TOKEN || secrets.DEV_DO_TOKEN }}
+      TF_VAR_spaces_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      TF_VAR_spaces_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
         with:
-          terraform_version: ${{ env.TF_VERSION }}
-          terraform_wrapper: true
+          terraform_version: 1.15.3
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+      - name: Init
+        run: terraform init -backend-config="environments/${ENVIRONMENT}/backend.conf"
 
-      - name: Set AWS_PROFILE
-        run: echo "AWS_PROFILE=digitalocean" >> $GITHUB_ENV
+      - name: Plan
+        run: terraform plan -no-color -var-file="environments/${ENVIRONMENT}/terraform.tfvars.example" -out=tfplan
 
-      - name: Terraform Init Dev
-        working-directory: terraform
-        run: |
-          terraform init -upgrade -var-file="environments/dev.tfvars"
-          terraform workspace select dev || terraform workspace new dev
-
-      - name: Terraform Plan Dev
-        if: github.event_name == 'pull_request'
-        working-directory: terraform
-        run: terraform plan -no-color -var-file="environments/dev.tfvars"
-        env:
-          TF_VAR_do_token: ${{ secrets.DEV_DO_TOKEN }}
-
-      - name: Terraform Apply Dev
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        working-directory: terraform
-        run: terraform apply -auto-approve -var-file="environments/dev.tfvars"
-        env:
-          TF_VAR_do_token: ${{ secrets.DEV_DO_TOKEN }}
-
-  terraform-staging:
-    runs-on: ubuntu-latest
-    needs: terraform-dev
-    environment: staging
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-          terraform_wrapper: true
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Set AWS_PROFILE
-        run: echo "AWS_PROFILE=digitalocean" >> $GITHUB_ENV
-
-      - name: Terraform Init Staging
-        working-directory: terraform
-        run: |
-          terraform init -upgrade -var-file="environments/staging.tfvars"
-          terraform workspace select staging || terraform workspace new staging
-
-      - name: Terraform Plan Staging
-        if: github.event_name == 'pull_request'
-        working-directory: terraform
-        run: terraform plan -no-color -var-file="environments/staging.tfvars"
-        env:
-          TF_VAR_do_token: ${{ secrets.STAGING_DO_TOKEN }}
-
-      - name: Terraform Apply Staging
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        working-directory: terraform
-        run: terraform apply -auto-approve -var-file="environments/staging.tfvars"
-        env:
-          TF_VAR_do_token: ${{ secrets.STAGING_DO_TOKEN }}
-
-  terraform-prod:
-    runs-on: ubuntu-latest
-    needs: terraform-staging
-    environment: production
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-          terraform_wrapper: true
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Set AWS_PROFILE
-        run: echo "AWS_PROFILE=digitalocean" >> $GITHUB_ENV
-
-      - name: Terraform Init Prod
-        working-directory: terraform
-        run: |
-          terraform init -upgrade -var-file="environments/prod.tfvars"
-          terraform workspace select prod || terraform workspace new prod
-
-      - name: Terraform Plan Prod
-        if: github.event_name == 'pull_request'
-        working-directory: terraform
-        run: terraform plan -no-color -var-file="environments/prod.tfvars"
-        env:
-          TF_VAR_do_token: ${{ secrets.PROD_DO_TOKEN }}
-
-      - name: Terraform Apply Prod
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        working-directory: terraform
-        run: terraform apply -auto-approve -var-file="environments/prod.tfvars"
-        env:
-          TF_VAR_do_token: ${{ secrets.PROD_DO_TOKEN }}
+      - name: Apply
+        run: terraform apply -auto-approve tfplan

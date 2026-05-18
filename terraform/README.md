@@ -1,51 +1,37 @@
-# Terraform & DigitalOcean Spaces (S3 Backend) Authentication
+# Infrastruktura jako Kod (IaC) - SendR
 
-To securely store the Terraform state in DigitalOcean Spaces, this project uses the S3-compatible backend. Because we don't hardcode credentials in the configuration, you need to authenticate using the **AWS CLI**.
+Ten folder zawiera kod Terraform odpowiedzialny za zautomatyzowane budowanie i zarządzanie infrastrukturą chmurową na platformie DigitalOcean dla projektu SendR.
 
-Follow these steps before running any Terraform commands:
+## 🏗️ Co udało się dotychczas zbudować (Stan obecny)
 
-## 1. Configure the AWS CLI Profile
+Zaprojektowaliśmy w pełni modułową architekturę, zgodną z najlepszymi praktykami "Infrastruktury jako Kodu", gotową do zautomatyzowanego wdrożenia przez GitHub Actions. 
 
-Open your terminal and run the following command to create a dedicated profile named `digitalocean`:
+Oto podsumowanie zrealizowanych kroków:
 
-```bash
-aws configure --profile digitalocean
-```
+1. **Podział na środowiska (Environments):**
+   * Utworzono odseparowane środowiska `dev`, `staging` oraz `prod`.
+   * Stan infrastruktury (`.tfstate`) dla każdego środowiska jest bezpiecznie przechowywany w zdalnym buckecie (DO Spaces) w podfolderach.
 
-When prompted, provide your **DigitalOcean Spaces keys**:
-*   **AWS Access Key ID**: _[Paste your DO Spaces Access Key]_
-*   **AWS Secret Access Key**: _[Paste your DO Spaces Secret Key]_
-*   **Default region name**: `us-east-1`
-*   **Default output format**: `json`
+2. **Zaprojektowano i wdrożono Moduły Chmurowe:**
+   * `network_vpc` - Zabezpieczona, prywatna sieć dla Klastra K8s i Bazy Danych.
+   * `database_postgres` - Zarządzalny klaster bazy danych PostgreSQL.
+   * `storage_spaces` - Bucket Object Storage dla plików użytkowników (S3 compatible).
+   * `kubernetes_doks` - Klaster DigitalOcean Kubernetes (DOKS), na którym działa aplikacja.
+   * `dns_domain` - Moduł przygotowany pod dynamiczne przypisywanie domen.
 
-## 2. Export the Profile as an Environment Variable
+3. **Zabezpieczenia i Stabilność:**
+   * Kod zwalidowany i sformatowany.
+   * Wprowadzono `.gitignore` zabezpieczający przed wyciekiem wrażliwych danych.
+   * Klaster Kubernetes posiada dynamiczne pobieranie wersji z bezpiecznym fallbackiem.
 
-Before running `terraform init` or `terraform apply`, you must tell Terraform to use the newly created profile. 
+4. **Migracja i Obsługa Cloud-Native:**
+   * Backend (FastAPI) wspiera teraz natywnie PostgreSQL i DigitalOcean Spaces.
+   * Stworzono skrypty migracyjne w `scripts/` do przenoszenia danych ze starego SQLite do nowej chmury.
 
-Set the `AWS_PROFILE` environment variable in your terminal session:
+## 🚀 Następne Kroki (TODO)
 
-### For Git Bash, WSL, Linux, or macOS:
-```bash
-export AWS_PROFILE=digitalocean
-```
-
-### For PowerShell (Windows):
-```powershell
-$env:AWS_PROFILE="digitalocean"
-```
-
-### For Command Prompt (CMD Windows):
-```cmd
-set AWS_PROFILE=digitalocean
-```
-
-## 3. Run Terraform
-
-Once the profile is set in your current terminal session, you can run Terraform commands normally:
-
-```bash
-terraform init
-terraform apply
-```
-
-_Note: Remember that to authenticate the DigitalOcean provider itself (to create droplets, databases, etc.), you still need the `do_token` (Personal Access Token), typically provided in your `terraform.tfvars` file._
+* [ ] **Konteneryzacja:** Budowa obrazów Docker dla frontendu i backendu.
+* [ ] **Rejestr Obrazów:** Konfiguracja GitHub Container Registry (GHCR).
+* [ ] **Kubernetes Manifests:** Przygotowanie plików Kustomize do wdrożenia aplikacji na klaster.
+* [ ] **Ingress & TLS:** Wdrożenie Traefika z certyfikatami Let's Encrypt.
+* [ ] **Domeny:** Ostateczne przypięcie domeny `sendr.com` do IP klastra.

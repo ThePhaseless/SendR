@@ -15,8 +15,7 @@ spec:
       labels:
         app: sendr-frontend
     spec:
-      imagePullSecrets:
-        - name: ghcr-secret
+      serviceAccountName: sendr-app
       containers:
         - name: frontend
           image: ghcr.io/thephaseless/sendr/frontend:latest
@@ -26,7 +25,7 @@ spec:
               name: http
           env:
             - name: API_URL
-              value: "https://api.sendr.app"
+              value: "https://api.sendr.email"
           resources:
             requests:
               cpu: 50m
@@ -34,3 +33,15 @@ spec:
             limits:
               cpu: 250m
               memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10

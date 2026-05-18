@@ -1,160 +1,131 @@
-name: Deploy to Kubernetes
+name: Deploy Kubernetes
 
 on:
+  push:
+    branches:
+      - main
+      - DO-implementation
+      - release/**
+    tags:
+      - v*
   workflow_run:
-    workflows: ["Build and Push Backend to GHCR", "Build and Push Frontend to GHCR"]
-    types: [completed]
-    branches: [main,DO-implementation]
+    workflows:
+      - Build and Publish Docker Images
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: dev
+
+permissions:
+  contents: read
 
 env:
-  KUBECTL_VERSION: '1.30.0'
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
+  REGISTRY: ghcr.io/thephaseless/sendr
 
 jobs:
-  deploy-dev:
-    runs-on: ubuntu-latest
-    environment: dev
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-24.04
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_type == 'tag' && 'prod' || startsWith(github.ref, 'refs/heads/release/') && 'staging' || 'dev' }}
     env:
-      ENVIRONMENT: dev
+      DEPLOY_ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_type == 'tag' && 'prod' || startsWith(github.ref, 'refs/heads/release/') && 'staging' || startsWith(github.event.workflow_run.head_branch, 'release/') && 'staging' || 'dev' }}
+      DIGITALOCEAN_ACCESS_TOKEN: ${{ github.event_name == 'workflow_dispatch' && inputs.environment == 'prod' && secrets.PROD_DO_TOKEN || github.ref_type == 'tag' && secrets.PROD_DO_TOKEN || github.event_name == 'workflow_dispatch' && inputs.environment == 'staging' && secrets.STAGING_DO_TOKEN || startsWith(github.ref, 'refs/heads/release/') && secrets.STAGING_DO_TOKEN || startsWith(github.event.workflow_run.head_branch, 'release/') && secrets.STAGING_DO_TOKEN || secrets.DEV_DO_TOKEN }}
+      TF_VAR_do_token: ${{ github.event_name == 'workflow_dispatch' && inputs.environment == 'prod' && secrets.PROD_DO_TOKEN || github.ref_type == 'tag' && secrets.PROD_DO_TOKEN || github.event_name == 'workflow_dispatch' && inputs.environment == 'staging' && secrets.STAGING_DO_TOKEN || startsWith(github.ref, 'refs/heads/release/') && secrets.STAGING_DO_TOKEN || startsWith(github.event.workflow_run.head_branch, 'release/') && secrets.STAGING_DO_TOKEN || secrets.DEV_DO_TOKEN }}
+      TF_VAR_spaces_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      TF_VAR_spaces_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: 1.15.3
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f
+        with:
+          token: ${{ env.DIGITALOCEAN_ACCESS_TOKEN }}
 
       - name: Install kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: ${{ env.KUBECTL_VERSION }}
+        uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415
 
-      - name: Configure kubectl
-        shell: bash
+      - name: Set deployment context
         run: |
-          echo "${{ secrets.DEV_KUBECONFIG }}" | base64 -d > kubeconfig
-          echo "KUBECONFIG=$(pwd)/kubeconfig" >> $GITHUB_ENV
+          ENV_NAME="$DEPLOY_ENVIRONMENT"
 
-      - name: Deploy traefik
+          echo "ENV_NAME=$ENV_NAME" >> "$GITHUB_ENV"
+          echo "CLUSTER_NAME=sendr-k8s-$ENV_NAME" >> "$GITHUB_ENV"
+          echo "KUSTOMIZE_PATH=k8s/overlays/$ENV_NAME" >> "$GITHUB_ENV"
+          echo "TF_VAR_FILE=environments/$ENV_NAME/terraform.tfvars.example" >> "$GITHUB_ENV"
+          echo "TF_BACKEND=environments/$ENV_NAME/backend.conf" >> "$GITHUB_ENV"
+
+      - name: Terraform apply infrastructure
+        working-directory: terraform
         run: |
-          kubectl apply -k k8s/base/traefik/ --server-side
+          terraform init -backend-config="$TF_BACKEND"
+          terraform plan -no-color -var-file="$TF_VAR_FILE" -out=tfplan
+          terraform apply -auto-approve tfplan
+          echo "SENDR_DATABASE_URL=$(terraform output -raw database_url)" >> "$GITHUB_ENV"
+          echo "SENDR_SPACES_BUCKET_NAME=$(terraform output -raw spaces_bucket_name)" >> "$GITHUB_ENV"
 
-      - name: Deploy to dev
-        run: |
-          kubectl apply -k k8s/overlays/dev --server-side
+      - name: Save DigitalOcean kubeconfig
+        run: doctl kubernetes cluster kubeconfig save "$CLUSTER_NAME"
 
-      - name: Generate GitHub App Installation Token
-        id: generate-token
-        uses: tibdex/github-app-token@v2
-        with:
-          app_id: ${{ secrets.GH_APP_ID }}
-          private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-
-      - name: Create Kubernetes secrets
+      - name: Create application secrets
         env:
-          SENDR_DATABASE_URL: ${{ secrets.DEV_SENDR_DATABASE_URL }}
-          SENDR_SECRET_KEY: ${{ secrets.DEV_SENDR_SECRET_KEY }}
+          SENDR_SECRET_KEY: ${{ secrets.SENDR_SECRET_KEY }}
           SENDR_SMTP_HOST: ${{ secrets.SENDR_SMTP_HOST }}
           SENDR_SMTP_PORT: ${{ secrets.SENDR_SMTP_PORT }}
           SENDR_SMTP_USER: ${{ secrets.SENDR_SMTP_USER }}
           SENDR_SMTP_PASSWORD: ${{ secrets.SENDR_SMTP_PASSWORD }}
           SENDR_RESEND_API_KEY: ${{ secrets.SENDR_RESEND_API_KEY }}
-          GITHUB_APP_TOKEN: ${{ steps.generate-token.outputs.token }}
-          SENDR_GITHUB_EMAIL: ${{ vars.SENDR_GITHUB_EMAIL }}
-        run: ./scripts/create-secrets.sh ${{ env.ENVIRONMENT }}
-
-  deploy-staging:
-    runs-on: ubuntu-latest
-    environment: staging
-    needs: deploy-dev
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    env:
-      ENVIRONMENT: staging
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: ${{ env.KUBECTL_VERSION }}
-
-      - name: Configure kubectl
-        shell: bash
+          SENDR_SPACES_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          SENDR_SPACES_SECRET_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          SENDR_SPACES_REGION: fra1
         run: |
-          echo "${{ secrets.STAGING_KUBECONFIG }}" | base64 -d > kubeconfig
-          echo "KUBECONFIG=$(pwd)/kubeconfig" >> $GITHUB_ENV
+          kubectl apply -f k8s/base/namespace.yaml
+          export SENDR_ENVIRONMENT="$ENV_NAME"
+          ./scripts/create-secrets.sh "$ENV_NAME"
 
-      - name: Deploy traefik
+      - name: Deploy manifests
         run: |
-          kubectl apply -k k8s/base/traefik/ --server-side
+          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
+          kubectl kustomize "$KUSTOMIZE_PATH" \
+            | sed \
+              -e "s|ghcr.io/thephaseless/sendr/backend:[^[:space:]]*|$REGISTRY/backend:sha-$SHA|g" \
+              -e "s|ghcr.io/thephaseless/sendr/frontend:[^[:space:]]*|$REGISTRY/frontend:sha-$SHA|g" \
+            | kubectl apply -f -
 
-      - name: Deploy to staging
+      - name: Wait for Traefik LoadBalancer IP
         run: |
-          kubectl apply -k k8s/overlays/staging --server-side
+          for attempt in {1..30}; do
+            TRAEFIK_IP=$(kubectl get svc traefik -n sendr -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            if [ -n "$TRAEFIK_IP" ]; then
+              echo "TRAEFIK_IP=$TRAEFIK_IP" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Failed to get Traefik LoadBalancer IP" >&2
+          exit 1
 
-      - name: Generate GitHub App Installation Token
-        id: generate-token
-        uses: tibdex/github-app-token@v2
-        with:
-          app_id: ${{ secrets.GH_APP_ID }}
-          private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-
-      - name: Create Kubernetes secrets
-        env:
-          SENDR_DATABASE_URL: ${{ secrets.STAGING_SENDR_DATABASE_URL }}
-          SENDR_SECRET_KEY: ${{ secrets.STAGING_SENDR_SECRET_KEY }}
-          SENDR_SMTP_HOST: ${{ secrets.SENDR_SMTP_HOST }}
-          SENDR_SMTP_PORT: ${{ secrets.SENDR_SMTP_PORT }}
-          SENDR_SMTP_USER: ${{ secrets.SENDR_SMTP_USER }}
-          SENDR_SMTP_PASSWORD: ${{ secrets.SENDR_SMTP_PASSWORD }}
-          SENDR_RESEND_API_KEY: ${{ secrets.SENDR_RESEND_API_KEY }}
-          GITHUB_APP_TOKEN: ${{ steps.generate-token.outputs.token }}
-          SENDR_GITHUB_EMAIL: ${{ vars.SENDR_GITHUB_EMAIL }}
-        run: ./scripts/create-secrets.sh ${{ env.ENVIRONMENT }}
-
-  deploy-prod:
-    runs-on: ubuntu-latest
-    environment: production
-    needs: deploy-staging
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    env:
-      ENVIRONMENT: prod
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: ${{ env.KUBECTL_VERSION }}
-
-      - name: Configure kubectl
-        shell: bash
+      - name: Terraform apply DNS
+        working-directory: terraform
         run: |
-          echo "${{ secrets.PROD_KUBECONFIG }}" | base64 -d > kubeconfig
-          echo "KUBECONFIG=$(pwd)/kubeconfig" >> $GITHUB_ENV
-
-      - name: Deploy traefik
-        run: |
-          kubectl apply -k k8s/base/traefik/ --server-side
-
-      - name: Deploy to prod
-        run: |
-          kubectl apply -k k8s/overlays/prod --server-side
-
-      - name: Generate GitHub App Installation Token
-        id: generate-token
-        uses: tibdex/github-app-token@v2
-        with:
-          app_id: ${{ secrets.GH_APP_ID }}
-          private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
-
-      - name: Create Kubernetes secrets
-        env:
-          SENDR_DATABASE_URL: ${{ secrets.PROD_SENDR_DATABASE_URL }}
-          SENDR_SECRET_KEY: ${{ secrets.PROD_SENDR_SECRET_KEY }}
-          SENDR_SMTP_HOST: ${{ secrets.SENDR_SMTP_HOST }}
-          SENDR_SMTP_PORT: ${{ secrets.SENDR_SMTP_PORT }}
-          SENDR_SMTP_USER: ${{ secrets.SENDR_SMTP_USER }}
-          SENDR_SMTP_PASSWORD: ${{ secrets.SENDR_SMTP_PASSWORD }}
-          SENDR_RESEND_API_KEY: ${{ secrets.SENDR_RESEND_API_KEY }}
-          GITHUB_APP_TOKEN: ${{ steps.generate-token.outputs.token }}
-          SENDR_GITHUB_EMAIL: ${{ vars.SENDR_GITHUB_EMAIL }}
-        run: ./scripts/create-secrets.sh ${{ env.ENVIRONMENT }}
+          terraform plan -no-color -var-file="$TF_VAR_FILE" -var="ingress_ip=$TRAEFIK_IP" -out=dns.tfplan
+          terraform apply -auto-approve dns.tfplan
