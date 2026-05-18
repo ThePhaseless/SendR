@@ -23,7 +23,7 @@ from fastapi import (
     Form,
     Header,
     HTTPException,
-    Query,
+    Request,
     UploadFile,
     status,
 )
@@ -38,6 +38,7 @@ from email_utils import send_file_invite_email
 from models import (
     DownloadLog,
     FileUpload,
+    ScanStatus,
     UploadEmailRecipient,
     UploadGroupSettings,
     UploadPassword,
@@ -46,7 +47,16 @@ from models import (
     require_id,
     utcnow,
 )
+from rate_limit import download_rate_limiter, get_client_ip
 from routers.altcha import verify_altcha_payload
+from scan_queue import (
+    StoredUpload,
+    aggregate_scan_status,
+    discard_staged_uploads,
+    discard_stored_uploads,
+    finalize_staged_upload,
+    stage_upload_file,
+)
 from schemas import (
     AccessEditRequest,
     AccessInfoResponse,
@@ -66,11 +76,12 @@ from schemas import (
 )
 from security import get_current_user, get_optional_user, hash_secret, verify_secret
 from storage import storage
-from virus_scanner import scan_upload_content
 
 if TYPE_CHECKING:
     from _typeshed import ReadableBuffer
     from sqlmodel.ext.asyncio.session import AsyncSession
+
+    from scan_queue import StagedUpload
 
 router = APIRouter(prefix="/api/files", tags=["files"])
 logger = logging.getLogger(__name__)
@@ -348,10 +359,8 @@ def _build_download_url(download_token: str) -> str:
     return f"/api/files/{download_token}"
 
 
-def _resolve_access_credential(
-    password: str | None, access_token: str | None
-) -> str | None:
-    return access_token or password
+def _resolve_access_credential(access_token: str | None) -> str | None:
+    return access_token
 
 
 def _build_invite_download_url(upload_group: str, raw_token: str) -> str:
@@ -365,6 +374,69 @@ def _download_limit_message(access_type: str, separate_download_counts: bool) ->
         if access_type in ("password", "email"):
             return "Restricted download limit reached"
     return "Download limit reached"
+
+
+def _scan_status_detail(
+    scan_status: ScanStatus,
+    *,
+    is_group: bool,
+) -> tuple[int, dict[str, str]]:
+    subject = "transfer" if is_group else "file"
+    if scan_status == ScanStatus.queued:
+        return status.HTTP_409_CONFLICT, {
+            "code": "FILE_SCAN_PENDING",
+            "message": f"This {subject} is queued for malware scanning.",
+        }
+    if scan_status == ScanStatus.scanning:
+        return status.HTTP_409_CONFLICT, {
+            "code": "FILE_SCAN_IN_PROGRESS",
+            "message": f"This {subject} is being scanned for malware.",
+        }
+    if scan_status == ScanStatus.infected:
+        return status.HTTP_410_GONE, {
+            "code": "FILE_BLOCKED_MALWARE",
+            "message": (f"This {subject} was blocked because malware was detected."),
+        }
+    return status.HTTP_409_CONFLICT, {
+        "code": "FILE_SCAN_FAILED",
+        "message": "Virus scanning failed. Try again later.",
+    }
+
+
+def _raise_for_scan_status(
+    scan_status: ScanStatus,
+    *,
+    is_group: bool,
+) -> None:
+    if scan_status == ScanStatus.clean:
+        return
+
+    status_code, detail = _scan_status_detail(scan_status, is_group=is_group)
+    raise HTTPException(status_code=status_code, detail=detail)
+
+
+def _apply_scan_lifecycle_fields(
+    file_upload: FileUpload,
+    scan_status: ScanStatus,
+) -> None:
+    now = utcnow()
+    if scan_status == ScanStatus.clean:
+        file_upload.scan_status = scan_status
+        file_upload.scan_enqueued_at = None
+        file_upload.scan_started_at = now
+        file_upload.scan_completed_at = now
+        file_upload.scan_failure_code = None
+        file_upload.scan_failure_message = None
+        file_upload.malware_signature = None
+        return
+
+    file_upload.scan_status = scan_status
+    file_upload.scan_enqueued_at = now
+    file_upload.scan_started_at = None
+    file_upload.scan_completed_at = None
+    file_upload.scan_failure_code = None
+    file_upload.scan_failure_message = None
+    file_upload.malware_signature = None
 
 
 async def _consume_download_slot(
@@ -442,6 +514,7 @@ def to_file_response(
         has_email_recipients=email_count > 0,
         viewer_is_owner=viewer_is_owner,
         group_download_only=group_download_only,
+        scan_status=f.scan_status,
     )
 
 
@@ -464,25 +537,53 @@ async def _is_single_file_download_restricted(
 
 
 async def _store_upload_content(
-    session: AsyncSession, content: bytes
-) -> tuple[str, str]:
-    """Scan an upload and reuse an existing stored file when the checksum matches."""
-    await run_in_threadpool(scan_upload_content, content)
+    session: AsyncSession, staged_upload: StagedUpload
+) -> StoredUpload:
+    """Stage an upload and return its storage metadata and scan state."""
+    if settings.is_s3_configured and not settings.VIRUS_SCANNING_ENABLED:
+        result = await session.exec(
+            select(FileUpload.stored_filename)
+            .where(
+                FileUpload.content_hash == staged_upload.content_hash,
+                FileUpload.scan_status == ScanStatus.clean,
+                col(FileUpload.is_active).is_(True),
+            )
+            .order_by(col(FileUpload.created_at).desc())
+        )
 
-    content_hash = sha256(content).hexdigest()
-    result = await session.exec(
-        select(FileUpload.stored_filename)
-        .where(FileUpload.content_hash == content_hash)
-        .order_by(col(FileUpload.created_at).desc())
-    )
+        for stored_filename in result.all():
+            if stored_filename and await storage.file_exists(stored_filename):
+                if staged_upload.temp_path.exists():
+                    staged_upload.temp_path.unlink()
+                return StoredUpload(
+                    stored_filename=stored_filename,
+                    content_hash=staged_upload.content_hash,
+                    file_size=staged_upload.file_size,
+                    scan_status=ScanStatus.clean,
+                    storage_path=None,
+                )
 
-    for stored_filename in result.all():
-        if stored_filename and await storage.file_exists(stored_filename):
-            return stored_filename, content_hash
+        content = await run_in_threadpool(staged_upload.temp_path.read_bytes)
+        stored_filename = await storage.store_file(content)
+        if staged_upload.temp_path.exists():
+            staged_upload.temp_path.unlink()
+        return StoredUpload(
+            stored_filename=stored_filename,
+            content_hash=staged_upload.content_hash,
+            file_size=staged_upload.file_size,
+            scan_status=ScanStatus.clean,
+            storage_path=None,
+        )
 
-    stored_filename = await storage.store_file(content)
+    return await finalize_staged_upload(session, staged_upload)
 
-    return stored_filename, content_hash
+
+async def _discard_pending_upload_artifacts(
+    staged_uploads: list[StagedUpload],
+    stored_uploads: list[StoredUpload],
+) -> None:
+    await discard_stored_uploads(stored_uploads)
+    await discard_staged_uploads(staged_uploads)
 
 
 async def _ensure_stored_file_exists(stored_filename: str) -> None:
@@ -807,61 +908,71 @@ async def upload_file(
 ) -> FileUploadResponse:
     # Get tier limits
     max_size_mb, _ = _get_limits(user.tier)
-
-    # Read file content and check size
-    content = await file.read()
-    file_size = len(content)
     max_bytes = max_size_mb * 1024 * 1024
-    if file_size > max_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File too large. Max {max_size_mb}MB for {user.tier.value} tier.",
+    staged_upload = await stage_upload_file(
+        file,
+        max_bytes=max_bytes,
+        size_limit_detail=(
+            f"File too large. Max {max_size_mb}MB for {user.tier.value} tier."
+        ),
+    )
+    stored_uploads: list[StoredUpload] = []
+
+    try:
+        await _check_weekly_quota(
+            user,
+            session,
+            incoming_uploads=1,
+            incoming_bytes=staged_upload.file_size,
         )
 
-    await _check_weekly_quota(
-        user,
-        session,
-        incoming_uploads=1,
-        incoming_bytes=file_size,
-    )
+        stored_upload = await _store_upload_content(session, staged_upload)
+        stored_uploads.append(stored_upload)
 
-    stored_filename, content_hash = await _store_upload_content(session, content)
+        # Create DB record
+        download_token = secrets.token_urlsafe(32)
+        upload_group = secrets.token_urlsafe(32)
+        expires_at = utcnow() + _resolve_expiry(expiry_hours, user.tier)
+        resolved_max_downloads = _resolve_max_downloads(max_downloads, user.tier)
 
-    # Create DB record
-    download_token = secrets.token_urlsafe(32)
-    upload_group = secrets.token_urlsafe(32)
-    expires_at = utcnow() + _resolve_expiry(expiry_hours, user.tier)
-    resolved_max_downloads = _resolve_max_downloads(max_downloads, user.tier)
+        file_upload = FileUpload(
+            user_id=user.id,
+            original_filename=_sanitize_filename(file.filename or "unnamed"),
+            stored_filename=stored_upload.stored_filename,
+            content_hash=stored_upload.content_hash,
+            file_size_bytes=stored_upload.file_size,
+            download_token=download_token,
+            upload_group=upload_group,
+            expires_at=expires_at,
+            max_downloads=resolved_max_downloads,
+        )
+        _apply_scan_lifecycle_fields(file_upload, stored_upload.scan_status)
+        session.add(file_upload)
 
-    file_upload = FileUpload(
-        user_id=user.id,
-        original_filename=_sanitize_filename(file.filename or "unnamed"),
-        stored_filename=stored_filename,
-        content_hash=content_hash,
-        file_size_bytes=file_size,
-        download_token=download_token,
-        upload_group=upload_group,
-        expires_at=expires_at,
-        max_downloads=resolved_max_downloads,
-    )
-    session.add(file_upload)
+        # Create access control
+        (
+            group_settings,
+            pw_count,
+            email_count,
+            email_tokens,
+        ) = await _create_group_access(
+            session,
+            upload_group,
+            is_public,
+            passwords,
+            emails,
+            show_email_stats,
+            user,
+            title=title,
+            description=description,
+            separate_download_counts=separate_download_counts,
+        )
 
-    # Create access control
-    group_settings, pw_count, email_count, email_tokens = await _create_group_access(
-        session,
-        upload_group,
-        is_public,
-        passwords,
-        emails,
-        show_email_stats,
-        user,
-        title=title,
-        description=description,
-        separate_download_counts=separate_download_counts,
-    )
-
-    await session.commit()
-    await session.refresh(file_upload)
+        await session.commit()
+        await session.refresh(file_upload)
+    except Exception:
+        await _discard_pending_upload_artifacts([staged_upload], stored_uploads)
+        raise
 
     # Send invite emails in background
     if email_tokens:
@@ -925,22 +1036,24 @@ async def upload_multiple_files(
             ),
         )
 
-    # Read all files and validate cumulative size
     max_bytes = max_size_mb * 1024 * 1024
-    file_contents: list[tuple[str, bytes]] = []
+    staged_uploads: list[tuple[str, StagedUpload]] = []
     total_size = 0
     for f in files:
-        content = await f.read()
-        total_size += len(content)
-        if len(content) > max_bytes:
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=(
-                    f"File '{f.filename}' too large. Max {max_size_mb}MB "
-                    f"for {user.tier.value} tier."
-                ),
-            )
+        filename = f.filename or "unnamed"
+        staged_upload = await stage_upload_file(
+            f,
+            max_bytes=max_bytes,
+            size_limit_detail=(
+                f"File '{filename}' too large. Max {max_size_mb}MB "
+                f"for {user.tier.value} tier."
+            ),
+        )
+        total_size += staged_upload.file_size
         if total_size > max_bytes:
+            await discard_staged_uploads(
+                [candidate for _, candidate in staged_uploads] + [staged_upload]
+            )
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=(
@@ -948,54 +1061,69 @@ async def upload_multiple_files(
                     f"{max_size_mb}MB cumulative for {user.tier.value} tier."
                 ),
             )
-        file_contents.append((_sanitize_archive_path(f.filename or "unnamed"), content))
-
-    await _check_weekly_quota(
-        user,
-        session,
-        incoming_uploads=1,
-        incoming_bytes=total_size,
-    )
+        staged_uploads.append((_sanitize_archive_path(filename), staged_upload))
 
     upload_group = secrets.token_urlsafe(32)
     expires_at = utcnow() + _resolve_expiry(expiry_hours, user.tier)
     resolved_max_downloads = _resolve_max_downloads(max_downloads, user.tier)
     saved_uploads: list[FileUpload] = []
+    stored_uploads: list[StoredUpload] = []
 
-    for original_name, content in file_contents:
-        stored_filename, content_hash = await _store_upload_content(session, content)
-
-        file_upload = FileUpload(
-            user_id=user.id,
-            original_filename=original_name,
-            stored_filename=stored_filename,
-            content_hash=content_hash,
-            file_size_bytes=len(content),
-            download_token=secrets.token_urlsafe(32),
-            upload_group=upload_group,
-            expires_at=expires_at,
-            max_downloads=resolved_max_downloads,
+    try:
+        await _check_weekly_quota(
+            user,
+            session,
+            incoming_uploads=1,
+            incoming_bytes=total_size,
         )
-        session.add(file_upload)
-        saved_uploads.append(file_upload)
 
-    # Create access control
-    group_settings, pw_count, email_count, email_tokens = await _create_group_access(
-        session,
-        upload_group,
-        is_public,
-        passwords,
-        emails,
-        show_email_stats,
-        user,
-        title=title,
-        description=description,
-        separate_download_counts=separate_download_counts,
-    )
+        for original_name, staged_upload in staged_uploads:
+            stored_upload = await _store_upload_content(session, staged_upload)
+            stored_uploads.append(stored_upload)
 
-    await session.commit()
-    for fu in saved_uploads:
-        await session.refresh(fu)
+            file_upload = FileUpload(
+                user_id=user.id,
+                original_filename=original_name,
+                stored_filename=stored_upload.stored_filename,
+                content_hash=stored_upload.content_hash,
+                file_size_bytes=stored_upload.file_size,
+                download_token=secrets.token_urlsafe(32),
+                upload_group=upload_group,
+                expires_at=expires_at,
+                max_downloads=resolved_max_downloads,
+            )
+            _apply_scan_lifecycle_fields(file_upload, stored_upload.scan_status)
+            session.add(file_upload)
+            saved_uploads.append(file_upload)
+
+        # Create access control
+        (
+            group_settings,
+            pw_count,
+            email_count,
+            email_tokens,
+        ) = await _create_group_access(
+            session,
+            upload_group,
+            is_public,
+            passwords,
+            emails,
+            show_email_stats,
+            user,
+            title=title,
+            description=description,
+            separate_download_counts=separate_download_counts,
+        )
+
+        await session.commit()
+        for fu in saved_uploads:
+            await session.refresh(fu)
+    except Exception:
+        await _discard_pending_upload_artifacts(
+            [candidate for _, candidate in staged_uploads],
+            stored_uploads,
+        )
+        raise
 
     # Send invite emails in background
     if email_tokens:
@@ -1036,6 +1164,7 @@ async def upload_multiple_files(
         total_size_bytes=total_size,
         title=group_settings.title,
         description=group_settings.description,
+        scan_status=aggregate_scan_status(saved_uploads),
     )
 
 
@@ -1043,7 +1172,6 @@ async def upload_multiple_files(
 async def get_group_info(
     upload_group: str,
     session: AsyncSession = Depends(get_session),
-    password: str | None = Query(None),
     access_token: Annotated[str | None, Header(alias="X-Access-Token")] = None,
     current_user: User | None = Depends(get_optional_user),
 ) -> UploadGroupInfoResponse:
@@ -1072,15 +1200,12 @@ async def get_group_info(
         not viewer_is_owner
         and not is_public
         and (pw_count > 0 or email_count > 0)
-        and not _has_valid_credential(
-            _resolve_access_credential(password, access_token),
-            passwords,
-            email_recipients,
-        )
+        and not _has_valid_credential(access_token, passwords, email_recipients)
     )
 
     total_size = sum(f.file_size_bytes for f in files)
     requires_archive_download = _requires_group_archive_download(files)
+    group_scan_status = None if hide_details else aggregate_scan_status(files)
     return UploadGroupInfoResponse(
         files=(
             []
@@ -1114,14 +1239,15 @@ async def get_group_info(
         if hide_details
         else (group_settings.description if group_settings else None),
         viewer_is_owner=viewer_is_owner,
+        scan_status=group_scan_status,
     )
 
 
 @router.get("/group/{upload_group}/download")
 async def download_group(
     upload_group: str,
+    request: Request,
     session: AsyncSession = Depends(get_session),
-    password: str | None = Query(None),
     access_token: Annotated[str | None, Header(alias="X-Access-Token")] = None,
     current_user: User | None = Depends(get_optional_user),
 ):
@@ -1137,12 +1263,14 @@ async def download_group(
             status_code=status.HTTP_404_NOT_FOUND, detail="Upload group not found"
         )
 
+    download_rate_limiter.check(get_client_ip(request))
+
     # Access verification
     owner_user_id = files[0].user_id
     access_type, pw_id, er_id = await _verify_access(
         session,
         upload_group,
-        _resolve_access_credential(password, access_token),
+        _resolve_access_credential(access_token),
         owner_user_id,
         current_user,
     )
@@ -1155,6 +1283,10 @@ async def download_group(
         )
     )
     group_settings = gs_result.first()
+    _raise_for_scan_status(
+        aggregate_scan_status(files) or ScanStatus.clean,
+        is_group=True,
+    )
 
     for f in files:
         if now > f.expires_at:
@@ -1315,8 +1447,8 @@ async def list_files(
 @router.get("/{download_token}")
 async def download_file(
     download_token: str,
+    request: Request,
     session: AsyncSession = Depends(get_session),
-    password: str | None = Query(None),
     access_token: Annotated[str | None, Header(alias="X-Access-Token")] = None,
     current_user: User | None = Depends(get_optional_user),
 ):
@@ -1331,11 +1463,13 @@ async def download_file(
             status_code=status.HTTP_404_NOT_FOUND, detail="File not found"
         )
 
+    download_rate_limiter.check(get_client_ip(request))
+
     # Access verification
     access_type, pw_id, er_id = await _verify_access(
         session,
         file_upload.upload_group,
-        _resolve_access_credential(password, access_token),
+        _resolve_access_credential(access_token),
         file_upload.user_id,
         current_user,
     )
@@ -1357,6 +1491,8 @@ async def download_file(
         raise HTTPException(
             status_code=status.HTTP_410_GONE, detail="File has been deactivated"
         )
+
+    _raise_for_scan_status(file_upload.scan_status, is_group=False)
 
     if now > file_upload.expires_at:
         if now > grace_end:
@@ -1442,7 +1578,6 @@ async def download_file(
 async def get_file_info(
     download_token: str,
     session: AsyncSession = Depends(get_session),
-    password: str | None = Query(None),
     access_token: Annotated[str | None, Header(alias="X-Access-Token")] = None,
     current_user: User | None = Depends(get_optional_user),
 ) -> FileUploadResponse:
@@ -1470,9 +1605,7 @@ async def get_file_info(
         not viewer_is_owner
         and not is_public
         and (pw_count > 0 or len(ers) > 0)
-        and not _has_valid_credential(
-            _resolve_access_credential(password, access_token), pws, ers
-        )
+        and not _has_valid_credential(access_token, pws, ers)
     )
 
     if hide_details:
@@ -1490,6 +1623,7 @@ async def get_file_info(
             has_email_recipients=len(ers) > 0,
             viewer_is_owner=False,
             group_download_only=group_download_only,
+            scan_status=None,
         )
 
     return to_file_response(
@@ -1704,12 +1838,23 @@ async def add_files_to_group(
     resolved_max_downloads = reference.max_downloads
 
     # Read and validate files
-    file_contents: list[tuple[str, bytes]] = []
+    staged_uploads: list[tuple[str, StagedUpload]] = []
     total_size = sum(f.file_size_bytes for f in existing_files if f.is_active)
     for f in files:
-        content = await f.read()
-        total_size += len(content)
+        filename = f.filename or "unnamed"
+        staged_upload = await stage_upload_file(
+            f,
+            max_bytes=max_bytes,
+            size_limit_detail=(
+                f"File '{filename}' too large. Max {max_size_mb}MB "
+                f"for {user.tier.value} tier."
+            ),
+        )
+        total_size += staged_upload.file_size
         if total_size > max_bytes:
+            await discard_staged_uploads(
+                [candidate for _, candidate in staged_uploads] + [staged_upload]
+            )
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=(
@@ -1717,40 +1862,52 @@ async def add_files_to_group(
                     f"{max_size_mb}MB for {user.tier.value} tier."
                 ),
             )
-        file_contents.append((_sanitize_archive_path(f.filename or "unnamed"), content))
-
-    await _check_weekly_quota(
-        user,
-        session,
-        incoming_uploads=0,
-        incoming_bytes=sum(len(content) for _, content in file_contents),
-    )
+        staged_uploads.append((_sanitize_archive_path(filename), staged_upload))
 
     saved_uploads: list[FileUpload] = []
+    stored_uploads: list[StoredUpload] = []
 
-    for original_name, content in file_contents:
-        stored_filename, content_hash = await _store_upload_content(session, content)
-
-        file_upload = FileUpload(
-            user_id=user.id,
-            original_filename=original_name,
-            stored_filename=stored_filename,
-            content_hash=content_hash,
-            file_size_bytes=len(content),
-            download_token=secrets.token_urlsafe(32),
-            upload_group=upload_group,
-            expires_at=expires_at,
-            max_downloads=resolved_max_downloads,
+    try:
+        await _check_weekly_quota(
+            user,
+            session,
+            incoming_uploads=0,
+            incoming_bytes=sum(
+                staged_upload.file_size for _, staged_upload in staged_uploads
+            ),
         )
-        session.add(file_upload)
-        saved_uploads.append(file_upload)
 
-    await session.commit()
-    for fu in saved_uploads:
-        await session.refresh(fu)
+        for original_name, staged_upload in staged_uploads:
+            stored_upload = await _store_upload_content(session, staged_upload)
+            stored_uploads.append(stored_upload)
+
+            file_upload = FileUpload(
+                user_id=user.id,
+                original_filename=original_name,
+                stored_filename=stored_upload.stored_filename,
+                content_hash=stored_upload.content_hash,
+                file_size_bytes=stored_upload.file_size,
+                download_token=secrets.token_urlsafe(32),
+                upload_group=upload_group,
+                expires_at=expires_at,
+                max_downloads=resolved_max_downloads,
+            )
+            _apply_scan_lifecycle_fields(file_upload, stored_upload.scan_status)
+            session.add(file_upload)
+            saved_uploads.append(file_upload)
+
+        await session.commit()
+        for fu in saved_uploads:
+            await session.refresh(fu)
+    except Exception:
+        await _discard_pending_upload_artifacts(
+            [candidate for _, candidate in staged_uploads],
+            stored_uploads,
+        )
+        raise
 
     gs, pws, ers = await load_group_access(session, upload_group)
-    new_total = sum(len(c) for _, c in file_contents)
+    new_total = sum(staged_upload.file_size for _, staged_upload in staged_uploads)
     requires_archive_download = _requires_group_archive_download(
         [f for f in existing_files if f.is_active] + saved_uploads
     )
@@ -1769,6 +1926,9 @@ async def add_files_to_group(
         total_size_bytes=new_total,
         title=gs.title if gs else None,
         description=gs.description if gs else None,
+        scan_status=aggregate_scan_status(
+            [f for f in existing_files if f.is_active] + saved_uploads
+        ),
     )
 
 
@@ -1878,6 +2038,7 @@ async def refresh_group(
         total_size_bytes=sum(f.file_size_bytes for f in active_files),
         title=gs.title if gs else None,
         description=gs.description if gs else None,
+        scan_status=aggregate_scan_status(active_files),
     )
 
 
@@ -1950,6 +2111,7 @@ async def edit_group(
         total_size_bytes=sum(f.file_size_bytes for f in files),
         title=gs.title if gs else None,
         description=gs.description if gs else None,
+        scan_status=aggregate_scan_status(files),
     )
 
 
@@ -2270,11 +2432,10 @@ async def get_group_stats(
 async def get_recipient_stats(
     upload_group: str,
     session: AsyncSession = Depends(get_session),
-    password: str | None = Query(None),
     access_token: Annotated[str | None, Header(alias="X-Access-Token")] = None,
 ) -> RecipientStatsResponse:
     """Get download stats visible to email recipients. Requires valid email token."""
-    credential = _resolve_access_credential(password, access_token)
+    credential = _resolve_access_credential(access_token)
     if not credential:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access token required"

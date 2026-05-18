@@ -21,7 +21,10 @@ function createUser(tier: string): UserResponse {
   };
 }
 
-function createFile(uploadGroup: string | null = 'group-1'): FileUploadResponse {
+function createFile(
+  uploadGroup: string | null = 'group-1',
+  scanStatus: FileUploadResponse['scan_status'] = 'clean',
+): FileUploadResponse {
   return {
     download_count: 0,
     download_url: 'https://sendr.local/download/token-1',
@@ -35,6 +38,7 @@ function createFile(uploadGroup: string | null = 'group-1'): FileUploadResponse 
     is_public: true,
     max_downloads: null,
     original_filename: 'report.txt',
+    scan_status: scanStatus,
     upload_group: uploadGroup,
     viewer_is_owner: true,
   };
@@ -285,5 +289,61 @@ describe('DashboardComponent', () => {
     expect(component.isSaving()).toBeFalse();
     expect(fileService.addFilesToGroup.calls.any()).toBeFalse();
     expect(fileService.refreshGroup.calls.any()).toBeFalse();
+  });
+
+  it('shows scan status badges for uploads', async () => {
+    const fixture = TestBed.createComponent(DashboardComponent);
+
+    fixture.detectChanges();
+    httpTesting.expectOne('/api/files/').flush({ files: [createFile('group-1', 'queued')] });
+    httpTesting.expectOne('/api/auth/quota').flush(createQuota());
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const root = fixture.nativeElement as HTMLElement;
+    const badge = root.querySelector<HTMLElement>('.badge-scan');
+
+    expect(badge).not.toBeNull();
+    expect(badge?.textContent).toContain('Queued for scan');
+  });
+
+  it('disables upload management fields while a save is in progress', async () => {
+    authService.currentUser.set(createUser('premium'));
+    const fixture = TestBed.createComponent(DashboardComponent);
+    const component = fixture.componentInstance;
+
+    fixture.detectChanges();
+    flushInitialRequests(httpTesting);
+    await fixture.whenStable();
+
+    component.toggleExpanded(component.uploadGroups()[0].key);
+    fixture.detectChanges();
+    flushExpandedGroupRequests(httpTesting);
+    await fixture.whenStable();
+
+    component.isSaving.set(true);
+    fixture.detectChanges();
+
+    const root = fixture.nativeElement as HTMLElement;
+    const expanded = root.querySelector('.file-expanded');
+    const titleInput = expanded?.querySelector<HTMLInputElement>('#title') ?? null;
+    const descriptionInput = expanded?.querySelector<HTMLTextAreaElement>('#description') ?? null;
+    const expirySelect = expanded?.querySelector<HTMLSelectElement>('#expiry') ?? null;
+    const passwordLabelInput =
+      expanded?.querySelector<HTMLInputElement>('.access-add-row input[type="text"]') ?? null;
+    const emailInput =
+      expanded?.querySelector<HTMLInputElement>('.access-add-row input[type="email"]') ?? null;
+
+    expect(expanded).not.toBeNull();
+    expect(titleInput).not.toBeNull();
+    expect(descriptionInput).not.toBeNull();
+    expect(expirySelect).not.toBeNull();
+    expect(passwordLabelInput).not.toBeNull();
+    expect(emailInput).not.toBeNull();
+    expect(titleInput!.matches(':disabled')).toBeTrue();
+    expect(descriptionInput!.matches(':disabled')).toBeTrue();
+    expect(expirySelect!.matches(':disabled')).toBeTrue();
+    expect(passwordLabelInput!.matches(':disabled')).toBeTrue();
+    expect(emailInput!.matches(':disabled')).toBeTrue();
   });
 });

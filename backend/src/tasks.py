@@ -6,6 +6,7 @@ from sqlmodel import and_, col, func, or_, select
 
 from config import settings
 from models import FileUpload, utcnow
+from scan_queue import resolve_existing_upload_path
 from storage import storage
 
 if TYPE_CHECKING:
@@ -60,8 +61,13 @@ async def cleanup_expired_files(session: AsyncSession) -> int:
     if cleaned > 0:
         await session.commit()
         for stored_filename in stored_filenames_to_delete:
-            await storage.delete_file(stored_filename)
-            logger.info("Deleted expired file: %s", stored_filename)
+            file_path = resolve_existing_upload_path(stored_filename)
+            if file_path and file_path.exists():
+                file_path.unlink()
+                logger.info("Deleted expired file: %s", file_path)
+            else:
+                await storage.delete_file(stored_filename)
+                logger.info("Deleted expired file: %s", stored_filename)
         logger.info("Cleaned up %d expired files", cleaned)
 
     return cleaned

@@ -186,3 +186,60 @@ async def send_file_invite_email(
         file_names,
         message,
     )
+
+
+def _build_malware_detected_message(
+    recipient_email: str,
+    file_names: list[str],
+) -> EmailMessage:
+    msg = EmailMessage()
+    msg["From"] = settings.SMTP_FROM
+    msg["To"] = recipient_email
+    msg["Subject"] = "SendR blocked an uploaded file"
+
+    file_list = "\n".join(f"  - {name}" for name in file_names)
+    msg.set_content(
+        "SendR blocked one of your uploads because malware was detected.\n\n"
+        f"Blocked file(s):\n{file_list}\n\n"
+        "The infected payload was removed immediately and the download link now "
+        "shows a blocked state to recipients."
+    )
+    return msg
+
+
+def _send_malware_detected_email_sync(
+    recipient_email: str,
+    file_names: list[str],
+) -> None:
+    msg = _build_malware_detected_message(recipient_email, file_names)
+    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as smtp:
+        smtp.ehlo()
+        if settings.SMTP_USER or settings.SMTP_PASSWORD:
+            smtp.starttls()
+            smtp.ehlo()
+            smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+        smtp.send_message(msg)
+
+
+async def send_malware_detected_email(
+    recipient_email: str,
+    file_names: list[str],
+) -> None:
+    """Send a malware-detected email, or log it when SMTP is unavailable."""
+    if _should_log_email_delivery():
+        if not settings.is_local:
+            _log_missing_smtp_configuration("malware notifications")
+        logger.info("=" * 50)
+        logger.info(
+            "MALWARE BLOCKED for %s: %s",
+            recipient_email,
+            ", ".join(file_names),
+        )
+        logger.info("=" * 50)
+        return
+
+    await asyncio.to_thread(
+        _send_malware_detected_email_sync,
+        recipient_email,
+        file_names,
+    )

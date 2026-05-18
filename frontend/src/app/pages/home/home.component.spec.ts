@@ -2,6 +2,7 @@
 
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { ScanStatus } from '../../api/model';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -131,5 +132,82 @@ describe('HomeComponent', () => {
     expect(component.altchaVerified()).toBeTrue();
     expect(component.altchaState()).toBe('verified');
     httpTesting.expectNone('/api/altcha/challenge');
+  });
+
+  it('disables upload settings fields while upload is in progress', async () => {
+    const fixture = TestBed.createComponent(HomeComponent);
+    const component = fixture.componentInstance;
+
+    fixture.detectChanges();
+
+    httpTesting.expectOne('/api/altcha/challenge').flush({ challenge: 'challenge' });
+    httpTesting.expectOne('/api/auth/limits').flush({
+      expiry_options_hours: [24, 72],
+      max_downloads_options: [1, 10],
+      max_file_size_mb: 100,
+      max_files_per_upload: 10,
+      weekly_uploads_limit: 3,
+    });
+    await fixture.whenStable();
+
+    component.pendingFiles.set([
+      {
+        file: new File(['demo'], 'demo.txt', { type: 'text/plain' }),
+        mimeType: 'text/plain',
+        name: 'demo.txt',
+        size: 4,
+      },
+    ]);
+    component.isUploading.set(true);
+    fixture.detectChanges();
+
+    const root = fixture.nativeElement as HTMLElement;
+    const titleInput = root.querySelector<HTMLInputElement>('#title');
+    const descriptionInput = root.querySelector<HTMLTextAreaElement>('#description');
+    const expirySelect = root.querySelector<HTMLSelectElement>('#expiry');
+
+    expect(titleInput).not.toBeNull();
+    expect(descriptionInput).not.toBeNull();
+    expect(expirySelect).not.toBeNull();
+    expect(titleInput!.matches(':disabled')).toBeTrue();
+    expect(descriptionInput!.matches(':disabled')).toBeTrue();
+    expect(expirySelect!.matches(':disabled')).toBeTrue();
+  });
+
+  it('shows a background scan notice after upload succeeds with a queued status', async () => {
+    const fixture = TestBed.createComponent(HomeComponent);
+    const component = fixture.componentInstance;
+
+    fixture.detectChanges();
+
+    httpTesting.expectOne('/api/altcha/challenge').flush({ challenge: 'challenge' });
+    httpTesting.expectOne('/api/auth/limits').flush({
+      expiry_options_hours: [24, 72],
+      max_downloads_options: [1, 10],
+      max_file_size_mb: 100,
+      max_files_per_upload: 10,
+      weekly_uploads_limit: 3,
+    });
+    await fixture.whenStable();
+
+    component.singleUploadResult.set({
+      download_count: 0,
+      download_url: 'https://sendr.local/api/files/token-1',
+      expires_at: '2030-01-02T00:00:00Z',
+      file_size_bytes: 128,
+      id: 1,
+      is_active: true,
+      original_filename: 'queued.txt',
+      scan_status: ScanStatus.queued,
+      upload_group: 'group-1',
+    });
+    fixture.detectChanges();
+
+    const root = fixture.nativeElement as HTMLElement;
+
+    expect(root.textContent).toContain('Queued for scan');
+    expect(root.textContent).toContain('Background scanning continues even if you close this page');
+    expect(root.textContent).toContain('Link is already live');
+    expect(component.getShareableLink()).toContain('/download/token-1');
   });
 });

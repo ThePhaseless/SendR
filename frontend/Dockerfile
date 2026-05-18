@@ -1,4 +1,4 @@
-FROM oven/bun:1.3.11@sha256:0733e50325078969732ebe3b15ce4c4be5082f18c4ac1a0f0ca4839c2e4e42a7 AS build
+FROM oven/bun:1.3.14@sha256:e10577f0db68676a7024391c6e5cb4b879ebd17188ab750cf10024a6d700e5c4 AS build
 
 WORKDIR /app
 
@@ -8,7 +8,7 @@ RUN bun install --frozen-lockfile
 COPY . ./
 RUN bunx ng build --configuration production
 
-FROM nginxinc/nginx-unprivileged:1.30-alpine@sha256:9d4ab2b70ec4b86e8576f783066d178d4725dc8c4b3bd060cb09f6d058ba9291
+FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:f10950a9f4e6f4dd28634c51bdb74ed4b0a76d50f4424516bc715e7b9188dd37
 
 USER root
 COPY nginx.conf /etc/nginx/templates/default.conf.template
@@ -17,8 +17,6 @@ RUN chmod +x /custom-entrypoint.sh
 USER nginx
 
 COPY --from=build /app/dist/frontend/browser /usr/share/nginx/html
-
-ENV API_URL=http://api:8000
 
 EXPOSE 8080
 

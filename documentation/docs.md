@@ -48,10 +48,12 @@ SendR follows a classic client-server architecture, split into two independently
 - **Frontend** — an Angular single-page application served by an nginx web server
 - **Backend** — a Python REST API built with FastAPI
 
-The two services communicate exclusively through a well-defined HTTP API. The frontend never accesses the database directly. In both local development and Docker-based deployments, the frontend nginx instance acts as a reverse proxy, forwarding all `/api/*` requests to the backend service.
+The two services communicate exclusively through a well-defined HTTP API. The frontend never accesses the database directly. In local development, the Angular dev server proxies relative `/api/*` requests to the backend. In production, the built SPA calls the backend origin configured in [frontend/src/environments/environment.prod.ts](frontend/src/environments/environment.prod.ts) directly, and nginx only serves static frontend assets.
 
 > **Architecture Summary**
-> **Frontend** (Angular + nginx) → **/api/\* proxy** → **Backend** (FastAPI) → **Database** (SQLite)
+> **Local dev:** **Frontend** (Angular dev server) → **/api/\* proxy** → **Backend** (FastAPI) → **Database** (SQLite)
+>
+> **Production:** **Frontend** (Angular + nginx) → **Backend origin from environment.prod.ts** → **Backend** (FastAPI) → **Database** (SQLite)
 
 ### Frontend
 
@@ -162,17 +164,80 @@ Because the backend is built with FastAPI, interactive API documentation is auto
 
 SendR uses environment variables to control runtime behaviour. The table below documents all supported variables.
 
-| Variable                | Default           | Description                                                                                                          |
-| ----------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `SENDR_ENVIRONMENT`     | `production`      | Set to `local` to enable dev login shortcuts and disable CAPTCHA. Use `production` for real deployments.             |
-| `SENDR_DEV_MODE`        | `false`           | Enables dev-only backend routes when set to `true`. Never enable in production.                                      |
-| `SENDR_ALLOWED_ORIGINS` | (none)            | Comma-separated list or JSON array of allowed CORS origins. Required when frontend and API are on different origins. |
-| SMTP settings           | —                 | SMTP host, port, and credentials required for production email delivery. Not needed in local mode.                   |
-| `API_URL` (frontend)    | `http://api:8000` | Points the nginx reverse proxy to the backend container. Set when running frontend Docker image.                     |
+- `SENDR_ENVIRONMENT` (default `production`): Set to `local` for local-only verification-code logging and relaxed CAPTCHA. Use `production` for real deployments.
+- `SENDR_DEV_LOGIN_ENABLED` (default `false`): Exposes `/api/dev/login/*` only when this is `true` and `SENDR_ENVIRONMENT=local`. Never enable outside local dev.
+- `SENDR_ALLOWED_ORIGINS`: Comma-separated list or JSON array of allowed CORS origins. Required when frontend and API are on different origins.
+- SMTP settings: SMTP host, port, and credentials required for production email delivery. Not needed in local mode.
+- Frontend production API origin: configured at build time in [frontend/src/environments/environment.prod.ts](frontend/src/environments/environment.prod.ts). Update that file before building if your public API host is different.
 
-> **💡 In local development mode (`SENDR_ENVIRONMENT=local`), verification codes are printed to the server log instead of being sent by email, and CAPTCHA verification is relaxed.**
+> **💡 In local development mode (`SENDR_ENVIRONMENT=local`), verification codes are printed to the server log instead of being sent by email, and CAPTCHA verification is relaxed. Set `SENDR_DEV_LOGIN_ENABLED=true` only when you explicitly want dev-login shortcuts.**
 
 ## Development Process
+
+## Data Migration
+
+### Cross-Database Migration Strategy
+
+SendR now includes an offline migration CLI for moving business data between environments even when the database engine changes, for example from local SQLite to production PostgreSQL. The migration is based on a portable bundle instead of SQL dumps, because the application stores both relational data and upload payloads outside the database.
+
+The CLI lives in the backend and should be run from the `backend/` directory:
+
+```bash
+uv run python src/migration_cli.py validate-source --database-url "$SOURCE_DB_URL" --upload-dir "$SOURCE_UPLOAD_DIR" --quarantine-dir "$SOURCE_QUARANTINE_DIR"
+uv run python src/migration_cli.py export-bundle --database-url "$SOURCE_DB_URL" --upload-dir "$SOURCE_UPLOAD_DIR" --quarantine-dir "$SOURCE_QUARANTINE_DIR" --bundle-dir /tmp/sendr-bundle
+uv run python src/migration_cli.py import-bundle --database-url "$TARGET_DB_URL" --upload-dir "$TARGET_UPLOAD_DIR" --quarantine-dir "$TARGET_QUARANTINE_DIR" --bundle-dir /tmp/sendr-bundle
+uv run python src/migration_cli.py verify-target --database-url "$TARGET_DB_URL" --upload-dir "$TARGET_UPLOAD_DIR" --quarantine-dir "$TARGET_QUARANTINE_DIR" --bundle-dir /tmp/sendr-bundle
+```
+
+When quarantine storage is not used, `--quarantine-dir` may be omitted and the tool will treat the upload directory as the only payload location.
+
+### Bundle Contents
+
+The bundle contains:
+
+- `manifest.json` with metadata, table counts, and excluded tables
+- `tables/*.ndjson` with logical rows exported from SQLModel models
+- `files-manifest.ndjson` with checksums, scan-state-aware storage scope metadata, and file-reference metadata
+- `files/` with upload payloads copied by `stored_filename`
+
+The current implementation migrates business data and upload payloads, but intentionally excludes ephemeral runtime state such as auth sessions and verification codes. After import, users are expected to log in again.
+
+If async malware scanning is enabled, clean payloads and quarantined payloads are both part of the migrated business state. Clean files are restored to the clean upload directory, queued or failed payloads are restored to the quarantine directory, and infected rows remain payloadless by design.
+
+### Operational Constraints
+
+The first implementation is designed for a short maintenance window. Source writes should be frozen during the final export. Importing into a fresh target database is the default and safest mode. The tool validates missing active upload payloads, checksum mismatches, wrong storage locations for scan states, and orphaned files before export. The import path now also fails closed when the target upload or quarantine directory is not empty unless `--force` is used.
+
+When import fails before the final commit, the importer rolls back staged database rows and removes payloads copied into the target storage directories. That guarantee is strongest in the default empty-target mode. `--force` remains an operator override for non-empty targets and should be treated as a recovery tool rather than the standard workflow.
+
+For very large datasets, the current NDJSON exporter still uses offset-based batching and should be treated as a v1 migration path rather than a high-volume replication system.
+
+## Async Malware Scanning Deployment
+
+The production-safe topology for async malware scanning is:
+
+- one SendR API process
+- one or more SendR scan worker processes
+- a separate ClamAV daemon or sidecar-equivalent service
+
+The API process serves user traffic. The worker runs `src/scan_worker.py` and consumes queued uploads from the database. ClamAV stays outside the backend image so definition updates are operational, not build-time.
+
+Both the API and worker must share:
+
+- the same database
+- the same clean upload directory
+- the same quarantine upload directory
+- the same ClamAV connection settings
+
+Representative backend commands are:
+
+```bash
+cd backend
+SENDR_VIRUS_SCANNING_ENABLED=true uv run uvicorn src.app:app --host 0.0.0.0 --port 8000
+SENDR_VIRUS_SCANNING_ENABLED=true uv run python src/scan_worker.py
+```
+
+The worker is intentionally separate from the API startup path. That separation keeps the web process simpler, allows worker scaling without adding web replicas, and satisfies the requirement that ClamAV updates must not require rebuilding the backend image.
 
 ### Version Control and Workflow
 
@@ -203,5 +268,5 @@ bun run start
 docker build -t sendr-api ./backend
 docker build -t sendr-frontend ./frontend
 docker run -p 8000:8000 sendr-api
-docker run -p 8080:8080 -e API_URL=http://sendr-api:8000 sendr-frontend
+docker run -p 8080:8080 sendr-frontend
 ```

@@ -60,12 +60,12 @@ export class HeaderComponent {
       error: (error) => {
         const detail = getErrorDetail(
           error,
-          'Dev login is only available when the backend runs locally.',
+          'Dev login is only available when the backend runs locally with dev login enabled.',
         );
         this.notifications.error(
           'Dev login failed',
           detail === 'Not found'
-            ? 'Dev login is only available when the backend runs locally.'
+            ? 'Dev login is only available when the backend runs locally with dev login enabled.'
             : detail,
           {
             dedupeKey: 'dev-login-failed',

@@ -1,15 +1,40 @@
-<input #fileInput type="file" (change)="onFileSelected($event)" multiple hidden />
-<input #folderInput type="file" (change)="onFileSelected($event)" webkitdirectory multiple hidden />
+<input
+  #fileInput
+  type="file"
+  (change)="onFileSelected($event)"
+  [disabled]="disabled()"
+  multiple
+  hidden
+/>
+<input
+  #folderInput
+  type="file"
+  (change)="onFileSelected($event)"
+  [disabled]="disabled()"
+  webkitdirectory
+  multiple
+  hidden
+/>
 
 <ng-template #pickerChoices>
   <div class="picker-menu" (click)="$event.stopPropagation()">
     <p class="picker-menu-title">Choose what to add</p>
     <div class="picker-menu-actions">
-      <button type="button" class="picker-option" (click)="openFilePicker($event, fileInput)">
+      <button
+        type="button"
+        class="picker-option"
+        [disabled]="disabled()"
+        (click)="openFilePicker($event, fileInput)"
+      >
         <span class="picker-option-label">Files</span>
         <span class="picker-option-hint">Pick one or more files</span>
       </button>
-      <button type="button" class="picker-option" (click)="openFolderPicker($event, folderInput)">
+      <button
+        type="button"
+        class="picker-option"
+        [disabled]="disabled()"
+        (click)="openFolderPicker($event, folderInput)"
+      >
         <span class="picker-option-label">Folder</span>
         <span class="picker-option-hint">Import an entire folder</span>
       </button>

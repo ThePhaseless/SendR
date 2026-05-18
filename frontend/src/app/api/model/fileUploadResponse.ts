@@ -5,6 +5,7 @@
  * WeTransfer-like file sharing service
  * OpenAPI spec version: 0.1.0
  */
+import type { ScanStatus } from './scanStatus';
 
 export interface FileUploadResponse {
   id: number;
@@ -25,4 +26,5 @@ export interface FileUploadResponse {
   has_email_recipients?: boolean;
   viewer_is_owner?: boolean;
   group_download_only?: boolean;
+  scan_status?: ScanStatus | null;
 }

@@ -9,7 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { FileListResponse, QuotaResponse } from '../../api/model';
+import type { FileListResponse, QuotaResponse, ScanStatus } from '../../api/model';
 import {
   FilePickerComponent,
   type UploadFileEntry,
@@ -24,10 +24,13 @@ import type {
 } from '../../services';
 import { AuthService, ConfirmDialogService, FileService } from '../../services';
 import {
+  aggregateScanStatus,
   extractDownloadToken,
   formatFileSize,
   getApiDateTime,
   getErrorDetail,
+  getScanStatusLabel,
+  getScanStatusTone,
   isExpired,
   parseApiDate,
   resolveAppUrl,
@@ -314,6 +317,26 @@ export class DashboardComponent {
 
   canSave(): boolean {
     return this.canEditUploads();
+  }
+
+  getGroupScanStatus(group: UploadGroup): ScanStatus | null {
+    return aggregateScanStatus(group.files);
+  }
+
+  getGroupScanLabel(group: UploadGroup): string {
+    return getScanStatusLabel(this.getGroupScanStatus(group));
+  }
+
+  getGroupScanTone(group: UploadGroup): 'danger' | 'neutral' | 'pending' | 'success' {
+    return getScanStatusTone(this.getGroupScanStatus(group));
+  }
+
+  getFileScanLabel(file: FileUploadResponse): string {
+    return getScanStatusLabel(file.scan_status);
+  }
+
+  getFileScanTone(file: FileUploadResponse): 'danger' | 'neutral' | 'pending' | 'success' {
+    return getScanStatusTone(file.scan_status);
   }
 
   hasUnsavedFiles(): boolean {

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from config import settings
@@ -24,10 +24,18 @@ def _make_async_url(url: str) -> str:
     return url
 
 
-engine = create_async_engine(_make_async_url(settings.DATABASE_URL), echo=False)
-async_session: async_sessionmaker[AsyncSession] = async_sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
-)
+def build_async_engine(database_url: str, *, echo: bool = False) -> AsyncEngine:
+    return create_async_engine(_make_async_url(database_url), echo=echo)
+
+
+def create_session_factory(
+    engine: AsyncEngine,
+) -> async_sessionmaker[AsyncSession]:
+    return async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+
+engine = build_async_engine(settings.DATABASE_URL, echo=False)
+async_session: async_sessionmaker[AsyncSession] = create_session_factory(engine)
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:

@@ -13,18 +13,10 @@ sys.path.append(str(Path.cwd() / "src"))
 
 import models  # noqa: F401
 from alembic import context
-from config import settings
 
 _models = models
 
 config = context.config
-
-# Overwrite sqlalchemy.url with the one from our settings (which can come from .env)
-if settings.DATABASE_URL:
-    # Alembic online sync/async engines need a slightly different URL format
-    # than the one we use for AsyncEngine in the app sometimes.
-    # But here we just use what's in settings.
-    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 
 if (

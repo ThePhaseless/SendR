@@ -23,7 +23,7 @@ async def dev_login(
     response: Response,
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> SessionResponse:
-    if not settings.is_local:
+    if not settings.is_local or not settings.DEV_LOGIN_ENABLED:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
 
     if role not in ("admin", "user", "premium"):

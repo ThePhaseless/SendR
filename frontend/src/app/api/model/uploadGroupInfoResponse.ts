@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { FileUploadResponse } from './fileUploadResponse';
+import type { ScanStatus } from './scanStatus';
 
 export interface UploadGroupInfoResponse {
   files: FileUploadResponse[];
@@ -20,4 +21,5 @@ export interface UploadGroupInfoResponse {
   title?: string | null;
   description?: string | null;
   viewer_is_owner?: boolean;
+  scan_status?: ScanStatus | null;
 }

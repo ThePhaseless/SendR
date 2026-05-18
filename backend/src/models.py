@@ -27,6 +27,14 @@ class SubscriptionPlan(enum.StrEnum):
     premium = "premium"
 
 
+class ScanStatus(enum.StrEnum):
+    queued = "queued"
+    scanning = "scanning"
+    clean = "clean"
+    infected = "infected"
+    failed = "failed"
+
+
 class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     email: str = Field(index=True, unique=True)
@@ -75,6 +83,13 @@ class FileUpload(SQLModel, table=True):
     restricted_download_count: int = Field(default=0)
     max_downloads: int | None = Field(default=None)
     upload_group: str = Field(default_factory=lambda: str(uuid4()), index=True)
+    scan_status: ScanStatus = Field(default=ScanStatus.clean, index=True)
+    scan_enqueued_at: datetime | None = Field(default=None, index=True)
+    scan_started_at: datetime | None = Field(default=None)
+    scan_completed_at: datetime | None = Field(default=None)
+    scan_failure_code: str | None = Field(default=None)
+    scan_failure_message: str | None = Field(default=None)
+    malware_signature: str | None = Field(default=None)
     expires_at: datetime
     created_at: datetime = Field(default_factory=utcnow)
     is_active: bool = Field(default=True)

@@ -6,16 +6,14 @@ from hmac import compare_digest
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
-from alembic.config import Config
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import create_engine, inspect
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from alembic import command
 from config import settings
+from db_migrations import run_migrations_for_url
 from errors import http_exception_handler
 from routers import admin, altcha, auth, dev, files, subscription
 
@@ -23,7 +21,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
-_ALEMBIC_INI = Path(__file__).resolve().parent.parent / "alembic.ini"
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -31,44 +28,8 @@ if TYPE_CHECKING:
     from starlette.responses import Response as StarletteResponse
 
 
-def _sync_database_url(url: str) -> str:
-    return (
-        url.replace("sqlite+aiosqlite://", "sqlite://")
-        .replace("postgresql+asyncpg://", "postgresql://")
-        .replace("postgresql+psycopg://", "postgresql://")
-        .replace("ssl=", "sslmode=")
-    )
-
-
 def run_migrations() -> None:
-    logger.info("Starting database migrations...")
-    try:
-        cfg = Config(str(_ALEMBIC_INI))
-        sync_url = _sync_database_url(settings.DATABASE_URL)
-        cfg.set_main_option("sqlalchemy.url", sync_url)
-        cfg.attributes["skip_logging_config"] = True
-
-        logger.info("Connecting to database for migrations...")
-        connect_args = (
-            {"connect_timeout": 10} if sync_url.startswith("postgresql") else {}
-        )
-        engine = create_engine(sync_url, connect_args=connect_args)
-        with engine.connect() as connection:
-            logger.info("Connected to database. Checking schema...")
-            inspector = inspect(connection)
-            tables = set(inspector.get_table_names())
-            if "user" in tables and "alembic_version" not in tables:
-                logger.info("Existing schema detected; stamping at head.")
-                command.stamp(cfg, "head")
-            else:
-                logger.info("Running alembic upgrade head...")
-                command.upgrade(cfg, "head")
-        engine.dispose()
-        logger.info("Database migrations complete.")
-    except Exception:
-        logger.exception("Migration failed")
-        if settings.is_production:
-            raise
+    run_migrations_for_url(settings.DATABASE_URL)
 
 
 @asynccontextmanager
@@ -105,8 +66,7 @@ async def enforce_cookie_csrf(
     request: Request, call_next: Callable[[Request], Awaitable[StarletteResponse]]
 ) -> StarletteResponse:
     if (
-        not settings.is_local
-        and request.method in {"POST", "PATCH", "PUT", "DELETE"}
+        request.method in {"POST", "PATCH", "PUT", "DELETE"}
         and request.url.path.startswith("/api/")
         and settings.SESSION_COOKIE_NAME in request.cookies
     ):

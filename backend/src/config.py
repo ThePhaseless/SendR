@@ -175,6 +175,11 @@ class Settings(BaseSettings):
                 "SENDR_DEV_LOGIN_ENABLED can only be enabled when "
                 "SENDR_ENVIRONMENT is 'local'"
             )
+        if self.DEV_LOGIN_ENABLED and not self.is_local:
+            raise ValueError(
+                "SENDR_DEV_LOGIN_ENABLED can only be enabled when "
+                "SENDR_ENVIRONMENT is 'local'"
+            )
         return self
 
 

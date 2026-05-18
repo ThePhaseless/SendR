@@ -14,6 +14,7 @@ import type {
   GetChallengeApiAltchaChallengeGet200,
   LimitsResponse,
   QuotaResponse,
+  ScanStatus,
 } from '../../api/model';
 import {
   FilePickerComponent,
@@ -35,6 +36,10 @@ import {
   filenameToEmoji,
   formatFileSize,
   getErrorDetail,
+  getScanStatusDescription,
+  getScanStatusLabel,
+  getScanStatusTone,
+  isPendingScanStatus,
   resolveAppUrl,
 } from '../../utils/index';
 
@@ -679,6 +684,35 @@ export class HomeComponent {
       return single.file_size_bytes ?? 0;
     }
     return 0;
+  }
+
+  getResultScanStatus(): ScanStatus | null {
+    const multi = this.uploadResult();
+    if (multi?.scan_status) {
+      return multi.scan_status;
+    }
+
+    const single = this.singleUploadResult();
+    return single?.scan_status ?? null;
+  }
+
+  getResultScanLabel(): string {
+    return getScanStatusLabel(this.getResultScanStatus());
+  }
+
+  getResultScanDescription(): string {
+    return getScanStatusDescription(
+      this.getResultScanStatus(),
+      this.getResultFiles().length > 1 ? 'transfer' : 'file',
+    );
+  }
+
+  getResultScanTone(): 'danger' | 'neutral' | 'pending' | 'success' {
+    return getScanStatusTone(this.getResultScanStatus());
+  }
+
+  isResultScanPending(): boolean {
+    return isPendingScanStatus(this.getResultScanStatus());
   }
 
   /** Password visibility toggles in post-upload view. */
