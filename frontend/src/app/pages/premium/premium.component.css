@@ -1,0 +1,122 @@
+@charset "UTF-8";
+@reference "tailwindcss";
+.premium-page {
+  @apply max-w-[900px] mx-auto;
+}
+
+.page-header-section {
+  @apply text-center mb-8;
+}
+
+.plans-title {
+  @apply text-3xl font-extrabold mb-2;
+  color: var(--color-text);
+}
+
+.plans-subtitle {
+  @apply text-base;
+  color: var(--color-text-secondary);
+}
+
+.current-tier-banner {
+  @apply flex flex-col items-center gap-1 rounded-xl mx-auto;
+  padding: 1rem 2rem;
+  max-width: 320px;
+  border: 2px solid var(--color-border);
+  background: var(--color-card-bg);
+}
+.current-tier-banner.tier-temporary {
+  border-color: var(--color-text-secondary);
+}
+.current-tier-banner.tier-free {
+  border-color: var(--color-badge-text);
+}
+.current-tier-banner.tier-premium {
+  border-color: var(--color-accent);
+}
+
+.current-tier-label {
+  @apply text-xs uppercase tracking-wider font-semibold;
+  color: var(--color-text-secondary);
+}
+
+.current-tier-name {
+  @apply text-2xl font-bold;
+  font-family: "Comba", "Georgia", serif;
+  color: var(--color-text);
+}
+
+.tier-expiry {
+  color: var(--color-text-secondary);
+  @apply text-xs;
+}
+
+.error {
+  color: var(--color-danger);
+  @apply text-center mb-4;
+}
+
+.tiers {
+  @apply grid gap-6 mb-8;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.tier-card {
+  @apply flex flex-col;
+  padding: 0;
+  overflow: hidden;
+}
+.tier-card.highlighted {
+  border: 2px solid var(--color-primary);
+}
+.tier-card.current {
+  box-shadow: 0 0 0 2px var(--color-success);
+}
+.tier-card ul {
+  @apply list-none p-0 m-0 text-left flex-1;
+  padding: 0 1.5rem;
+}
+
+.tier-card-header {
+  @apply text-center;
+  padding: 1.25rem 1.5rem 1rem;
+}
+.tier-card-header h3 {
+  @apply m-0 mb-1 text-lg font-bold;
+}
+.tier-card-header .price {
+  color: var(--color-text-secondary);
+  @apply text-[0.85rem] m-0;
+}
+
+.tier-card li {
+  border-bottom: 1px solid var(--color-border);
+  @apply py-1.5 text-[0.85rem];
+}
+.tier-card li::before {
+  content: "✓ ";
+  color: var(--color-primary);
+  @apply font-bold;
+}
+.tier-card li:last-child {
+  @apply border-b-0;
+}
+
+.tier-card-footer {
+  @apply flex flex-col items-start;
+  padding: 1rem 1.5rem 1.5rem;
+  min-height: 5rem;
+}
+
+.btn-tier {
+  margin: 0;
+}
+
+.tier-note {
+  color: var(--color-text-secondary);
+  @apply text-xs italic m-0;
+}
+
+.actions {
+  @apply flex justify-center gap-4 flex-wrap;
+}/*# sourceMappingURL=premium.component.css.map */

@@ -13,4 +13,7 @@ package-lock.json
 *.tfvars
 *.tfvars.json
 
+.env
+SECRETS.local
 
+terraform/state.json

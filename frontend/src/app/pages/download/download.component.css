@@ -1,0 +1,141 @@
+@reference "tailwindcss";
+@reference "tailwindcss";
+.download-page {
+  @apply flex justify-center;
+}
+
+.loading-card,
+.error-card,
+.file-card {
+  @apply text-center max-w-[560px] w-full;
+}
+
+.loading-card p {
+  color: var(--color-text-secondary);
+}
+
+.loading-card .spinner {
+  @apply mb-4;
+}
+
+.error-icon {
+  @apply flex items-center justify-center rounded-full text-white font-bold;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 1rem;
+  background: var(--color-danger);
+  @apply text-xl;
+}
+
+.error-card h2 {
+  @apply mb-2;
+}
+.error-card p {
+  color: var(--color-text-secondary);
+}
+
+.file-icon {
+  @apply text-5xl mb-4;
+}
+
+.file-card h2 {
+  @apply text-xl mb-4 break-all;
+}
+
+.transfer-description {
+  @apply text-sm mb-4 whitespace-pre-line;
+  color: var(--color-text-secondary);
+}
+
+.file-meta {
+  @apply flex flex-col gap-1 text-sm mb-6;
+  color: var(--color-text-secondary);
+}
+
+.zip-info {
+  @apply my-4;
+}
+
+.group-file-list {
+  @apply my-4 flex flex-col gap-2 w-full;
+}
+
+.group-file-item {
+  @apply flex items-center gap-2 rounded-md text-sm;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-input-bg);
+}
+.group-file-item .group-file-name {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap;
+  @apply flex-1;
+  color: var(--color-text);
+}
+.group-file-item .group-file-size {
+  color: var(--color-text-secondary);
+  @apply whitespace-nowrap;
+}
+
+.download-all-btn {
+  @apply mt-4;
+}
+
+.limit-reached-badge {
+  @apply text-xs whitespace-nowrap;
+  color: var(--color-danger);
+}
+
+.password-hint {
+  @apply text-sm mb-2;
+  color: var(--color-text-secondary);
+}
+
+.password-form {
+  @apply flex gap-2 w-full max-w-[20rem] mx-auto justify-center;
+}
+.password-form .form-input {
+  @apply flex-1 min-w-0;
+}
+
+.password-error {
+  @apply text-sm;
+  color: var(--color-danger);
+}
+
+.recipient-stats-loading {
+  @apply text-sm mt-4;
+  color: var(--color-text-secondary);
+}
+
+.recipient-stats {
+  @apply mt-6 pt-4 w-full text-left;
+  border-top: 1px solid var(--color-border);
+}
+.recipient-stats h3 {
+  @apply text-sm font-semibold mb-3;
+}
+
+.recipient-stats-table {
+  @apply flex flex-col gap-1;
+}
+
+.recipient-row {
+  @apply flex items-center justify-between text-sm py-1 px-2 rounded;
+}
+.recipient-row:hover {
+  background: var(--color-card-bg);
+}
+
+.recipient-email {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap;
+  @apply flex-1 min-w-0;
+}
+
+.recipient-count {
+  @apply shrink-0 text-xs;
+  color: var(--color-text-secondary);
+}
+
+.recipient-total {
+  @apply text-xs mt-2 text-right;
+  color: var(--color-text-secondary);
+}/*# sourceMappingURL=download.component.css.map */

@@ -51,7 +51,7 @@ resource "kubernetes_secret" "sendr_secrets" {
   }
 
   data = {
-    "database-url"    = "postgresql+asyncpg://${module.database.database_user}:${module.database.database_password}@${module.database.database_host}:5432/${module.database.database_name}?sslmode=require"
+    "database-url"    = "postgresql+psycopg://${module.database.database_user}:${module.database.database_password}@${module.database.database_host}:${module.database.database_port}/${module.database.database_name}?sslmode=require"
     "secret-key"      = var.app_secret_key
     "smtp-host"       = var.smtp_host
     "smtp-port"       = var.smtp_port

@@ -1,0 +1,376 @@
+@reference "tailwindcss";
+@reference "tailwindcss";
+.dashboard {
+  @apply max-w-[800px] mx-auto;
+}
+
+.dashboard-header {
+  @apply flex items-center justify-between mb-6;
+}
+.dashboard-header h1 {
+  font-family: "Comba", "Georgia", serif;
+  @apply text-2xl font-bold;
+}
+
+.account-panel {
+  @apply mb-4;
+}
+
+.account-header-row {
+  @apply flex items-start justify-between gap-3 mb-3;
+}
+.account-header-row h2 {
+  @apply text-base font-semibold mb-1;
+}
+
+.account-email,
+.account-status {
+  color: var(--color-text-secondary);
+  @apply text-sm;
+}
+
+.account-tier {
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+
+.account-form {
+  @apply flex flex-col gap-3 mt-3;
+}
+
+.account-form-grid {
+  @apply grid gap-3;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 700px) {
+  .account-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.empty-state {
+  @apply text-center py-12 px-6;
+}
+.empty-state .empty-icon {
+  @apply text-5xl mb-4;
+}
+.empty-state h2 {
+  @apply text-lg mb-2;
+}
+.empty-state p {
+  color: var(--color-text-secondary);
+  @apply text-sm;
+}
+
+.file-list {
+  @apply flex flex-col gap-3;
+}
+
+.file-card {
+  padding: 0;
+  overflow: hidden;
+}
+.file-card.expired {
+  @apply opacity-60;
+}
+
+.file-row {
+  @apply flex items-center justify-between gap-4;
+  padding: 1rem 1.5rem;
+}
+@media (max-width: 600px) {
+  .file-row {
+    @apply flex-col items-start gap-2;
+  }
+}
+
+.file-info {
+  @apply flex-1 min-w-0;
+}
+
+.file-name {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap;
+  @apply text-[0.9375rem] font-semibold mb-1 flex items-center gap-2;
+}
+
+.file-meta {
+  @apply flex gap-1.5 flex-wrap text-[0.8125rem];
+  color: var(--color-text-secondary);
+}
+
+.expired-text {
+  color: var(--color-danger);
+}
+
+.badge {
+  @apply inline-flex items-center text-[0.6875rem] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded;
+}
+
+.badge-expired {
+  background: color-mix(in srgb, var(--color-danger) 15%, transparent);
+  color: var(--color-danger);
+}
+
+.badge-password {
+  color: var(--color-text-secondary);
+}
+
+.badge-access {
+  @apply text-sm leading-none;
+}
+
+.badge-new {
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+}
+
+.file-actions {
+  @apply flex gap-1.5 shrink-0 items-center;
+}
+
+.btn-open {
+  @apply text-xs font-medium;
+  padding: 0.375rem 0.75rem;
+  text-decoration: none;
+}
+.btn-open.disabled {
+  @apply opacity-40 pointer-events-none;
+}
+
+.btn-icon {
+  @apply p-0 flex items-center justify-center;
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+}
+.btn-icon svg {
+  @apply shrink-0;
+}
+.btn-icon.disabled {
+  @apply opacity-40 pointer-events-none;
+}
+
+.file-expanded {
+  border-top: 1px solid var(--color-border);
+  padding: 1rem 1.5rem;
+  background: var(--color-bg);
+}
+
+.expanded-section h4 {
+  @apply text-xs font-semibold uppercase tracking-wide mb-2;
+  color: var(--color-text-secondary);
+}
+.expanded-section + .expanded-section {
+  @apply mt-4 pt-4;
+  border-top: 1px solid var(--color-border);
+}
+.expanded-section app-upload-settings {
+  @apply block;
+}
+
+.expanded-actions-row {
+  @apply flex gap-2 mt-3 pt-3;
+  border-top: 1px solid var(--color-border);
+}
+
+.group-file-list {
+  @apply flex flex-col gap-1;
+}
+
+.group-file-item {
+  @apply flex items-center gap-2 text-sm py-1 px-2 rounded;
+}
+.group-file-item:hover {
+  background: var(--color-card-bg);
+}
+.group-file-item.expired {
+  @apply opacity-50;
+}
+.group-file-item.new-file {
+  border: 1px dashed color-mix(in srgb, var(--color-primary) 40%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}
+.group-file-item .group-file-name {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap;
+  @apply flex-1 min-w-0;
+}
+.group-file-item .group-file-size {
+  @apply shrink-0 text-xs;
+  color: var(--color-text-secondary);
+}
+
+.btn-file-action {
+  @apply shrink-0 p-0 border-0 cursor-pointer text-xs leading-none flex items-center;
+  background: none;
+  color: var(--color-text-secondary);
+}
+.btn-file-action:hover {
+  color: var(--color-text);
+}
+.btn-file-action.btn-file-remove:hover {
+  color: var(--color-danger);
+}
+
+.stats-loading,
+.stats-empty {
+  @apply text-sm;
+  color: var(--color-text-secondary);
+}
+
+.stats-table {
+  @apply flex flex-col gap-0 text-sm rounded-md overflow-hidden;
+  border: 1px solid var(--color-border);
+}
+
+.stats-row {
+  @apply grid items-center px-3 py-1.5;
+  grid-template-columns: 5rem 1fr 5rem 6rem;
+}
+.stats-row.stats-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  @apply text-xs font-semibold uppercase tracking-wide;
+  color: var(--color-text-secondary);
+  background: var(--color-card-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+.stats-row + .stats-row:not(.stats-header) {
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+
+.stats-type {
+  @apply capitalize;
+}
+
+.stats-id {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap;
+  color: var(--color-text-secondary);
+}
+
+.stats-date {
+  @apply text-xs;
+  color: var(--color-text-secondary);
+}
+
+.stats-total {
+  @apply text-xs mt-2 text-right;
+  color: var(--color-text-secondary);
+}
+
+.group-title {
+  @apply text-sm font-normal;
+  color: var(--color-text-secondary);
+}
+
+.link-card {
+  @apply rounded-lg p-3 mb-3;
+  border: 1px solid var(--color-border);
+  background: var(--color-card-bg);
+}
+.link-card .link-header {
+  @apply flex items-center gap-1.5 text-sm font-semibold mb-0.5;
+}
+.link-card .link-hint {
+  @apply text-xs m-0 mb-2;
+  color: var(--color-text-secondary);
+}
+.link-card .link-copy {
+  @apply flex gap-2;
+}
+.link-card .link-copy .form-input {
+  @apply flex-1 min-w-0;
+}
+
+.access-row {
+  @apply flex items-center justify-between py-2;
+}
+.access-row .access-row-info {
+  @apply flex items-center gap-2 text-sm;
+}
+
+.access-subsection {
+  @apply mt-3 pt-2;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+.access-subsection h5 {
+  @apply text-xs font-semibold uppercase tracking-wide mb-1.5;
+  color: var(--color-text-secondary);
+}
+
+.access-empty {
+  @apply text-sm;
+  color: var(--color-text-secondary);
+}
+
+.access-entry {
+  @apply flex items-center gap-2 text-sm py-1 px-2 rounded;
+}
+.access-entry:hover {
+  background: var(--color-card-bg);
+}
+.access-entry .access-entry-label {
+  @apply flex-1 min-w-0;
+  @apply overflow-hidden text-ellipsis whitespace-nowrap;
+}
+.access-entry .access-entry-value {
+  @apply shrink-0 text-xs;
+  color: var(--color-text-secondary);
+  letter-spacing: 2px;
+}
+
+.access-entry-list {
+  @apply flex flex-col gap-1;
+}
+
+.access-add-row {
+  @apply flex gap-1.5 mt-1.5;
+}
+.access-add-row .form-input-sm {
+  @apply flex-1 min-w-0;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.badge-notified {
+  @apply text-[0.625rem];
+  background: color-mix(in srgb, var(--color-primary) 15%, transparent);
+  color: var(--color-primary);
+}
+
+.badge-pending {
+  @apply text-[0.625rem];
+  background: color-mix(in srgb, var(--color-text-secondary) 15%, transparent);
+  color: var(--color-text-secondary);
+}
+
+.badge-count {
+  @apply inline-flex items-center justify-center text-[0.6875rem] font-bold rounded-full ml-1;
+  background: var(--color-primary);
+  color: white;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+}
+
+.accordion-header {
+  @apply flex items-center justify-between w-full border-0 cursor-pointer text-left p-0 mb-2;
+  background: none;
+  color: var(--color-text);
+}
+.accordion-header h4 {
+  @apply text-xs font-semibold uppercase tracking-wide flex items-center gap-1;
+  color: var(--color-text-secondary);
+}
+
+.accordion-arrow {
+  transition: transform 0.2s ease;
+  display: flex;
+}
+.accordion-arrow.open {
+  transform: rotate(90deg);
+}
+.accordion-arrow .material-symbols-outlined {
+  font-size: 1.125rem;
+  color: var(--color-text-secondary);
+}/*# sourceMappingURL=dashboard.component.css.map */

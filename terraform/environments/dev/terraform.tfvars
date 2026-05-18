@@ -14,6 +14,7 @@ spaces_secret_key = "gI8UphnLZzRr1xMH/hBLK89a5WO2NeWLPRscCewuTlE"
 k8s_node_count = 2
 k8s_auto_scale = false
 
+do_token="YOUR_DIGITALOCEAN_TOKEN"
 
 smtp_host = "smtp.resend.com"
 smtp_port = 587

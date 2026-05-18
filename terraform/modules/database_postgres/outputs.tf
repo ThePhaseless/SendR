@@ -14,3 +14,7 @@ output "database_password" {
 output "database_name" {
   value = digitalocean_database_db.sendr_db.name
 }
+
+output "database_port" {
+  value = digitalocean_database_cluster.postgres.port
+}

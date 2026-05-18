@@ -1,0 +1,12 @@
+@reference "tailwindcss";
+:host {
+  @apply inline-block;
+}
+
+.jumping-text {
+  @apply cursor-default inline-block whitespace-nowrap;
+}
+.jumping-text .letter {
+  @apply inline-block;
+  color: var(--color-primary);
+}/*# sourceMappingURL=jumping-text.component.css.map */
