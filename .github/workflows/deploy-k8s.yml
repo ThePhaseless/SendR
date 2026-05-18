@@ -73,8 +73,11 @@ jobs:
         run: |
           terraform init -backend-config="$TF_BACKEND"
 
-          EXISTING_CLUSTER_NAME=$(terraform output -raw kubernetes_cluster_name 2>/dev/null || true)
-          if [ -n "$EXISTING_CLUSTER_NAME" ]; then
+          if terraform state show -no-color module.kubernetes.digitalocean_kubernetes_cluster.cluster > /tmp/sendr-cluster-state.txt 2>/dev/null; then
+            EXISTING_CLUSTER_NAME=$(awk -F' = ' '$1 ~ /^[[:space:]]*name$/ { gsub(/"/, "", $2); print $2; exit }' /tmp/sendr-cluster-state.txt)
+          fi
+
+          if [ -n "${EXISTING_CLUSTER_NAME:-}" ]; then
             doctl kubernetes cluster kubeconfig save "$EXISTING_CLUSTER_NAME"
             EXISTING_TRAEFIK_IP=$(kubectl get svc traefik -n sendr -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
           fi
