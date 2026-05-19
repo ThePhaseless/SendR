@@ -2,16 +2,13 @@ from __future__ import annotations
 
 import io
 import logging
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 import clamd
 from fastapi import HTTPException, status
 
 from config import settings
 from models import ScanStatus
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +30,11 @@ def scan_upload_result(target: bytes | str | Path) -> tuple[ScanStatus, str | No
         client = _get_client()
         if isinstance(target, bytes):
             response = client.instream(io.BytesIO(target))
-        else:
+        elif settings.CLAMAV_UNIX_SOCKET:
             response = client.scan(str(target))
+        else:
+            with Path(target).open("rb") as stream:
+                response = client.instream(stream)
     except clamd.BufferTooLongError as exc:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,

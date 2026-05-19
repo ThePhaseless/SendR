@@ -20,6 +20,13 @@ spec:
         - name: clamav
           image: clamav/clamav:1.4.4_base-debian13-slim@sha256:ea10abbccfb35ecd8ea257808728f12e84e64ce4d84502134ab7d3b7ed3a2270
           imagePullPolicy: IfNotPresent
+          env:
+            - name: CLAMD_CONF_StreamMaxLength
+              value: 10G
+            - name: CLAMD_CONF_MaxFileSize
+              value: 10G
+            - name: CLAMD_CONF_MaxScanSize
+              value: 10G
           ports:
             - containerPort: 3310
               name: clamd
