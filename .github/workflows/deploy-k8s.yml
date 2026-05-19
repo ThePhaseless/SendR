@@ -99,6 +99,7 @@ jobs:
       - name: Create application secrets
         env:
           SENDR_SECRET_KEY: ${{ secrets.SENDR_SECRET_KEY }}
+          SENDR_ALTCHA_HMAC_KEY: ${{ secrets.SENDR_ALTCHA_HMAC_KEY }}
           SENDR_SMTP_HOST: ${{ secrets.SENDR_SMTP_HOST }}
           SENDR_SMTP_PORT: ${{ secrets.SENDR_SMTP_PORT }}
           SENDR_SMTP_USER: ${{ secrets.SENDR_SMTP_USER }}
