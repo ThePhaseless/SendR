@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
+from fastapi import Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, inspect
 
 from app import app, run_migrations
 from config import settings
+from security import clear_session_cookie, set_session_cookie
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -58,3 +61,32 @@ def test_cors_middleware_allows_password_protected_download_header() -> None:
 
     assert cors_middleware.kwargs["allow_credentials"] is True
     assert "X-Access-Token" in cors_middleware.kwargs["allow_headers"]
+
+
+def test_set_session_cookie_uses_configured_cookie_domain(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    expires_at = datetime.now(UTC) + timedelta(hours=1)
+    response = Response()
+
+    monkeypatch.setattr(settings, "COOKIE_DOMAIN", "sendr.email")
+    set_session_cookie(response, "raw-token", expires_at)
+
+    cookie_headers = response.headers.getlist("set-cookie")
+
+    assert len(cookie_headers) == 2
+    assert all("Domain=sendr.email" in header for header in cookie_headers)
+
+
+def test_clear_session_cookie_uses_configured_cookie_domain(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    response = Response()
+
+    monkeypatch.setattr(settings, "COOKIE_DOMAIN", "sendr.email")
+    clear_session_cookie(response)
+
+    cookie_headers = response.headers.getlist("set-cookie")
+
+    assert len(cookie_headers) == 2
+    assert all("Domain=sendr.email" in header for header in cookie_headers)

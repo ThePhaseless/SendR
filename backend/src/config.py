@@ -77,6 +77,7 @@ class Settings(BaseSettings):
     VERIFICATION_CODE_EXPIRE_MINUTES: int = 10
     SESSION_COOKIE_NAME: str = "sendr_session"
     SESSION_COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
+    COOKIE_DOMAIN: str = ""
     CSRF_COOKIE_NAME: str = "sendr_csrf"
     CSRF_HEADER_NAME: str = "X-CSRF-Token"
     DEV_LOGIN_ENABLED: bool = False

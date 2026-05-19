@@ -88,6 +88,7 @@ def resolve_request_token(request: Request, authorization: str | None) -> str | 
 def set_session_cookie(
     response: Response, raw_token: str, expires_at: datetime
 ) -> None:
+    cookie_domain = settings.COOKIE_DOMAIN or None
     cookie_expires = (
         expires_at.replace(tzinfo=UTC)
         if expires_at.tzinfo is None
@@ -100,6 +101,7 @@ def set_session_cookie(
         max_age=settings.TOKEN_EXPIRE_MINUTES * 60,
         expires=cookie_expires,
         path="/",
+        domain=cookie_domain,
         samesite=settings.SESSION_COOKIE_SAMESITE,
         secure=settings.is_production,
     )
@@ -110,21 +112,25 @@ def set_session_cookie(
         max_age=settings.TOKEN_EXPIRE_MINUTES * 60,
         expires=cookie_expires,
         path="/",
+        domain=cookie_domain,
         samesite=settings.SESSION_COOKIE_SAMESITE,
         secure=settings.is_production,
     )
 
 
 def clear_session_cookie(response: Response) -> None:
+    cookie_domain = settings.COOKIE_DOMAIN or None
     response.delete_cookie(
         key=settings.SESSION_COOKIE_NAME,
         path="/",
+        domain=cookie_domain,
         samesite=settings.SESSION_COOKIE_SAMESITE,
         secure=settings.is_production,
     )
     response.delete_cookie(
         key=settings.CSRF_COOKIE_NAME,
         path="/",
+        domain=cookie_domain,
         samesite=settings.SESSION_COOKIE_SAMESITE,
         secure=settings.is_production,
     )

@@ -24,6 +24,12 @@ def test_default_allowed_origins_is_empty():
     assert settings.ALLOWED_ORIGINS == []
 
 
+def test_cookie_domain_defaults_empty():
+    settings = Settings()
+
+    assert settings.COOKIE_DOMAIN == ""
+
+
 def test_allowed_origins_accept_comma_separated_env_values():
     settings = Settings.model_validate(
         {"ALLOWED_ORIGINS": "https://sendr.up.railway.app, https://app.example.com"}
