@@ -2,47 +2,63 @@
 
 ```mermaid
 classDiagram
-    %% Guards
+    direction LR
+
     class AuthGuard {
       +authGuard: CanActivateFn
-      #authService: AuthService
-      #router: Router
+      +requiresSession
+      +redirectsToAuth
     }
 
     class AdminGuard {
       +adminGuard: CanActivateFn
-      #authService: AuthService
-      #router: Router
+      +requiresAdminUser
+      +redirectsWhenDenied
     }
 
-    %% Interceptors
     class AuthInterceptor {
       +authInterceptor: HttpInterceptorFn
-      #authService: AuthService
+      +withCredentialsTrue
+      +addsCsrfHeader
     }
 
-    %% Utility Functions
+    class ApiBaseUrlInterceptor {
+      +createApiBaseUrlInterceptor(apiUrl)
+      +prefixesGeneratedRequests
+    }
+
+    class ApiErrorInterceptor {
+      +normalizesApiErrors
+      +keepsStructuredCodes
+    }
+
     class FileUtils {
-      +filenameToEmoji(filename: string): string
-      +formatFileSize(bytes: number): string
-      +mimeToEmoji(mimeType: string): string
+      +filenameToEmoji(filename): string
+      +formatFileSize(bytes): string
+      +mimeToEmoji(mimeType): string
     }
 
-    %% Relationships
+    class UrlUtils {
+      +resolveApiUrl(path, basePath): string
+    }
+
+    class ErrorUtils {
+      +getErrorCode(error): string
+      +getErrorDetail(error): string
+    }
+
     AuthGuard --> AuthService : uses
     AuthGuard --> Router : uses
-
     AdminGuard --> AuthService : uses
     AdminGuard --> Router : uses
+    AuthInterceptor --> AuthService : reads csrf
+    ApiBaseUrlInterceptor --> UrlUtils : resolves
+    ApiErrorInterceptor --> ErrorUtils : normalizes
 
-    AuthInterceptor --> AuthService : uses
-
-    note for AuthGuard "Chroniony dostęp do tras wymagających uwierzytelnienia"
-    note for AdminGuard "Chroniony dostęp do funkcji administracyjnych"
-    note for AuthInterceptor "Automatycznie dodaje token JWT do żądań HTTP"
-    note for FileUtils "Funkcje pomocnicze do formatowania nazw plików i rozmiarów"
+    note for AuthInterceptor "Cookie-session requests use credentials and CSRF, not localStorage tokens"
+    note for ApiBaseUrlInterceptor "Production build can prefix generated API routes with the configured API origin"
 ```
 
 ---
 
-Ochrona tras, interceptory HTTP i funkcje narzędziowe frontendu.
+Route guards, HTTP interceptors, and small frontend utility modules.

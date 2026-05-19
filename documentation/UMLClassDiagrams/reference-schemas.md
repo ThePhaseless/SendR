@@ -1,115 +1,88 @@
 # Reference Schemas & Request Bodies
 
+Generated request-body and parameter names are abbreviated in the diagram. Notes keep the API operation mapping without forcing Mermaid to render very long class names.
+
 ```mermaid
 classDiagram
-    %% Upload Request Bodies
-    class BodyUploadFileApiFilesUploadPost {
+    direction LR
+
+    class UploadFileBody {
       +file: Blob
-      +expiry_hours?: number | null
-      +max_downloads?: number | null
-      +is_public?: boolean
-      +passwords?: string | null
-      +emails?: string | null
-      +show_email_stats?: boolean
-      +title?: string | null
-      +description?: string | null
-      +altcha?: string
+      +accessOptions
+      +metadataFields
+      +altcha: string optional
     }
 
-    class BodyUploadMultipleFilesApiFilesUploadMultiplePost {
-      +files: Blob[]
-      +expiry_hours?: number | null
-      +max_downloads?: number | null
-      +is_public?: boolean
-      +passwords?: string | null
-      +emails?: string | null
-      +show_email_stats?: boolean
-      +title?: string | null
-      +description?: string | null
-      +altcha?: string
+    class UploadManyBody {
+      +files: Blob array
+      +accessOptions
+      +metadataFields
+      +altcha: string optional
     }
 
-    class BodyAddFilesToGroupApiFilesGroupUploadGroupAddPost {
-      +files: Blob[]
-      +altcha?: string
+    class AddToGroupBody {
+      +files: Blob array
+      +altcha: string optional
     }
 
-    %% Download Parameters
-    class DownloadFileApiFilesDownloadTokenGetParams {
+    class FileDownloadParams {
       +token: string
     }
 
-    class DownloadGroupApiFilesGroupUploadGroupDownloadGetParams {
+    class GroupDownloadParams {
       +upload_group: string
     }
 
-    %% Admin Parameters
-    class ListUsersApiAdminUsersGetParams {
-      +page?: number
-      +per_page?: number
-      +search?: string
+    class ListUsersParams {
+      +page: number optional
+      +per_page: number optional
+      +search: string optional
     }
 
-    %% File Operations Parameters
-    class RefreshDownloadLinkApiFilesFileIdRefreshPostParams {
-      +expiry_hours?: number | null
-      +max_downloads?: number | null
+    class RefreshLinkParams {
+      +expiry_hours: number optional
+      +max_downloads: number optional
     }
 
-    class GetRecipientStatsApiFilesGroupUploadGroupRecipientStatsGetParams {
+    class RecipientStatsParams {
       +upload_group: string
     }
 
-    %% Response Status Types
-    class DeactivateFileApiFilesFileIdDelete200 {
+    class MessageResponse {
       +message: string
     }
 
-    class DeleteUserApiAdminUsersUserIdDelete200 {
-      +message: string
-    }
-
-    class RequestCodeApiAuthRequestCodePost200 {
-      +message: string
-    }
-
-    %% Validation Schemas
     class HTTPValidationError {
-      +detail?: ValidationError[]
+      +detail: ValidationError array optional
     }
 
     class ValidationError {
-      +loc: string[]
+      +loc: string array
       +msg: string
       +type: string
     }
 
     class ValidationErrorCtx {
-      +loc: string[]
-      +msg: string
-      +type: string
-      +ctx?: Record<string, any>
+      +ctx: Record optional
     }
 
-    %% ALTCHA Challenge
-    class GetChallengeApiAltchaChallengeGet200 {
+    class AltchaChallengeResponse {
       +challenge: string
       +salt: string
       +algorithm: string
       +signature: string
     }
 
-    %% Relationships
     HTTPValidationError --> ValidationError : contains
     ValidationErrorCtx --> ValidationError : extends
 
-    note for BodyUploadFileApiFilesUploadPost "Request body dla pojedynczego uploadu pliku"
-    note for BodyUploadMultipleFilesApiFilesUploadMultiplePost "Request body dla wielokrotnego uploadu plików"
-    note for BodyAddFilesToGroupApiFilesGroupUploadGroupAddPost "Dodanie plików do istniejącej grupy"
-    note for HTTPValidationError "Standardowy błąd walidacji FastAPI"
-    note for GetChallengeApiAltchaChallengeGet200 "Wyzwanie CAPTCHA ALTCHA"
+    note for UploadFileBody "Generated name: BodyUploadFileApiFilesUploadPost"
+    note for UploadManyBody "Generated name: BodyUploadMultipleFilesApiFilesUploadMultiplePost"
+    note for AddToGroupBody "Generated name: BodyAddFilesToGroupApiFilesGroupUploadGroupAddPost"
+    note for MessageResponse "Shared shape for simple success responses"
+    note for AltchaChallengeResponse "Generated ALTCHA challenge response"
 ```
 
 ---
 
-Dodatkowe schematy request/response, parametry i typy walidacyjne.
+Reference request bodies, query/path parameter shapes, validation errors, and simple generated response types.

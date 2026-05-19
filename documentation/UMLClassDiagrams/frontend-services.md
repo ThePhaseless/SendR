@@ -1,90 +1,126 @@
 # Frontend Angular Services
 
+Services are shown by responsibility. Generated OpenAPI endpoint services are represented as API adapters to avoid long generated method names.
+
+## Session And Auth Services
+
 ```mermaid
 classDiagram
-    %% Authentication Service
+    direction LR
+
     class AuthService {
       -http: HttpClient
       -api: ApiAuthService
+      -devApi: ApiDevService
       -subscriptionApi: ApiSubscriptionService
-      -apiUrl: string
-      +authenticated: signal~boolean~
-      +requestCode(email: string): Observable~Record<string, string>~
-      +verifyCode(email: string, code: string, createAccount?: boolean): Observable~VerifyCodeResponse~
-      +getMe(): Observable~MeResponse~
-      +getQuota(): Observable~QuotaResponse~
-      +getLimits(): Observable~LimitsResponse~
-      +logout(): void
-      +isAuthenticated(): boolean
-      +getToken(): string | null
-      +getTokenExpiration(): Date | null
-      #storeToken(response: TokenResponse): void
-      #clearToken(): void
+      +authenticatedSignal
+      +currentUserResource
+      +requestCode(email)
+      +verifyCode(email, code)
+      +loginPassword(email, password)
+      +devLogin(role)
+      +syncSession()
+      +logout()
     }
 
-    %% File Service
+    class ApiAuthService {
+      +requestCodeEndpoint
+      +verifyCodeEndpoint
+      +sessionEndpoints
+      +passwordEndpoints
+    }
+
+    class ApiSubscriptionService {
+      +subscriptionEndpoint
+    }
+
+    class ApiDevService {
+      +localDevLoginEndpoint
+    }
+
+    AuthService --> ApiAuthService : wraps
+    AuthService --> ApiSubscriptionService : wraps
+    AuthService --> ApiDevService : local only
+    AuthService --> HttpClient : direct calls
+
+    note for AuthService "Session state is derived from backend cookies, not browser storage"
+```
+
+## File Services
+
+```mermaid
+classDiagram
+    direction LR
+
     class FileService {
       -api: ApiFilesService
       -http: HttpClient
-      +uploadFile(file: File, options?: UploadAccessOptions): Observable~HttpEvent<FileUploadResponse>~
-      +uploadMultipleFiles(files: File[], options?: UploadAccessOptions): Observable~HttpEvent<MultiFileUploadResponse>~
-      +addFilesToGroup(uploadGroup: string, files: File[]): Observable~FileUploadResponse[]~
-      +getFiles(): Observable~FileListResponse~
-      +getFile(fileId: number): Observable~FileUploadResponse~
-      +editFile(fileId: number, request: FileEditRequest): Observable~FileUploadResponse~
-      +deleteFile(fileId: number): Observable~Record<string, string>~
-      +refreshDownloadLink(fileId: number, params?: any): Observable~FileUploadResponse~
-      +downloadFile(token: string): Observable~Blob~
-      +downloadGroup(uploadGroup: string): Observable~Blob~
-      +getGroupInfo(uploadGroup: string): Observable~UploadGroupInfoResponse~
-      +editGroup(uploadGroup: string, request: GroupEditRequest): Observable~UploadGroupInfoResponse~
-      +refreshGroup(uploadGroup: string, request: GroupRefreshRequest): Observable~UploadGroupInfoResponse~
-      +getGroupAccess(uploadGroup: string): Observable~AccessInfoResponse~
-      +editGroupAccess(uploadGroup: string, request: AccessEditRequest): Observable~AccessInfoResponse~
-      +getDownloadStats(uploadGroup: string): Observable~DownloadStatsResponse~
-      +getRecipientStats(uploadGroup: string): Observable~RecipientStatsResponse~
+      +uploadFiles
+      +listOwnedFiles
+      +editDeleteFiles
+      +downloadBlobs
+      +groupAccess
+      +downloadStats
     }
 
-    %% Admin Service
+    class ApiFilesService {
+      +generatedFileEndpoints
+      +generatedGroupEndpoints
+      +generatedStatsEndpoints
+    }
+
+    class UploadAccessOptions {
+      +expiryDownloadLimits
+      +publicPasswordEmailAccess
+      +titleDescription
+    }
+
+    FileService --> ApiFilesService : wraps
+    FileService --> HttpClient : upload and blob requests
+    FileService --> UploadAccessOptions : accepts
+
+    note for FileService "Hand-written facade for upload progress, blobs, and generated endpoints"
+```
+
+## Admin And UI Services
+
+```mermaid
+classDiagram
+    direction LR
+
     class AdminService {
       -api: ApiAdminService
-      +listUsers(page?: number, perPage?: number, search?: string): Observable~AdminUserListResponse~
-      +updateUser(userId: number, update: AdminUserUpdateRequest): Observable~UserResponse~
-      +deleteUser(userId: number): Observable~Record<string, string>~
+      +listUsers(page, perPage, search)
+      +updateUser(userId, update)
+      +deleteUser(userId)
+      +listUserUploads(userId)
+      +listUserLogins(userId)
+      +getUserStats(userId)
     }
 
-    %% Service Types
-    class UploadAccessOptions {
-      +expiryHours?: number
-      +maxDownloads?: number
-      +isPublic?: boolean
-      +passwords?: PasswordEntry[]
-      +emails?: string[]
-      +showEmailStats?: boolean
-      +title?: string
-      +description?: string
+    class ApiAdminService {
+      +generatedAdminEndpoints
     }
-    
-    
 
-    %% Relationships
-    AuthService --> HttpClient : uses
-    AuthService --> ApiAuthService : uses
-    AuthService --> ApiSubscriptionService : uses
+    class UiNotificationService {
+      +notificationsSignal
+      +success/info/warning/error()
+      +dismiss(id)
+    }
 
-    FileService --> ApiFilesService : uses
-    FileService --> HttpClient : uses
+    class ConfirmDialogService {
+      +stateSignal
+      +confirm(options, action)
+      +close()
+    }
 
-    AdminService --> ApiAdminService : uses
+    AdminService --> ApiAdminService : wraps
+    ConfirmDialogService --> UiNotificationService : complements
 
-    FileService --> UploadAccessOptions : uses
-
-    note for AuthService "Zarządza uwierzytelnianiem, tokenami i sesjami użytkownika"
-    note for FileService "Obsługuje wszystkie operacje na plikach i grupach"
-    note for AdminService "Funkcje administracyjne dla zarządzania użytkownikami"
-    note for UploadAccessOptions "Opcje konfiguracji dostępu przy uploadzie plików"
+    note for AdminService "Typed facade for admin users, uploads, login history, and stats"
+    note for UiNotificationService "Global user-facing status messages"
 ```
 
 ---
 
-Serwisy Angular komunikujące się z backend API.
+Angular services and generated API adapters used by the frontend.

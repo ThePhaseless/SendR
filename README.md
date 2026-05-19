@@ -1,199 +1,193 @@
 # SendR
 
-A WeTransfer-like file sharing service built with Angular and FastAPI.
+SendR is a secure file-sharing application built with Angular and FastAPI. It lets authenticated users upload files, share download links, apply access controls, and manage transfers through tier-based limits.
 
 ## Features
 
-- **File Sharing**: Upload files and share via download links
-- **Email Authentication**: Passwordless login with email verification codes
-- **Quota Management**: Per-tier upload limits (basic, free, premium)
-- **File Expiry**: Automatic file expiration with configurable grace periods
-- **Premium Subscriptions**: Higher limits for premium users
-- **File Refresh**: Generate new download links for existing files
+- File uploads with individual and grouped download links
+- Email-based authentication and session cookies
+- Public, password-protected, and email-recipient access modes
+- Tier-based upload, expiry, download, password, and recipient limits
+- Premium link refresh and expired-file recovery windows
+- Admin user and transfer management
+- Async malware scanning with a separate scan worker and ClamAV service
 
 ## Tech Stack
 
-- **Frontend**: Angular 19, SCSS, OpenAPI-generated client
-- **Backend**: FastAPI, SQLModel, Alembic migrations, SQLite
-- **Tooling**: uv (Python), bun (JS runtime and package manager), ruff (Python linter), oxlint (TS linter)
-- **Deployment**: Separate backend and frontend images deployed to one live Kubernetes environment
+- **Frontend:** Angular 21, TypeScript, SCSS, Bun, OpenAPI-generated client, nginx
+- **Backend:** FastAPI, SQLModel, Alembic, uv, SQLite for local development, PostgreSQL for live deployment
+- **Storage:** local upload directories for development; DigitalOcean Spaces for live object storage
+- **Infrastructure:** Docker images, Kubernetes manifests, Terraform for DigitalOcean infrastructure, GitHub Actions, pre-commit, Renovate
 
 ## Quick Start
 
-### Development
-
-**Backend:**
+### Backend
 
 ```bash
 cd backend
 uv sync
 uv run alembic upgrade head
-SENDR_ENVIRONMENT=production uv run uvicorn src.app:app --host 0.0.0.0 --port 8000
+SENDR_ENVIRONMENT=local SENDR_SECRET_KEY=local-dev-secret uv run uvicorn src.app:app --host 0.0.0.0 --port 8000
 ```
 
-The backend now defaults to production-safe behavior:
+Local mode prints verification codes to the backend log and relaxes CAPTCHA checks for development. Dev login endpoints are still closed unless both flags are set:
 
-- `SENDR_ENVIRONMENT=production` keeps CAPTCHA enabled, sends verification codes via the configured SMTP server, and disables dev-only routes
-- `SENDR_ENVIRONMENT=local` is an explicit local-dev opt-in that logs verification codes to the terminal instead of sending email and relaxes CAPTCHA verification
-- `SENDR_DEV_LOGIN_ENABLED=true` must be set alongside `SENDR_ENVIRONMENT=local` before the backend exposes `/api/dev/login/*`
+```bash
+SENDR_ENVIRONMENT=local SENDR_DEV_LOGIN_ENABLED=true SENDR_SECRET_KEY=local-dev-secret uv run uvicorn src.app:app --host 0.0.0.0 --port 8000
+```
 
-**Frontend:**
+Production-like environments (`dev`, `staging`, and `production`) require explicit secrets, SMTP or Resend email delivery, ALTCHA HMAC configuration, Spaces credentials, and `SENDR_VIRUS_SCANNING_ENABLED=true`.
+
+### Frontend
 
 ```bash
 cd frontend
 bun install
-bun start
+bun run start
 ```
 
-`bun start` now serves the frontend with the production configuration by default.
+The Angular dev server defaults to the `local-dev` serve configuration from [frontend/angular.json](frontend/angular.json). It keeps API requests relative to `/api`, and [frontend/proxy.conf.json](frontend/proxy.conf.json) forwards those requests to `http://localhost:8000`.
 
-If you explicitly want local-only developer conveniences such as dev login buttons and frontend CAPTCHA bypass, use:
+Frontend production builds use [frontend/src/environments/environment.prod.ts](frontend/src/environments/environment.prod.ts) for the browser API origin. The nginx container also keeps an `/api` reverse proxy, configured by the runtime `API_URL` environment variable, for same-origin/container deployments.
+
+## Verification
+
+Backend checks:
 
 ```bash
-bun run start:local-dev
+cd backend
+uv run pytest
 ```
 
-Both frontend entrypoints use the same relative `/api` base path. During local Angular development, `/api/*` is proxied to `http://localhost:8000`. In Docker, nginx proxies `/api/*` to the backend container.
+Frontend checks:
 
-### Pre-commit Hooks
+```bash
+cd frontend
+bun run format:check
+bun run lint
+bun run build --configuration production --base-href /SendR/
+```
 
-This repository versions its Git hook entrypoint in [.githooks/pre-commit](/workspaces/SendR/.githooks/pre-commit).
+Frontend targeted tests:
 
-Enable the tracked hooks once per clone:
+```bash
+cd frontend
+bun run test -- --watch=false --browsers=ChromeHeadlessNoSandbox --progress=false
+```
+
+## API Client
+
+The root [openapi.json](openapi.json) file is generated from the FastAPI app and feeds the Angular client in [frontend/src/app/api](frontend/src/app/api). Regenerate both after backend API contract changes:
+
+```bash
+./scripts/generate-openapi-client.sh
+```
+
+CI fails if regeneration produces a diff, so backend API changes and generated frontend client updates should be committed together.
+
+## Git Hooks
+
+Enable the repository hooks once per clone:
 
 ```bash
 ./setup-git-hooks.sh
 ```
 
-That script installs `pre-commit` with `uv` if needed, sets `core.hooksPath` to `.githooks`, and pre-installs the hook environments.
+The tracked hook entrypoint is [.githooks/pre-commit](.githooks/pre-commit). It can regenerate OpenAPI client files for backend API changes and runs frontend format, lint, and build checks for frontend-related commits. The hook environments are configured in [.pre-commit-config.yaml](.pre-commit-config.yaml).
 
-If you use the devcontainer, this setup runs automatically during container creation.
-
-The devcontainer uses Bun instead of Node.js for the frontend CLI path and persists the `uv` and `bun` package caches across rebuilds using Docker volumes to keep subsequent builds faster.
-
-If you prefer to do it manually:
-
-```bash
-uv tool install pre-commit
-chmod +x .githooks/pre-commit
-git config core.hooksPath .githooks
-pre-commit install-hooks --config .pre-commit-config.yaml
-```
-
-Run the same hooks manually across the full repository:
+Run all hooks manually with:
 
 ```bash
 pre-commit run --all-files
 ```
 
-When a commit includes backend API source changes, the pre-commit hook now:
+## Docker And Deployment
 
-- regenerates [openapi.json](/workspaces/SendR/openapi.json) from the FastAPI app
-- regenerates the Angular client in [frontend/src/app/api](/workspaces/SendR/frontend/src/app/api)
-- stages those generated changes into the same commit
-
-On frontend-related commits, the pre-commit hook also runs:
-
-- frontend format
-- frontend lint
-- frontend build
-
-That hook requires `uv` and `bun` on the machine running the commit.
-
-CI also validates that [openapi.json](/workspaces/SendR/openapi.json) and [frontend/src/app/api](/workspaces/SendR/frontend/src/app/api) are not stale by regenerating them in GitHub Actions and failing if that produces a diff.
-
-The hook environments are defined in [.pre-commit-config.yaml](/workspaces/SendR/.pre-commit-config.yaml). Ruff still runs from its pinned pre-commit environment, while the frontend format and lint hooks run from the repository's Bun-managed dependencies in [frontend/package.json](/workspaces/SendR/frontend/package.json). `core.hooksPath` itself is still a local Git setting, so each clone needs the one-time `git config` command above.
-
-If commits bypass the hook entirely, first check that Git is pointing at `.githooks` and that [.githooks/pre-commit](/workspaces/SendR/.githooks/pre-commit) is executable.
-
-### Docker
-
-Each service has its own Dockerfile and is built/deployed as a separate container:
+Each service has its own image:
 
 ```bash
 docker build -t sendr-api ./backend
 docker build -t sendr-frontend ./frontend
 ```
 
-The frontend image uses a relative API origin in [frontend/src/environments/environment.prod.ts](frontend/src/environments/environment.prod.ts). Local development uses the Angular dev-server proxy from [frontend/proxy.conf.json](frontend/proxy.conf.json), and the production nginx container proxies `/api/*` to the backend through its runtime `API_URL` environment variable:
+For a local container run, provide backend runtime settings and the frontend upstream API URL explicitly:
 
 ```bash
 docker run -p 8000:8000 sendr-api
-docker run -p 8080:8080 sendr-frontend
+docker run -p 8080:8080 -e API_URL=http://host.docker.internal:8000 sendr-frontend
 ```
 
-For the live Kubernetes deployment, GitHub Actions renders [k8s/overlays/live](k8s/overlays/live) and sets the frontend `API_URL` to the in-cluster backend service.
+The live deployment uses [k8s/overlays/live](k8s/overlays/live) and Terraform under [terraform](terraform). The production topology includes:
 
-By default, the backend does not allow any cross-origin browser frontend origins. `SENDR_ALLOWED_ORIGINS` can be provided either as a JSON array or as a comma-separated list when you intentionally deploy the frontend and API on different origins.
+- `sendr-backend` API pods
+- `sendr-scan-worker` worker pods
+- a separate ClamAV service
+- PostgreSQL for relational data
+- DigitalOcean Spaces for upload payloads
+- Traefik and DNS records for `sendr.email`, `www.sendr.email`, and `api.sendr.email`
 
-### Async Scan Topology
+Terraform and Kubernetes deployment details live in [terraform/README.md](terraform/README.md), [terraform/SETUP.md](terraform/SETUP.md), and [terraform/ENVIRONMENTS_GUIDE.md](terraform/ENVIRONMENTS_GUIDE.md).
 
-If malware scanning is enabled, run three separate runtime roles:
+## Async Malware Scanning
 
-- the SendR API process
-- the SendR scan worker process
-- a separate ClamAV daemon that updates its own signatures independently of the backend image
+When malware scanning is enabled, run three separate runtime roles:
 
-The API and worker should use the same backend image and point at the same database and storage backend. For local-disk deployments that means the same clean upload directory and quarantine upload directory. For Spaces-backed deployments, queued files live in object storage until the worker downloads a temporary copy for scanning. The application does not start the worker automatically from the API process.
+- SendR API process
+- SendR scan worker process
+- ClamAV daemon or container
 
-Minimum shared state for the API and worker:
+The API and worker use the same backend image and must share the same database, storage backend, upload/quarantine directories for local disk deployments, Spaces settings for object storage deployments, and ClamAV endpoint settings.
 
-- `SENDR_DATABASE_URL`
-- `SENDR_UPLOAD_DIR`
-- `SENDR_UPLOAD_QUARANTINE_DIR`
-- `SENDR_SPACES_ACCESS_KEY`, `SENDR_SPACES_SECRET_KEY`, `SENDR_SPACES_BUCKET_NAME`, and `SENDR_SPACES_REGION` when object storage is enabled
-- `SENDR_VIRUS_SCANNING_ENABLED=true`
-- the same ClamAV endpoint, usually `SENDR_CLAMAV_HOST` and `SENDR_CLAMAV_PORT` or a shared `SENDR_CLAMAV_UNIX_SOCKET`
-
-Typical backend process commands inside the backend container are:
+Typical backend role commands are:
 
 ```bash
-uvicorn app:app --host 0.0.0.0 --port 8000
-python src/scan_worker.py
+uv run uvicorn src.app:app --host 0.0.0.0 --port 8000
+uv run python src/scan_worker.py
 ```
 
-The important operational rule is that ClamAV stays outside the backend image. That lets virus definitions update on their own schedule without rebuilding or redeploying the SendR application image.
-
-The Kubernetes production manifests now deploy this topology directly with `sendr-backend`, `sendr-scan-worker`, and a pinned `sendr-clamav` service. Production configuration is expected to keep `SENDR_VIRUS_SCANNING_ENABLED=true`.
+ClamAV stays outside the backend image so virus definitions can update without rebuilding SendR.
 
 ## API Documentation
 
-When the backend is running, visit:
+When the backend is running locally, visit:
 
 - Swagger UI: <http://localhost:8000/docs>
 - ReDoc: <http://localhost:8000/redoc>
 
 ## Tier Limits
 
-| Feature          | Basic  | Free | Premium |
-| ---------------- | ------ | ---- | ------- |
-| Email required   | Yes    | Yes  | Yes     |
-| Files per week   | 3      | 5    | 50      |
-| Max file size    | 100 MB | 1 GB | 10 GB   |
-| Browse history   | No     | Yes  | Yes     |
-| Edit files       | No     | No   | Yes     |
-| Retrieve expired | No     | No   | Yes     |
+| Feature | Temporary | Free | Premium |
+| --- | --- | --- | --- |
+| Email required | Yes | Yes | Yes |
+| Files per week | 3 | 5 | Unlimited |
+| Max file size | 100 MB | 1 GB | 10 GB |
+| Browse history | No | Yes | Yes |
+| Edit files | No | No | Yes |
+| Retrieve expired files | No | No | Yes |
+
+## Documentation
+
+- [documentation/docs.md](documentation/docs.md) - project architecture and operating notes
+- [documentation/flow-diagram.md](documentation/flow-diagram.md) - workflow sequence diagrams
+- [documentation/UMLClassDiagrams](documentation/UMLClassDiagrams) - focused class and schema diagrams
+- [documentation/owasp-audit-2026-05-17.md](documentation/owasp-audit-2026-05-17.md) - security review and remediation notes
 
 ## Project Structure
 
 ```text
 SendR/
-├── backend/           # FastAPI backend
-│   ├── src/backend/   # Application source
-│   │   ├── routers/   # API endpoints
-│   │   ├── models.py  # SQLModel database models
-│   │   ├── schemas.py # Request/response schemas
-│   │   └── ...
-│   ├── alembic/       # Database migrations
-│   └── pyproject.toml # Python dependencies & config
-├── frontend/          # Angular frontend
-│   ├── src/app/
-│   │   ├── api/       # Auto-generated OpenAPI client
-│   │   ├── pages/     # Page components
-│   │   ├── services/  # Angular services
-│   │   └── ...
-│   └── package.json
-├── backend/Dockerfile # Backend image build
-├── frontend/Dockerfile# Frontend image build
-└── openapi.json       # Generated API spec
+├── backend/                 # FastAPI backend, Alembic migrations, tests
+│   ├── src/                 # Application source
+│   ├── tests/               # Backend tests
+│   └── pyproject.toml       # Backend dependencies and tooling
+├── frontend/                # Angular frontend
+│   ├── src/app/api/         # Generated OpenAPI client
+│   ├── src/app/components/  # Shared UI components
+│   ├── src/app/pages/       # Routed pages
+│   └── package.json         # Frontend scripts and dependencies
+├── documentation/           # Architecture, security, and diagram docs
+├── k8s/                     # Kubernetes base and live overlay
+├── scripts/                 # OpenAPI, migration, and helper scripts
+├── terraform/               # DigitalOcean infrastructure
+└── openapi.json             # Generated API contract
 ```

@@ -1,8 +1,13 @@
 # Backend Database Models
 
+The database model diagrams are split by responsibility to keep relationships readable.
+
+## Users, Auth, And Subscriptions
+
 ```mermaid
 classDiagram
-    %% Enums
+    direction LR
+
     class UserTier {
       <<enumeration>>
       temporary
@@ -16,10 +21,10 @@ classDiagram
       premium
     }
 
-    %% Database Models (SQLModel)
     class User {
-      +id: int | None
+      +id: int
       +email: str
+      +password_hash: str optional
       +tier: UserTier
       +is_admin: bool
       +created_at: datetime
@@ -27,7 +32,7 @@ classDiagram
     }
 
     class VerificationCode {
-      +id: int | None
+      +id: int
       +email: str
       +code: str
       +expires_at: datetime
@@ -35,77 +40,22 @@ classDiagram
     }
 
     class AuthToken {
-      +id: int | None
+      +id: int
       +user_id: int
       +token: str
       +expires_at: datetime
       +created_at: datetime
     }
 
-    class FileUpload {
-      +id: int | None
-      +user_id: int | None
-      +original_filename: str
-      +stored_filename: str
-      +file_size_bytes: int
-      +download_token: str
-      +download_count: int
-      +max_downloads: int | None
-      +upload_group: str
-      +expires_at: datetime
-      +created_at: datetime
-      +is_active: bool
-    }
-
-    class UploadGroupSettings {
-      +upload_group: str
-      +is_public: bool
-      +show_email_stats: bool
-      +title: str | None
-      +description: str | None
-    }
-
-    class UploadPassword {
-      +id: int | None
-      +upload_group: str
-      +label: str
-      +password_hash: str
-      +created_at: datetime
-    }
-
-    class UploadEmailRecipient {
-      +id: int | None
-      +upload_group: str
-      +email: str
-      +token_hash: str
-      +notified: bool
-      +created_at: datetime
-    }
-
-    class DownloadLog {
-      +id: int | None
-      +upload_group: str
-      +file_upload_id: int | None
-      +access_type: str
-      +upload_password_id: int | None
-      +email_recipient_id: int | None
-      +downloaded_at: datetime
-    }
-
-    class Transfer {
-      +id: int | None
-      +user_id: int | None
-      +upload_group: str
-      +message: str | None
-      +recipient_emails: str | None
-      +password_hash: str | None
-      +notify_on_download: bool
-      +created_at: datetime
-      +expires_at: datetime
+    class UserLogin {
+      +id: int
+      +user_id: int
+      +method: str
+      +logged_in_at: datetime
     }
 
     class Subscription {
-      +id: int | None
+      +id: int
       +user_id: int
       +plan: SubscriptionPlan
       +started_at: datetime
@@ -113,26 +63,101 @@ classDiagram
       +is_active: bool
     }
 
-    %% Relationships
-    User "1" <|-- "*" AuthToken : generates
-    User "1" <|-- "*" FileUpload : uploads
-    User "1" <|-- "*" VerificationCode : requests
-    User "1" <|-- "*" Subscription : has
-    User "1" <|-- "*" Transfer : creates
+    User --> UserTier : tier
+    Subscription --> SubscriptionPlan : plan
+    User "1" --> "many" VerificationCode : requests
+    User "1" --> "many" AuthToken : sessions
+    User "1" --> "many" UserLogin : audit log
+    User "1" --> "many" Subscription : plans
 
-    FileUpload "*" <-- "1" UploadGroupSettings : belongs_to
-    FileUpload "1" <|-- "*" DownloadLog : tracks_downloads
-    FileUpload "*" <-- "1" Transfer : contains
+    note for User "Account, role, tier, and optional password hash"
+    note for AuthToken "Server-side session token backing HttpOnly cookies"
+    note for UserLogin "Authentication history for admin review"
+```
 
-    UploadGroupSettings "1" <|-- "*" UploadPassword : protects_with
-    UploadGroupSettings "1" <|-- "*" UploadEmailRecipient : grants_access_to
+## Transfers, Access, And Audit
 
-    UploadPassword "1" <|-- "*" DownloadLog : validates_in
-    UploadEmailRecipient "1" <|-- "*" DownloadLog : records_access
+```mermaid
+classDiagram
+    direction LR
 
-    Transfer "1" <|-- "*" FileUpload : contains_files
+    class ScanStatus {
+      <<enumeration>>
+      queued
+      scanning
+      clean
+      infected
+      failed
+    }
+
+    class FileUpload {
+      +id: int
+      +user_id: int optional
+      +original_filename: str
+      +stored_filename: str
+      +file_size_bytes: int
+      +download_token: str
+      +upload_group: str
+      +scan_status: ScanStatus
+      +expires_at: datetime
+      +is_active: bool
+    }
+
+    class UploadGroupSettings {
+      +upload_group: str
+      +is_public: bool
+      +show_email_stats: bool
+      +title: str optional
+      +description: str optional
+    }
+
+    class UploadPassword {
+      +id: int
+      +upload_group: str
+      +label: str
+      +password_hash: str
+    }
+
+    class UploadEmailRecipient {
+      +id: int
+      +upload_group: str
+      +email: str
+      +token_hash: str
+      +notified: bool
+    }
+
+    class DownloadLog {
+      +id: int
+      +upload_group: str
+      +file_upload_id: int optional
+      +access_type: str
+      +downloaded_at: datetime
+    }
+
+    class Transfer {
+      +id: int
+      +user_id: int optional
+      +upload_group: str
+      +message: str optional
+      +notify_on_download: bool
+      +created_at: datetime
+      +expires_at: datetime
+    }
+
+    FileUpload --> ScanStatus : scan state
+    Transfer "1" --> "many" FileUpload : contains
+    UploadGroupSettings "1" --> "many" FileUpload : configures
+    UploadGroupSettings "1" --> "many" UploadPassword : passwords
+    UploadGroupSettings "1" --> "many" UploadEmailRecipient : recipients
+    FileUpload "1" --> "many" DownloadLog : downloads
+    UploadPassword "1" --> "many" DownloadLog : password access
+    UploadEmailRecipient "1" --> "many" DownloadLog : email access
+
+    note for FileUpload "One stored payload and its sharing metadata"
+    note for UploadGroupSettings "Group-level public/password/email access"
+    note for DownloadLog "Audit row for every successful download"
 ```
 
 ---
 
-Modele bazy danych reprezentujące wszystkie encje systemu SendR.
+SQLModel entities for users, transfers, access controls, malware scan state, subscriptions, and download auditing.

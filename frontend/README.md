@@ -1,59 +1,83 @@
-# Frontend
+# SendR Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.22.
+This is the Angular client for SendR. It provides the upload, download, dashboard, admin, and subscription views and consumes the FastAPI backend through the generated OpenAPI client in `src/app/api` plus a small set of hand-written services.
 
-## Development server
+## Local Development
 
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Install dependencies and start the dev server from this directory:
 
 ```bash
-ng generate component component-name
+bun install
+bun run start
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+`bun run start` runs Angular's dev server on `0.0.0.0`. In `angular.json`, the `serve` target defaults to the `local-dev` configuration, which uses `src/environments/environment.local.ts`. That enables local-only developer UI affordances while keeping API calls relative to `/api`.
+
+The dev server proxy in `proxy.conf.json` forwards `/api` to `http://localhost:8000`. Start the backend separately, for example:
 
 ```bash
-ng generate --help
+cd ../backend/src
+source ../.venv/bin/activate
+SENDR_ENVIRONMENT=local SENDR_DEV_LOGIN_ENABLED=true SENDR_SECRET_KEY=local-dev-secret uvicorn app:app --host 0.0.0.0 --port 8000
 ```
 
-## Building
+Use `SENDR_DEV_LOGIN_ENABLED=true` only with `SENDR_ENVIRONMENT=local`. The backend rejects dev login in non-local environments.
 
-To build the project run:
+## Available Scripts
+
+| Command | Purpose |
+| --- | --- |
+| `bun run start` | Start the Angular dev server with the default local-dev serve configuration. |
+| `bun run build` | Build the production bundle. |
+| `bun run watch` | Build continuously with the development build configuration. |
+| `bun run test` | Run Karma tests once with watch mode disabled. |
+| `bun run test:watch` | Run Karma in watch mode. |
+| `bun run lint` | Run oxlint against frontend source. |
+| `bun run lint:fix` | Run oxlint with autofix enabled. |
+| `bun run format` | Format frontend source with oxfmt. |
+| `bun run format:check` | Check formatting without writing changes. |
+| `bun run generate-api` | Regenerate the OpenAPI client with Orval. |
+
+## API Client
+
+The generated API client lives in `src/app/api` and is generated from the root `openapi.json`. When backend contracts change, regenerate from the repository root with:
 
 ```bash
-ng build
+./scripts/generate-openapi-client.sh
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+or from this directory after `openapi.json` has already been refreshed:
 
 ```bash
-ng test
+bun run generate-api
 ```
 
-## Running end-to-end tests
+Generated client files should stay in the same commit as the backend API change that required them.
 
-For end-to-end (e2e) testing, run:
+## Environment Modes
+
+| File | Used by | Notes |
+| --- | --- | --- |
+| `src/environments/environment.ts` | Development build fallback | Relative API base and dev tools disabled. |
+| `src/environments/environment.local.ts` | `serve:local-dev` | Relative API base and dev tools enabled for local-only workflows. |
+| `src/environments/environment.prod.ts` | Production build | Uses the configured production API origin and disables dev tools. |
+
+Local development sends browser requests to `/api` and relies on the Angular proxy. Production builds prefix generated API requests with `environment.prod.ts`; the nginx container also keeps an `/api` reverse proxy for same-origin/container deployments.
+
+## Verification
+
+For frontend-only work, run:
 
 ```bash
-ng e2e
+bun run format:check
+bun run lint
+bun run build --configuration production --base-href /SendR/
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+For targeted tests, run:
 
-## Additional Resources
+```bash
+bun run test -- --watch=false --browsers=ChromeHeadlessNoSandbox --progress=false
+```
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+When a change affects user-visible behavior, also start the dev server and verify the relevant flow in a browser.

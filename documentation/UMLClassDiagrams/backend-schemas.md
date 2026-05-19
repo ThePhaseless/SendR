@@ -1,8 +1,13 @@
 # Backend API Schemas (Pydantic)
 
+The API schemas are grouped by request area instead of listed as one oversized diagram.
+
+## Auth And Account Schemas
+
 ```mermaid
 classDiagram
-    %% Authentication Schemas
+    direction LR
+
     class EmailVerificationRequest {
       +email: str
     }
@@ -13,8 +18,13 @@ classDiagram
       +create_account: bool
     }
 
-    class TokenResponse {
-      +token: str
+    class PasswordLoginRequest {
+      +email: str
+      +password: str
+    }
+
+    class SessionResponse {
+      +user: UserResponse
       +expires_at: datetime
     }
 
@@ -25,61 +35,71 @@ classDiagram
       +is_admin: bool
     }
 
-    %% File Management Schemas
+    class PasswordRequests {
+      +set_password
+      +change_password
+    }
+
+    SessionResponse --> UserResponse : contains
+    CodeVerificationRequest --> SessionResponse : returns
+    PasswordLoginRequest --> SessionResponse : returns
+
+    note for SessionResponse "Browser auth is represented by HttpOnly cookies plus user data"
+```
+
+## File And Group Schemas
+
+```mermaid
+classDiagram
+    direction LR
+
     class FileUploadResponse {
       +id: int
       +original_filename: str
       +file_size_bytes: int
       +download_url: str
+      +scan_status: str
       +expires_at: datetime
-      +download_count: int
-      +max_downloads: int | None
-      +is_active: bool
-      +upload_group: str | None
-      +message: str | None
-      +is_public: bool
-      +has_passwords: bool
-      +has_email_recipients: bool
     }
 
     class FileListResponse {
-      +files: list[FileUploadResponse]
+      +files: list
     }
 
     class MultiFileUploadResponse {
-      +files: list[FileUploadResponse]
+      +files: list
       +upload_group: str
       +total_size_bytes: int
-      +title: str | None
-      +description: str | None
     }
 
     class UploadGroupInfoResponse {
-      +files: list[FileUploadResponse]
+      +files: list
       +upload_group: str
       +total_size_bytes: int
       +file_count: int
       +will_zip: bool
-      +is_public: bool
-      +has_passwords: bool
-      +has_email_recipients: bool
-      +title: str | None
-      +description: str | None
     }
 
     class TransferInfoResponse {
       +upload_group: str
-      +message: str | None
-      +sender_email: str | None
       +has_password: bool
       +created_at: datetime
       +expires_at: datetime
-      +files: list[FileUploadResponse]
-      +total_size_bytes: int
-      +file_count: int
+      +files: list
     }
 
-    %% Access Control Schemas
+    FileListResponse --> FileUploadResponse : contains
+    MultiFileUploadResponse --> FileUploadResponse : contains
+    UploadGroupInfoResponse --> FileUploadResponse : contains
+    TransferInfoResponse --> FileUploadResponse : contains
+```
+
+## Access And Statistics Schemas
+
+```mermaid
+classDiagram
+    direction LR
+
     class PasswordInfo {
       +id: int
       +label: str
@@ -97,124 +117,101 @@ classDiagram
     }
 
     class AccessEditRequest {
-      +is_public: bool | None
-      +show_email_stats: bool | None
-      +passwords_to_add: list[PasswordEntry] | None
-      +password_ids_to_remove: list[int] | None
-      +emails_to_add: list[str] | None
-      +email_ids_to_remove: list[int] | None
+      +publicFlagChanges
+      +passwordChanges
+      +emailRecipientChanges
     }
 
     class AccessInfoResponse {
       +is_public: bool
-      +passwords: list[PasswordInfo]
-      +emails: list[EmailRecipientInfo]
+      +passwords: list
+      +emails: list
       +show_email_stats: bool
     }
 
     class DownloadStatEntry {
       +access_type: str
-      +identifier: str | None
+      +identifier: str optional
       +download_count: int
-      +last_download: datetime | None
+      +last_download: datetime optional
     }
 
     class DownloadStatsResponse {
-      +stats: list[DownloadStatEntry]
+      +stats: list
       +total_downloads: int
-    }
-
-    class RecipientDownloadEntry {
-      +email: str
-      +download_count: int
     }
 
     class RecipientStatsResponse {
-      +downloads: list[RecipientDownloadEntry]
+      +downloads: list
       +total_downloads: int
     }
 
-    %% Admin Schemas
+    AccessInfoResponse --> PasswordInfo : contains
+    AccessInfoResponse --> EmailRecipientInfo : contains
+    AccessEditRequest --> PasswordEntry : adds
+    DownloadStatsResponse --> DownloadStatEntry : contains
+    RecipientStatsResponse --> DownloadStatEntry : summarizes
+```
+
+## Admin, Limits, And Mutations
+
+```mermaid
+classDiagram
+    direction LR
+
     class AdminUserUpdateRequest {
-      +tier: str | None
-      +is_admin: bool | None
+      +tier: str optional
+      +is_admin: bool optional
     }
 
     class AdminUserListResponse {
-      +users: list[UserResponse]
+      +users: list
       +total: int
     }
 
-    %% Subscription Schemas
+    class AdminUserStatsResponse {
+      +total_uploads: int
+      +total_bytes: int
+      +active_uploads: int
+    }
+
     class SubscriptionResponse {
       +plan: str
       +is_active: bool
-      +started_at: datetime | None
+      +started_at: datetime optional
     }
 
-    %% Utility Schemas
     class QuotaResponse {
       +max_file_size_mb: int
       +max_files_per_upload: int
       +weekly_uploads_limit: int
       +weekly_uploads_used: int
       +weekly_uploads_remaining: int
-      +expiry_options_hours: list[int] | None
-      +min_expiry_hours: int | None
-      +max_expiry_hours: int | None
-      +max_downloads_options: list[int] | None
-      +max_downloads_limit: int | None
-      +max_passwords_per_upload: int
-      +max_emails_per_upload: int
     }
 
     class LimitsResponse {
       +max_file_size_mb: int
       +max_files_per_upload: int
       +weekly_uploads_limit: int
-      +expiry_options_hours: list[int]
-      +max_downloads_options: list[int]
-      +max_passwords_per_upload: int
-      +max_emails_per_upload: int
     }
 
     class FileEditRequest {
-      +original_filename: str | None
-      +message: str | None
-      +expires_in_hours: int | None
-      +max_downloads: int | None
+      +filenameMessageUpdates
+      +expiryDownloadUpdates
     }
 
-    class GroupRefreshRequest {
-      +expiry_hours: int | None
-      +max_downloads: int | None
-      +title: str | None
-      +description: str | None
+    class GroupMutationRequest {
+      +expiry_hours: int optional
+      +max_downloads: int optional
+      +title: str optional
+      +description: str optional
     }
-
-    class GroupEditRequest {
-      +expiry_hours: int | None
-      +max_downloads: int | None
-      +title: str | None
-      +description: str | None
-    }
-
-    %% Relationships
-    FileListResponse --> FileUploadResponse : contains
-    MultiFileUploadResponse --> FileUploadResponse : contains
-    UploadGroupInfoResponse --> FileUploadResponse : contains
-    TransferInfoResponse --> FileUploadResponse : contains
-
-    AccessInfoResponse --> PasswordInfo : contains
-    AccessInfoResponse --> EmailRecipientInfo : contains
-    AccessEditRequest --> PasswordEntry : contains
-
-    DownloadStatsResponse --> DownloadStatEntry : contains
-    RecipientStatsResponse --> RecipientDownloadEntry : contains
 
     AdminUserListResponse --> UserResponse : contains
+    AdminUserStatsResponse --> UserResponse : describes
+    GroupMutationRequest --> FileEditRequest : similar purpose
 ```
 
 ---
 
-Schematy Pydantic używane do walidacji request/response w API.
+Pydantic request and response schemas used by the FastAPI contract.

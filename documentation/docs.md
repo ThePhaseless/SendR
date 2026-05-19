@@ -1,4 +1,4 @@
-# SendR – Project Documentation
+# SendR - Project Documentation
 
 ## Authors
 
@@ -22,7 +22,7 @@
 
 ### Overview
 
-SendR is a file-sharing web application inspired by services such as WeTransfer. The goal of the project was to create a convenient and functional platform that allows users to upload, share, and manage files through download links — while meeting the security standards.
+SendR is a file-sharing web application inspired by services such as WeTransfer. The goal of the project is to provide a convenient platform for uploading, sharing, downloading, and managing files while keeping security requirements central to the design.
 
 > **Key Design Decision**
 > The most significant decision made during the project was to **shift from a convenience-first approach to a security-first approach**. This meant introducing mandatory user authentication, even at the cost of the frictionless experience that services like WeTransfer are known for. A user now must authenticate via email before uploading or managing files.
@@ -48,12 +48,12 @@ SendR follows a classic client-server architecture, split into two independently
 - **Frontend** — an Angular single-page application served by an nginx web server
 - **Backend** — a Python REST API built with FastAPI
 
-The two services communicate exclusively through a well-defined HTTP API. The frontend never accesses the database directly. In local development, the Angular dev server proxies relative `/api/*` requests to the backend. In the live Kubernetes deployment, the built SPA keeps relative `/api/*` calls and nginx proxies them to the backend service through the runtime `API_URL` environment variable.
+The two services communicate exclusively through a well-defined HTTP API. The frontend never accesses the database directly. In local development, the Angular dev server proxies relative `/api/*` requests to the backend. Production frontend builds use the configured browser API origin from `environment.prod.ts`; the nginx container also keeps an `/api/*` reverse proxy configured by the runtime `API_URL` environment variable for same-origin/container deployments.
 
 > **Architecture Summary**
 > **Local dev:** **Frontend** (Angular dev server) → **/api/\* proxy** → **Backend** (FastAPI) → **Database** (SQLite)
 >
-> **Live:** **Frontend** (Angular + nginx) → **/api/* nginx proxy** → **Backend** (FastAPI) → **PostgreSQL + Spaces**
+> **Live:** **Frontend** (Angular + nginx) -> **API origin / nginx proxy** -> **Backend** (FastAPI) -> **PostgreSQL + Spaces**
 
 ### Frontend
 
@@ -75,11 +75,11 @@ Database interactions are handled through **SQLModel**, which combines SQLAlchem
 
 ### Database
 
-The application uses **SQLite** as its database engine. SQLite was chosen for its simplicity and zero-configuration nature, which is well-suited for the scope of this project. It stores all user data, file metadata, and authentication tokens.
+Local development uses **SQLite** by default because it is simple and requires no external service. The live deployment uses **PostgreSQL** for relational data and **DigitalOcean Spaces** for upload payloads. SQLModel keeps model definitions portable across both database engines, while Alembic manages schema migrations.
 
 ### Deployment Model
 
-Both the frontend and backend are packaged as **Docker containers**. Each service has its own `Dockerfile`. This makes the application portable and easy to deploy on any infrastructure that supports containers — including cloud platforms.
+Both the frontend and backend are packaged as **Docker containers**. The live deployment runs on Kubernetes using the manifests under `k8s/overlays/live`, with Terraform under `terraform/` managing the DigitalOcean cluster, database, Spaces bucket, VPC, and DNS records. The backend image is reused for both the API process and the scan worker process; ClamAV runs as a separate service.
 
 ## Technology Stack
 
@@ -102,7 +102,8 @@ Both the frontend and backend are packaged as **Docker containers**. Each servic
 | FastAPI    | Web framework for building the REST API |
 | SQLModel   | ORM combining SQLAlchemy and Pydantic   |
 | Alembic    | Database migration management           |
-| SQLite     | Relational database                     |
+| SQLite     | Local relational database               |
+| PostgreSQL | Live relational database                |
 | uv         | Python package and environment manager  |
 
 ### Tooling and Infrastructure
@@ -110,6 +111,8 @@ Both the frontend and backend are packaged as **Docker containers**. Each servic
 | Tool           | Purpose                                     |
 | -------------- | ------------------------------------------- |
 | Docker         | Containerization of both services           |
+| Kubernetes     | Live workload orchestration                 |
+| Terraform      | DigitalOcean infrastructure management      |
 | GitHub Actions | Continuous integration (CI) pipeline        |
 | pre-commit     | Automated code quality checks before commit |
 | ruff           | Python linter and formatter                 |
@@ -168,11 +171,89 @@ SendR uses environment variables to control runtime behaviour. The table below d
 - `SENDR_DEV_LOGIN_ENABLED` (default `false`): Exposes `/api/dev/login/*` only when this is `true` and `SENDR_ENVIRONMENT=local`. Never enable outside local dev.
 - `SENDR_ALLOWED_ORIGINS`: Comma-separated list or JSON array of allowed CORS origins. Required when frontend and API are on different origins.
 - SMTP settings: SMTP host, port, and credentials required for production email delivery. Not needed in local mode.
-- Frontend live API origin: [frontend/src/environments/environment.prod.ts](frontend/src/environments/environment.prod.ts) keeps a relative API base, and nginx receives the upstream backend URL through `API_URL` at runtime.
+- `SENDR_DATABASE_URL`: SQLAlchemy-compatible database URL. Local development defaults to SQLite; live deployment uses PostgreSQL.
+- `SENDR_SECRET_KEY`: Required outside local/test environments.
+- `SENDR_VIRUS_SCANNING_ENABLED`: Must be `true` outside local/test environments.
+- `SENDR_UPLOAD_DIR` and `SENDR_UPLOAD_QUARANTINE_DIR`: Local-disk clean and quarantine storage paths.
+- `SENDR_SPACES_ACCESS_KEY`, `SENDR_SPACES_SECRET_KEY`, `SENDR_SPACES_BUCKET_NAME`, `SENDR_SPACES_REGION`: Required outside local/test environments for DigitalOcean Spaces object storage.
+- `SENDR_ALTCHA_HMAC_KEY`: Required outside local/test environments so CAPTCHA challenges verify across backend replicas.
+- Frontend production API origin: [frontend/src/environments/environment.prod.ts](../frontend/src/environments/environment.prod.ts) configures the browser API origin. The nginx container also receives an upstream backend URL through `API_URL` for `/api/*` proxying.
 
-> **💡 In local development mode (`SENDR_ENVIRONMENT=local`), verification codes are printed to the server log instead of being sent by email, and CAPTCHA verification is relaxed. Set `SENDR_DEV_LOGIN_ENABLED=true` only when you explicitly want dev-login shortcuts.**
+> **Local development:** In `SENDR_ENVIRONMENT=local`, verification codes are printed to the server log instead of being sent by email, and CAPTCHA verification is relaxed. Set `SENDR_DEV_LOGIN_ENABLED=true` only when you explicitly want dev-login shortcuts.
 
 ## Development Process
+
+### Local Setup
+
+Backend development starts from the `backend/` directory:
+
+```bash
+uv sync
+uv run alembic upgrade head
+SENDR_ENVIRONMENT=local SENDR_SECRET_KEY=local-dev-secret uv run uvicorn src.app:app --host 0.0.0.0 --port 8000
+```
+
+Frontend development starts from the `frontend/` directory:
+
+```bash
+bun install
+bun run start
+```
+
+The Angular dev server defaults to the `local-dev` serve configuration. It uses [frontend/proxy.conf.json](../frontend/proxy.conf.json) to forward `/api` to `http://localhost:8000`.
+
+### API Contract Workflow
+
+FastAPI is the source of truth for the HTTP contract. The generated OpenAPI document lives at [openapi.json](../openapi.json), and the Angular client lives under [frontend/src/app/api](../frontend/src/app/api).
+
+After changing backend endpoints, schemas, response models, or generated client inputs, run:
+
+```bash
+./scripts/generate-openapi-client.sh
+```
+
+Generated API files should be reviewed and committed with the backend change that required them.
+
+### Hooks And CI
+
+Run the repository hook setup once per clone:
+
+```bash
+./setup-git-hooks.sh
+```
+
+The pre-commit hook can regenerate API client files and stages them into the same commit. It also runs frontend formatting, linting, and build checks for frontend-related commits. CI repeats the stale-client check by regenerating [openapi.json](../openapi.json) and [frontend/src/app/api](../frontend/src/app/api) and failing if a diff appears.
+
+### Verification Commands
+
+Backend verification:
+
+```bash
+cd backend
+uv run pytest
+```
+
+Frontend verification:
+
+```bash
+cd frontend
+bun run format:check
+bun run lint
+bun run build --configuration production --base-href /SendR/
+```
+
+Frontend targeted tests:
+
+```bash
+cd frontend
+bun run test -- --watch=false --browsers=ChromeHeadlessNoSandbox --progress=false
+```
+
+Authentication, refresh, logout, admin access, upload, and protected download flows should be manually checked after auth or access-control changes.
+
+### Deployment Workflow
+
+Static Terraform validation and application validation run in CI. Real cloud changes are gated through the deployment workflow and the `SENDR_AUTO_DEPLOY_ENABLED=true` repository variable. The live deployment uses [k8s/overlays/live](../k8s/overlays/live) and the Terraform configuration documented in [terraform/README.md](../terraform/README.md), [terraform/SETUP.md](../terraform/SETUP.md), and [terraform/ENVIRONMENTS_GUIDE.md](../terraform/ENVIRONMENTS_GUIDE.md).
 
 ## Data Migration
 
@@ -242,11 +323,11 @@ The worker is intentionally separate from the API startup path. That separation 
 
 With Spaces enabled, uploads are written to object storage immediately, remain blocked by `scan_status` until the worker finishes, and the worker downloads a temporary local copy before sending the file to ClamAV. Clean files stay in object storage, while infected files are deleted from storage.
 
-### Version Control and Workflow
+## Version Control and Workflow
 
 The project was developed using Git with the repository hosted on GitHub. All source code, configuration files, and infrastructure definitions are versioned in the same repository, following a monorepo structure.
 
-### Quick Start
+## Quick Start
 
 #### Backend Quick Start
 
