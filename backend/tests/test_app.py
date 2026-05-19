@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, inspect
 
-from app import run_migrations
+from app import app, run_migrations
 from config import settings
 
 if TYPE_CHECKING:
@@ -46,3 +47,14 @@ def test_migrations_create_current_schema(
         } <= file_columns
     finally:
         sync_engine.dispose()
+
+
+def test_cors_middleware_allows_password_protected_download_header() -> None:
+    cors_middleware = next(
+        middleware
+        for middleware in app.user_middleware
+        if middleware.cls is CORSMiddleware
+    )
+
+    assert cors_middleware.kwargs["allow_credentials"] is True
+    assert "X-Access-Token" in cors_middleware.kwargs["allow_headers"]

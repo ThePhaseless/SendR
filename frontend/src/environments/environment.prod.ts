@@ -1,4 +1,4 @@
 export const environment = {
-  apiUrl: '',
+  apiUrl: 'https://api.sendr.email',
   enableDevTools: false,
 };

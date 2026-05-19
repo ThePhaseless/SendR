@@ -44,6 +44,8 @@ spec:
                 secretKeyRef:
                   name: sendr-secrets
                   key: altcha-hmac-key
+            - name: SENDR_ALLOWED_ORIGINS
+              value: "https://sendr.email,https://www.sendr.email"
             - name: SENDR_SMTP_HOST
               valueFrom:
                 secretKeyRef:

@@ -50,7 +50,12 @@ app.add_middleware(
     allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
-    allow_headers=["content-type", "authorization", settings.CSRF_HEADER_NAME],
+    allow_headers=[
+        "content-type",
+        "authorization",
+        settings.CSRF_HEADER_NAME,
+        "X-Access-Token",
+    ],
 )
 
 
