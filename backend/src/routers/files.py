@@ -573,6 +573,7 @@ async def _store_upload_content(
             file_size=staged_upload.file_size,
             scan_status=ScanStatus.clean,
             storage_path=None,
+            cleanup_from_storage=True,
         )
 
     return await finalize_staged_upload(session, staged_upload)

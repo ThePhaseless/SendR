@@ -5,8 +5,11 @@ resources:
   - namespace.yaml
   - ./traefik
   - backend/deployment.yaml
+  - backend/scan-worker-deployment.yaml
   - backend/service.yaml
   - backend/ingress.yaml
+  - clamav/deployment.yaml
+  - clamav/service.yaml
   - frontend/deployment.yaml
   - frontend/service.yaml
   - frontend/ingress.yaml

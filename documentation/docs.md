@@ -225,8 +225,9 @@ The API process serves user traffic. The worker runs `src/scan_worker.py` and co
 Both the API and worker must share:
 
 - the same database
-- the same clean upload directory
-- the same quarantine upload directory
+- the same storage backend
+- the same clean upload directory and quarantine upload directory for local-disk deployments
+- the same Spaces bucket configuration for object-storage deployments
 - the same ClamAV connection settings
 
 Representative backend commands are:
@@ -238,6 +239,8 @@ SENDR_VIRUS_SCANNING_ENABLED=true uv run python src/scan_worker.py
 ```
 
 The worker is intentionally separate from the API startup path. That separation keeps the web process simpler, allows worker scaling without adding web replicas, and satisfies the requirement that ClamAV updates must not require rebuilding the backend image.
+
+With Spaces enabled, uploads are written to object storage immediately, remain blocked by `scan_status` until the worker finishes, and the worker downloads a temporary local copy before sending the file to ClamAV. Clean files stay in object storage, while infected files are deleted from storage.
 
 ### Version Control and Workflow
 

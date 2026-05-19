@@ -6,6 +6,7 @@ from config import Settings
 def _production_settings(**overrides):
     values = {
         "ENVIRONMENT": "production",
+        "VIRUS_SCANNING_ENABLED": True,
         "SECRET_KEY": "secret",
         "RESEND_API_KEY": "resend-key",
         "SPACES_ACCESS_KEY": "spaces-access-key",
@@ -48,3 +49,23 @@ def test_dev_login_cannot_be_enabled_outside_local():
 def test_production_requires_altcha_hmac_key():
     with pytest.raises(ValueError, match="SENDR_ALTCHA_HMAC_KEY"):
         Settings.model_validate(_production_settings(ALTCHA_HMAC_KEY=""))
+
+
+def test_production_requires_virus_scanning():
+    with pytest.raises(ValueError, match="SENDR_VIRUS_SCANNING_ENABLED"):
+        Settings.model_validate(_production_settings(VIRUS_SCANNING_ENABLED=False))
+
+
+def test_production_accepts_network_clamav_configuration():
+    settings = Settings.model_validate(
+        _production_settings(
+            VIRUS_SCANNING_ENABLED=True,
+            CLAMAV_HOST="sendr-clamav",
+            CLAMAV_PORT=3310,
+            CLAMAV_UNIX_SOCKET="",
+        )
+    )
+
+    assert settings.CLAMAV_HOST == "sendr-clamav"
+    assert settings.CLAMAV_PORT == 3310
+    assert settings.CLAMAV_UNIX_SOCKET == ""

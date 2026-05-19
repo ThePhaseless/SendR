@@ -134,13 +134,14 @@ If malware scanning is enabled, run three separate runtime roles:
 - the SendR scan worker process
 - a separate ClamAV daemon that updates its own signatures independently of the backend image
 
-The API and worker should use the same backend image and point at the same database, clean upload directory, and quarantine upload directory. The application does not start the worker automatically from the API process.
+The API and worker should use the same backend image and point at the same database and storage backend. For local-disk deployments that means the same clean upload directory and quarantine upload directory. For Spaces-backed deployments, queued files live in object storage until the worker downloads a temporary copy for scanning. The application does not start the worker automatically from the API process.
 
 Minimum shared state for the API and worker:
 
 - `SENDR_DATABASE_URL`
 - `SENDR_UPLOAD_DIR`
 - `SENDR_UPLOAD_QUARANTINE_DIR`
+- `SENDR_SPACES_ACCESS_KEY`, `SENDR_SPACES_SECRET_KEY`, `SENDR_SPACES_BUCKET_NAME`, and `SENDR_SPACES_REGION` when object storage is enabled
 - `SENDR_VIRUS_SCANNING_ENABLED=true`
 - the same ClamAV endpoint, usually `SENDR_CLAMAV_HOST` and `SENDR_CLAMAV_PORT` or a shared `SENDR_CLAMAV_UNIX_SOCKET`
 
@@ -152,6 +153,8 @@ python src/scan_worker.py
 ```
 
 The important operational rule is that ClamAV stays outside the backend image. That lets virus definitions update on their own schedule without rebuilding or redeploying the SendR application image.
+
+The Kubernetes production manifests now deploy this topology directly with `sendr-backend`, `sendr-scan-worker`, and a pinned `sendr-clamav` service. Production configuration is expected to keep `SENDR_VIRUS_SCANNING_ENABLED=true`.
 
 ## API Documentation
 

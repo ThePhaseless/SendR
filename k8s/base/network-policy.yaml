@@ -49,6 +49,29 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
+  name: allow-clamav-ingress
+  namespace: sendr
+spec:
+  podSelector:
+    matchLabels:
+      app: sendr-clamav
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: sendr-backend
+    - podSelector:
+        matchLabels:
+          app: sendr-scan-worker
+    ports:
+    - protocol: TCP
+      port: 3310
+  policyTypes:
+  - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
   name: allow-backend-egress
   namespace: sendr
 spec:

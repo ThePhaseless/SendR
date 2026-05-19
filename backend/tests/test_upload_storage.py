@@ -1,5 +1,6 @@
 import asyncio
 import secrets
+import uuid
 from datetime import timedelta
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from scan_queue import (
     quarantine_upload_path,
 )
 from security import create_access_token, hash_token
+from storage import storage
 from tasks import cleanup_expired_files
 from tests.utils import get_error_message
 
@@ -191,6 +193,73 @@ async def test_infected_scan_deletes_payload_and_notifies_registered_owner(
         assert blocked_download.status_code == 410
         assert blocked_download.json()["detail"]["code"] == "FILE_BLOCKED_MALWARE"
         assert "malware" in get_error_message(blocked_download).lower()
+
+
+@pytest.mark.asyncio
+async def test_s3_backed_scan_upload_stays_in_object_storage(
+    auth_headers: dict[str, str], monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr(settings, "VIRUS_SCANNING_ENABLED", True)
+    monkeypatch.setattr(settings, "SPACES_ACCESS_KEY", "spaces-key")
+    monkeypatch.setattr(settings, "SPACES_SECRET_KEY", "spaces-secret")
+    monkeypatch.setattr(settings, "SPACES_BUCKET_NAME", "sendr-files")
+    monkeypatch.setattr(
+        "scan_queue.scan_upload_result",
+        lambda _content: (ScanStatus.clean, None),
+    )
+
+    object_storage: dict[str, bytes] = {}
+
+    async def _store_file(content: bytes, filename: str | None = None) -> str:
+        key = filename or str(uuid.uuid4())
+        object_storage[key] = content
+        return key
+
+    async def _file_exists(filename: str) -> bool:
+        return filename in object_storage
+
+    async def _download_to_path(filename: str, destination: Path) -> None:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(object_storage[filename])
+
+    async def _delete_file(filename: str) -> None:
+        object_storage.pop(filename, None)
+
+    monkeypatch.setattr(storage, "store_file", _store_file)
+    monkeypatch.setattr(storage, "file_exists", _file_exists)
+    monkeypatch.setattr(storage, "download_to_path", _download_to_path)
+    monkeypatch.setattr(storage, "delete_file", _delete_file)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        upload_response = await client.post(
+            "/api/files/upload",
+            files=[("file", ("queued-s3.txt", b"safe", "text/plain"))],
+            data={"altcha": "{}"},
+            headers=auth_headers,
+        )
+
+        assert upload_response.status_code == 201
+        assert upload_response.json()["scan_status"] == "queued"
+
+    async with database.async_session() as session:
+        result = await session.exec(select(FileUpload))
+        file_upload = result.one()
+        file_id = require_id(file_upload.id, "FileUpload")
+        assert file_upload.stored_filename in object_storage
+        assert not quarantine_upload_path(file_upload.stored_filename).exists()
+        assert not clean_upload_path(file_upload.stored_filename).exists()
+
+    await process_file_scan(file_id)
+
+    async with database.async_session() as session:
+        refreshed = await session.get(FileUpload, file_id)
+        assert refreshed is not None
+        assert refreshed.scan_status == ScanStatus.clean
+        assert refreshed.stored_filename in object_storage
+        assert not quarantine_upload_path(refreshed.stored_filename).exists()
+        assert not clean_upload_path(refreshed.stored_filename).exists()
 
 
 @pytest.mark.asyncio

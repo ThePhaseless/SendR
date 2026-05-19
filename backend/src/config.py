@@ -88,7 +88,7 @@ class Settings(BaseSettings):
     VIRUS_SCANNING_ENABLED: bool = False
     CLAMAV_HOST: str = "127.0.0.1"
     CLAMAV_PORT: int = 3310
-    CLAMAV_UNIX_SOCKET: str = "/var/run/clamav/clamd.ctl"
+    CLAMAV_UNIX_SOCKET: str = ""
     SCAN_QUEUE_POLL_SECONDS: float = 1.0
 
     # DigitalOcean Spaces (S3 compatible)
@@ -150,6 +150,11 @@ class Settings(BaseSettings):
             if not self.SECRET_KEY:
                 raise ValueError(
                     "SENDR_SECRET_KEY must be set outside local/test environments"
+                )
+            if not self.VIRUS_SCANNING_ENABLED:
+                raise ValueError(
+                    "SENDR_VIRUS_SCANNING_ENABLED must be enabled outside "
+                    "local/test environments"
                 )
             if not (self.smtp_configured or self.RESEND_API_KEY):
                 raise ValueError(

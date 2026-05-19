@@ -18,6 +18,7 @@ from database import get_session_context
 from email_utils import send_malware_detected_email
 from errors import normalize_http_exception_detail
 from models import FileUpload, ScanStatus, User, UserTier, require_id, utcnow
+from storage import storage
 from virus_scanner import scan_upload_result
 
 if TYPE_CHECKING:
@@ -46,6 +47,7 @@ class StoredUpload:
     file_size: int
     scan_status: ScanStatus
     storage_path: Path | None
+    cleanup_from_storage: bool = False
 
 
 def get_clean_upload_dir() -> Path:
@@ -124,7 +126,13 @@ async def _find_reusable_clean_file(
 
     result = await session.exec(stmt)
     for stored_filename in result.all():
-        if stored_filename and clean_upload_path(stored_filename).exists():
+        if not stored_filename:
+            continue
+        if settings.is_s3_configured:
+            if await storage.file_exists(stored_filename):
+                return stored_filename
+            continue
+        if clean_upload_path(stored_filename).exists():
             return stored_filename
     return None
 
@@ -184,6 +192,9 @@ async def discard_stored_uploads(stored_uploads: Sequence[StoredUpload]) -> None
     for stored_upload in stored_uploads:
         if stored_upload.storage_path and stored_upload.storage_path.exists():
             stored_upload.storage_path.unlink()
+            continue
+        if stored_upload.cleanup_from_storage:
+            await storage.delete_file(stored_upload.stored_filename)
 
 
 async def finalize_staged_upload(
@@ -208,6 +219,20 @@ async def finalize_staged_upload(
 
     stored_filename = str(uuid.uuid4())
     if settings.VIRUS_SCANNING_ENABLED:
+        if settings.is_s3_configured:
+            content = await run_in_threadpool(staged_upload.temp_path.read_bytes)
+            await storage.store_file(content, stored_filename)
+            if staged_upload.temp_path.exists():
+                staged_upload.temp_path.unlink()
+            return StoredUpload(
+                stored_filename=stored_filename,
+                content_hash=staged_upload.content_hash,
+                file_size=staged_upload.file_size,
+                scan_status=ScanStatus.queued,
+                storage_path=None,
+                cleanup_from_storage=True,
+            )
+
         destination = quarantine_upload_path(stored_filename)
         staged_upload.temp_path.replace(destination)
         return StoredUpload(
@@ -349,7 +374,19 @@ async def process_file_scan(file_id: int) -> ScanStatus | None:
             return file_upload.scan_status
 
         file_path = quarantine_upload_path(file_upload.stored_filename)
-        if not file_path.exists():
+        downloaded_from_storage = False
+        if not file_path.exists() and settings.is_s3_configured:
+            try:
+                await storage.download_to_path(file_upload.stored_filename, file_path)
+                downloaded_from_storage = True
+            except FileNotFoundError:
+                return await _mark_scan_failed(
+                    session,
+                    file_upload,
+                    code="FILE_SCAN_PAYLOAD_MISSING",
+                    message="Queued file payload is missing.",
+                )
+        elif not file_path.exists():
             return await _mark_scan_failed(
                 session,
                 file_upload,
@@ -381,6 +418,8 @@ async def process_file_scan(file_id: int) -> ScanStatus | None:
         if scan_status == ScanStatus.infected:
             if file_path.exists():
                 file_path.unlink()
+            if settings.is_s3_configured:
+                await storage.delete_file(file_upload.stored_filename)
             file_upload.scan_status = ScanStatus.infected
             file_upload.scan_completed_at = utcnow()
             file_upload.scan_failure_code = "FILE_BLOCKED_MALWARE"
@@ -404,7 +443,12 @@ async def process_file_scan(file_id: int) -> ScanStatus | None:
         if reusable_filename:
             if file_path.exists():
                 file_path.unlink()
+            if settings.is_s3_configured:
+                await storage.delete_file(file_upload.stored_filename)
             file_upload.stored_filename = reusable_filename
+        elif settings.is_s3_configured:
+            if downloaded_from_storage and file_path.exists():
+                file_path.unlink()
         else:
             destination = clean_upload_path(file_upload.stored_filename)
             if file_path.exists():

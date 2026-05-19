@@ -1,28 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sendr-backend
+  name: sendr-scan-worker
   namespace: sendr
   labels:
-    app: sendr-backend
+    app: sendr-scan-worker
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: sendr-backend
+      app: sendr-scan-worker
   template:
     metadata:
       labels:
-        app: sendr-backend
+        app: sendr-scan-worker
     spec:
       serviceAccountName: sendr-app
       containers:
-        - name: backend
+        - name: scan-worker
           image: ghcr.io/thephaseless/sendr/backend:latest
           imagePullPolicy: Always
-          ports:
-            - containerPort: 8000
-              name: http
+          command:
+            - python
+            - src/scan_worker.py
           env:
             - name: SENDR_ENVIRONMENT
               valueFrom:
@@ -104,17 +104,3 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 8000
-            initialDelaySeconds: 60
-            periodSeconds: 30
-            failureThreshold: 5
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 8000
-            initialDelaySeconds: 30
-            periodSeconds: 15
-            failureThreshold: 10
