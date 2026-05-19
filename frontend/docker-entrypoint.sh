@@ -10,4 +10,9 @@ if [ -z "${DNS_RESOLVER:-}" ]; then
   export DNS_RESOLVER
 fi
 
+if [ -z "${CLIENT_MAX_BODY_SIZE:-}" ]; then
+  CLIENT_MAX_BODY_SIZE=10g
+  export CLIENT_MAX_BODY_SIZE
+fi
+
 exec /docker-entrypoint.sh "$@"

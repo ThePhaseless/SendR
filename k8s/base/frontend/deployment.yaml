@@ -26,6 +26,8 @@ spec:
           env:
             - name: API_URL
               value: "http://sendr-backend.sendr.svc.cluster.local:8000"
+            - name: CLIENT_MAX_BODY_SIZE
+              value: "10g"
           resources:
             requests:
               cpu: 50m
