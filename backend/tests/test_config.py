@@ -35,6 +35,22 @@ def test_allowed_origins_accept_comma_separated_env_values():
     ]
 
 
+def test_allowed_origins_accept_comma_separated_env_values_from_env(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv(
+        "SENDR_ALLOWED_ORIGINS",
+        "https://sendr.email,https://www.sendr.email",
+    )
+
+    settings = Settings()
+
+    assert settings.ALLOWED_ORIGINS == [
+        "https://sendr.email",
+        "https://www.sendr.email",
+    ]
+
+
 def test_dev_login_requires_explicit_opt_in():
     settings = Settings.model_validate({"ENVIRONMENT": "local"})
 

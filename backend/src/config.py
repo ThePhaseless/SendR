@@ -1,9 +1,9 @@
 import json
 import logging
-from typing import Any, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import Field, field_validator, model_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, NoDecode
 
 
 def _default_allowed_origins() -> list[str]:
@@ -21,8 +21,12 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "./uploads"
     UPLOAD_QUARANTINE_DIR: str = "./uploads-quarantine"
     # CORS
-    ALLOWED_ORIGINS: list[str] = Field(default_factory=_default_allowed_origins)
-    TRUSTED_PROXY_IPS: list[str] = Field(default_factory=_default_trusted_proxy_ips)
+    ALLOWED_ORIGINS: Annotated[list[str], NoDecode] = Field(
+        default_factory=_default_allowed_origins
+    )
+    TRUSTED_PROXY_IPS: Annotated[list[str], NoDecode] = Field(
+        default_factory=_default_trusted_proxy_ips
+    )
     # Email settings
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
