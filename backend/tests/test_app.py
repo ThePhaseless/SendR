@@ -74,8 +74,18 @@ def test_set_session_cookie_uses_configured_cookie_domain(
 
     cookie_headers = response.headers.getlist("set-cookie")
 
-    assert len(cookie_headers) == 2
-    assert all("Domain=sendr.email" in header for header in cookie_headers)
+    assert any(
+        header.startswith(f"{settings.SESSION_COOKIE_NAME}=")
+        and "Domain=sendr.email" in header
+        and "Max-Age=86400" in header
+        for header in cookie_headers
+    )
+    assert any(
+        header.startswith(f"{settings.CSRF_COOKIE_NAME}=")
+        and "Domain=sendr.email" in header
+        and "Max-Age=86400" in header
+        for header in cookie_headers
+    )
 
 
 def test_clear_session_cookie_uses_configured_cookie_domain(
@@ -88,5 +98,27 @@ def test_clear_session_cookie_uses_configured_cookie_domain(
 
     cookie_headers = response.headers.getlist("set-cookie")
 
-    assert len(cookie_headers) == 2
-    assert all("Domain=sendr.email" in header for header in cookie_headers)
+    assert any(
+        header.startswith(f"{settings.SESSION_COOKIE_NAME}=")
+        and "Max-Age=0" in header
+        and "Domain=sendr.email" not in header
+        for header in cookie_headers
+    )
+    assert any(
+        header.startswith(f"{settings.CSRF_COOKIE_NAME}=")
+        and "Max-Age=0" in header
+        and "Domain=sendr.email" not in header
+        for header in cookie_headers
+    )
+    assert any(
+        header.startswith(f"{settings.SESSION_COOKIE_NAME}=")
+        and "Max-Age=0" in header
+        and "Domain=sendr.email" in header
+        for header in cookie_headers
+    )
+    assert any(
+        header.startswith(f"{settings.CSRF_COOKIE_NAME}=")
+        and "Max-Age=0" in header
+        and "Domain=sendr.email" in header
+        for header in cookie_headers
+    )

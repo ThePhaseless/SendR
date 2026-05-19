@@ -73,6 +73,33 @@ async def test_password_login_sets_session_cookie_and_records_login():
 
 
 @pytest.mark.asyncio
+async def test_get_me_refreshes_csrf_cookie_for_cookie_authenticated_session():
+    async with database.async_session() as session:
+        user = User(email="cookie-me@sendr.local", tier=UserTier.free)
+        session.add(user)
+        await session.flush()
+
+        raw_token, expires_at = create_access_token(user.id)
+        session.add(
+            AuthToken(
+                user_id=require_id(user.id, "User"),
+                token=hash_token(raw_token),
+                expires_at=expires_at,
+            )
+        )
+        await session.commit()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        client.cookies.set(settings.SESSION_COOKIE_NAME, raw_token)
+        response = await client.get("/api/auth/me")
+
+    assert response.status_code == 200
+    assert settings.CSRF_COOKIE_NAME in response.headers["set-cookie"]
+
+
+@pytest.mark.asyncio
 async def test_request_code_succeeds_without_smtp_in_test_environment():
     original_environment = settings.ENVIRONMENT
     original_smtp_host = settings.SMTP_HOST

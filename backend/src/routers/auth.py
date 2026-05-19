@@ -38,6 +38,7 @@ from security import (
     hash_token,
     hash_user_password,
     resolve_request_token,
+    set_csrf_cookie,
     set_session_cookie,
     verify_user_password,
 )
@@ -252,7 +253,13 @@ async def login_password(
 
 
 @router.get("/me")
-async def get_me(user: Annotated[User, Depends(get_current_user)]) -> UserResponse:
+async def get_me(
+    request: Request,
+    response: Response,
+    user: Annotated[User, Depends(get_current_user)],
+) -> UserResponse:
+    if settings.SESSION_COOKIE_NAME in request.cookies:
+        set_csrf_cookie(response)
     return _to_user_response(user)
 
 

@@ -105,6 +105,20 @@ def set_session_cookie(
         samesite=settings.SESSION_COOKIE_SAMESITE,
         secure=settings.is_production,
     )
+    set_csrf_cookie(response, expires_at)
+
+
+def set_csrf_cookie(response: Response, expires_at: datetime | None = None) -> None:
+    cookie_domain = settings.COOKIE_DOMAIN or None
+    cookie_expires = (
+        datetime.now(UTC) + timedelta(minutes=settings.TOKEN_EXPIRE_MINUTES)
+        if expires_at is None
+        else (
+            expires_at.replace(tzinfo=UTC)
+            if expires_at.tzinfo is None
+            else expires_at.astimezone(UTC)
+        )
+    )
     response.set_cookie(
         key=settings.CSRF_COOKIE_NAME,
         value=secrets.token_urlsafe(32),
@@ -123,17 +137,30 @@ def clear_session_cookie(response: Response) -> None:
     response.delete_cookie(
         key=settings.SESSION_COOKIE_NAME,
         path="/",
-        domain=cookie_domain,
         samesite=settings.SESSION_COOKIE_SAMESITE,
         secure=settings.is_production,
     )
     response.delete_cookie(
         key=settings.CSRF_COOKIE_NAME,
         path="/",
-        domain=cookie_domain,
         samesite=settings.SESSION_COOKIE_SAMESITE,
         secure=settings.is_production,
     )
+    if cookie_domain:
+        response.delete_cookie(
+            key=settings.SESSION_COOKIE_NAME,
+            path="/",
+            domain=cookie_domain,
+            samesite=settings.SESSION_COOKIE_SAMESITE,
+            secure=settings.is_production,
+        )
+        response.delete_cookie(
+            key=settings.CSRF_COOKIE_NAME,
+            path="/",
+            domain=cookie_domain,
+            samesite=settings.SESSION_COOKIE_SAMESITE,
+            secure=settings.is_production,
+        )
 
 
 async def get_current_user(
