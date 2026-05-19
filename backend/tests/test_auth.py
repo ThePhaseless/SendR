@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlmodel import select
@@ -5,9 +7,11 @@ from sqlmodel import select
 import database
 from app import app
 from config import settings
+from email_utils import VERIFICATION_EMAIL_UNAVAILABLE_MESSAGE, EmailDeliveryError
 from models import AuthToken, User, UserLogin, UserTier, VerificationCode, require_id
 from rate_limit import auth_rate_limiter
 from security import create_access_token, hash_token, hash_user_password
+from tests.utils import get_error_message
 
 
 @pytest.fixture(autouse=True)
@@ -100,6 +104,40 @@ async def test_request_code_succeeds_without_smtp_in_test_environment():
 
     assert verification is not None
     assert verification.used is False
+
+
+@pytest.mark.asyncio
+async def test_request_code_returns_service_unavailable_when_email_delivery_fails():
+    with patch(
+        "routers.auth.send_verification_email",
+        new=AsyncMock(
+            side_effect=EmailDeliveryError(
+                code="VERIFICATION_EMAIL_UNAVAILABLE",
+                message=VERIFICATION_EMAIL_UNAVAILABLE_MESSAGE,
+            )
+        ),
+    ):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/auth/request-code",
+                json={"email": "request-code-fail@sendr.local"},
+            )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "VERIFICATION_EMAIL_UNAVAILABLE"
+    assert get_error_message(response) == VERIFICATION_EMAIL_UNAVAILABLE_MESSAGE
+
+    async with database.async_session() as session:
+        result = await session.exec(
+            select(VerificationCode).where(
+                VerificationCode.email == "request-code-fail@sendr.local"
+            )
+        )
+        verification = result.first()
+
+    assert verification is None
 
 
 @pytest.mark.asyncio

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from config import settings
-from email_utils import send_verification_email
+from email_utils import EmailDeliveryError, send_verification_email
 
 
 @pytest.mark.asyncio
@@ -74,3 +74,35 @@ async def test_send_verification_email_uses_smtp_outside_local_env():
     assert message["To"] == "user@example.com"
     assert message["Subject"] == "Your SendR verification code"
     assert "123456" in message.get_content()
+
+
+@pytest.mark.asyncio
+async def test_send_verification_email_skips_resend_smtp_fallback_after_api_failure():
+    original_environment = settings.ENVIRONMENT
+    original_resend_api_key = settings.RESEND_API_KEY
+    original_smtp_host = settings.SMTP_HOST
+    original_smtp_port = settings.SMTP_PORT
+    settings.ENVIRONMENT = "production"
+    settings.RESEND_API_KEY = "resend-key"
+    settings.SMTP_HOST = "smtp.resend.com"
+    settings.SMTP_PORT = 587
+
+    try:
+        with (
+            patch(
+                "email_utils.resend.Emails.send",
+                side_effect=Exception("domain not verified"),
+            ),
+            patch("email_utils.smtplib.SMTP") as smtp_cls,
+            pytest.raises(
+                EmailDeliveryError, match="Unable to send verification email"
+            ),
+        ):
+            await send_verification_email("user@example.com", "123456")
+    finally:
+        settings.ENVIRONMENT = original_environment
+        settings.RESEND_API_KEY = original_resend_api_key
+        settings.SMTP_HOST = original_smtp_host
+        settings.SMTP_PORT = original_smtp_port
+
+    smtp_cls.assert_not_called()

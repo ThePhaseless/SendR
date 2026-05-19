@@ -9,6 +9,18 @@ from config import settings
 
 logger = logging.getLogger("uvicorn.error")
 
+VERIFICATION_EMAIL_UNAVAILABLE_MESSAGE = (
+    "Unable to send verification email right now. Please try again later."
+)
+
+
+class EmailDeliveryError(RuntimeError):
+    def __init__(self, *, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
 if settings.RESEND_API_KEY:
     resend.api_key = settings.RESEND_API_KEY
 
@@ -27,6 +39,11 @@ def _log_missing_smtp_configuration(email_kind: str) -> None:
         settings.ENVIRONMENT,
         email_kind,
     )
+
+
+def _can_retry_verification_with_smtp() -> bool:
+    smtp_host = settings.SMTP_HOST.strip().casefold()
+    return settings.smtp_configured and smtp_host != "smtp.resend.com"
 
 
 def _build_verification_message(email: str, code: str) -> EmailMessage:
@@ -74,15 +91,33 @@ def _send_verification_email_sync(email: str, code: str) -> None:
     if _send_email_via_resend(email, subject, body):
         return
 
+    if settings.RESEND_API_KEY and not _can_retry_verification_with_smtp():
+        logger.error(
+            "Verification email delivery unavailable: Resend API failed and "
+            "SMTP fallback is not usable for host %s",
+            settings.SMTP_HOST or "<empty>",
+        )
+        raise EmailDeliveryError(
+            code="VERIFICATION_EMAIL_UNAVAILABLE",
+            message=VERIFICATION_EMAIL_UNAVAILABLE_MESSAGE,
+        )
+
     message = _build_verification_message(email, code)
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as smtp:
-        smtp.ehlo()
-        if settings.SMTP_USER or settings.SMTP_PASSWORD:
-            smtp.starttls()
+    try:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=30) as smtp:
             smtp.ehlo()
-            smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-        smtp.send_message(message)
-        logger.info("Email sent via SMTP to %s", email)
+            if settings.SMTP_USER or settings.SMTP_PASSWORD:
+                smtp.starttls()
+                smtp.ehlo()
+                smtp.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            smtp.send_message(message)
+            logger.info("Email sent via SMTP to %s", email)
+    except (OSError, smtplib.SMTPException) as exc:
+        logger.error("Failed to send verification email via SMTP: %s", exc)
+        raise EmailDeliveryError(
+            code="VERIFICATION_EMAIL_UNAVAILABLE",
+            message=VERIFICATION_EMAIL_UNAVAILABLE_MESSAGE,
+        ) from exc
 
 
 async def send_verification_email(email: str, code: str) -> None:

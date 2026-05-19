@@ -6,7 +6,7 @@ from sqlmodel import col, func, select
 
 from config import settings
 from database import get_session
-from email_utils import send_verification_email
+from email_utils import EmailDeliveryError, send_verification_email
 from models import (
     AuthToken,
     FileUpload,
@@ -169,7 +169,15 @@ async def request_code(
     session.add(verification)
     await session.commit()
 
-    await send_verification_email(body.email, code)
+    try:
+        await send_verification_email(body.email, code)
+    except EmailDeliveryError as exc:
+        await session.delete(verification)
+        await session.commit()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"code": exc.code, "message": exc.message},
+        ) from exc
 
     return {"message": "Verification code sent"}
 
