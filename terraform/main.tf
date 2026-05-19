@@ -35,9 +35,10 @@ module "storage" {
 }
 
 module "dns" {
-  source      = "./modules/dns_domain"
-  environment = var.environment
-  domain_name = var.domain_name
-  ingress_ip  = var.ingress_ip
+  source              = "./modules/dns_domain"
+  environment         = var.environment
+  domain_name         = var.domain_name
+  ingress_ip          = var.ingress_ip
+  create_apex_records = var.create_apex_records
 }
 

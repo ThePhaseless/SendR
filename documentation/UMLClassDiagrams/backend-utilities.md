@@ -31,7 +31,6 @@ classDiagram
       +TEMPORARY_MAX_DOWNLOADS_OPTIONS: list[int]
       +FREE_MAX_DOWNLOADS_LIMIT: int
       +PREMIUM_MAX_DOWNLOADS_LIMIT: int
-      +MAX_RECIPIENT_EMAILS: int
       +TEMPORARY_MAX_PASSWORDS_PER_UPLOAD: int
       +FREE_MAX_PASSWORDS_PER_UPLOAD: int
       +PREMIUM_MAX_PASSWORDS_PER_UPLOAD: int
@@ -46,7 +45,6 @@ classDiagram
       +ALTCHA_HMAC_KEY: str
       +ALTCHA_MAX_NUMBER: int
       +ALTCHA_EXPIRE_MINUTES: int
-      +GROUP_ZIP_THRESHOLD: int
       +is_local: bool
       +smtp_configured: bool
       +validate_smtp_for_production()

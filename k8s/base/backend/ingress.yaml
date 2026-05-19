@@ -4,7 +4,10 @@ metadata:
   name: sendr-backend
   namespace: sendr
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    traefik.ingress.kubernetes.io/router.tls.domains.0.main: api.sendr.email
 spec:
   ingressClassName: traefik
   rules:

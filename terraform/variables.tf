@@ -26,6 +26,12 @@ variable "domain_name" {
   type        = string
 }
 
+variable "create_apex_records" {
+  description = "Create apex, www, and api records for the primary domain."
+  type        = bool
+  default     = false
+}
+
 variable "spaces_access_key" {
   description = "Spaces Access Key"
   type        = string

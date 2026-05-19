@@ -1,5 +1,10 @@
 locals {
   has_real_domain = var.domain_name != "sendr.com" && var.domain_name != ""
+  apex_records = (
+    local.has_real_domain && var.ingress_ip != "" && var.create_apex_records
+    ? toset(["@", "www", "api"])
+    : toset([])
+  )
 }
 
 data "digitalocean_domain" "main" {
@@ -23,6 +28,17 @@ resource "digitalocean_record" "subdomains" {
   type   = "A"
 
   name  = "*.${var.environment}"
+  value = var.ingress_ip
+  ttl   = 300
+}
+
+resource "digitalocean_record" "primary" {
+  for_each = local.apex_records
+
+  domain = data.digitalocean_domain.main[0].name
+  type   = "A"
+
+  name  = each.key
   value = var.ingress_ip
   ttl   = 300
 }

@@ -6,6 +6,8 @@ metadata:
     app: traefik
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: traefik
@@ -17,10 +19,12 @@ spec:
       serviceAccountName: traefik
       containers:
         - name: traefik
-          image: traefik:3.0
+          image: traefik:v3.0.4@sha256:a208c74fd80a566d4ea376053bff73d31616d7af3f1465a7747b8b89ee34d97e
           args:
-            - --api.insecure
             - --entrypoints.web.address=:80
+            - --entrypoints.web.http.redirections.entrypoint.to=websecure
+            - --entrypoints.web.http.redirections.entrypoint.scheme=https
+            - --entrypoints.web.http.redirections.entrypoint.permanent=true
             - --entrypoints.websecure.address=:443
             - --providers.kubernetesingress
             - --certificatesresolvers.letsencrypt.acme.email=admin@sendr.email
@@ -31,8 +35,6 @@ spec:
               containerPort: 80
             - name: websecure
               containerPort: 443
-            - name: admin
-              containerPort: 8080
           volumeMounts:
             - name: acme
               mountPath: /data

@@ -30,6 +30,7 @@ Add these repository secrets in Settings -> Secrets and variables -> Actions:
 - `AWS_ACCESS_KEY_ID`: DigitalOcean Spaces access key.
 - `AWS_SECRET_ACCESS_KEY`: DigitalOcean Spaces secret key.
 - `SENDR_SECRET_KEY`: application secret, for example from `openssl rand -base64 32`.
+- `SENDR_ALTCHA_HMAC_KEY`: shared ALTCHA signing key for all backend replicas, for example from `openssl rand -hex 32`.
 - `SENDR_RESEND_API_KEY`, or the SMTP fallback secrets: `SENDR_SMTP_HOST`, `SENDR_SMTP_PORT`, `SENDR_SMTP_USER`, `SENDR_SMTP_PASSWORD`.
 
 The workflow also supports the existing shared app secrets used by the backend. Do not commit real `terraform.tfvars`, tokens, kubeconfigs, or generated state files.

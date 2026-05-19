@@ -9,6 +9,7 @@ RUNTIME_ENVIRONMENT=${SENDR_ENVIRONMENT:-production}
 
 : "${SENDR_DATABASE_URL:?Set SENDR_DATABASE_URL}"
 : "${SENDR_SECRET_KEY:?Set SENDR_SECRET_KEY}"
+: "${SENDR_ALTCHA_HMAC_KEY:?Set SENDR_ALTCHA_HMAC_KEY}"
 : "${SENDR_SPACES_ACCESS_KEY:?Set SENDR_SPACES_ACCESS_KEY}"
 : "${SENDR_SPACES_SECRET_KEY:?Set SENDR_SPACES_SECRET_KEY}"
 : "${SENDR_SPACES_BUCKET_NAME:?Set SENDR_SPACES_BUCKET_NAME}"
@@ -25,6 +26,7 @@ kubectl create secret generic sendr-secrets \
   --from-literal=environment="${RUNTIME_ENVIRONMENT}" \
   --from-literal=database-url="${SENDR_DATABASE_URL}" \
   --from-literal=secret-key="${SENDR_SECRET_KEY}" \
+  --from-literal=altcha-hmac-key="${SENDR_ALTCHA_HMAC_KEY}" \
   --from-literal=smtp-host="${SENDR_SMTP_HOST:-}" \
   --from-literal=smtp-port="${SENDR_SMTP_PORT:-587}" \
   --from-literal=smtp-user="${SENDR_SMTP_USER:-}" \

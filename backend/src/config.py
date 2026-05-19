@@ -1,14 +1,9 @@
 import json
 import logging
-import secrets
 from typing import Any, Literal, Self
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
-
-
-def _generate_hmac_key() -> str:
-    return secrets.token_hex(32)
 
 
 def _default_allowed_origins() -> list[str]:
@@ -61,8 +56,6 @@ class Settings(BaseSettings):
     TEMPORARY_MAX_DOWNLOADS_OPTIONS: list[int] = [1, 0]  # 1 or unlimited only
     FREE_MAX_DOWNLOADS_LIMIT: int = 10
     PREMIUM_MAX_DOWNLOADS_LIMIT: int = 1000
-    # Max recipient emails per transfer
-    MAX_RECIPIENT_EMAILS: int = 10
     # Passwords per upload (0 = unlimited)
     TEMPORARY_MAX_PASSWORDS_PER_UPLOAD: int = 1
     FREE_MAX_PASSWORDS_PER_UPLOAD: int = 3
@@ -87,12 +80,10 @@ class Settings(BaseSettings):
     AUTH_RATE_LIMIT_PER_MINUTE: int = 5
     DOWNLOAD_RATE_LIMIT_PER_MINUTE: int = 120
     # Altcha proof-of-work CAPTCHA
-    ALTCHA_HMAC_KEY: str = Field(default_factory=_generate_hmac_key)
+    ALTCHA_HMAC_KEY: str = ""
     ALTCHA_MAX_NUMBER: int = 100000
     ALTCHA_EXPIRE_MINUTES: int = 5
     ALTCHA_UPLOAD_GRACE_MINUTES: int = 720
-    # Group download zip threshold (file count above which will_zip is true)
-    GROUP_ZIP_THRESHOLD: int = 3
     # Optional ClamAV upload scanning
     VIRUS_SCANNING_ENABLED: bool = False
     CLAMAV_HOST: str = "127.0.0.1"
@@ -170,11 +161,10 @@ class Settings(BaseSettings):
                     "DigitalOcean Spaces settings must be set outside local/test "
                     "environments"
                 )
-        if self.DEV_LOGIN_ENABLED and not self.is_local:
-            raise ValueError(
-                "SENDR_DEV_LOGIN_ENABLED can only be enabled when "
-                "SENDR_ENVIRONMENT is 'local'"
-            )
+            if not self.ALTCHA_HMAC_KEY:
+                raise ValueError(
+                    "SENDR_ALTCHA_HMAC_KEY must be set outside local/test environments"
+                )
         if self.DEV_LOGIN_ENABLED and not self.is_local:
             raise ValueError(
                 "SENDR_DEV_LOGIN_ENABLED can only be enabled when "

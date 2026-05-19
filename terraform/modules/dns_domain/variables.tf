@@ -13,3 +13,9 @@ variable "ingress_ip" {
   type        = string
   default     = ""
 }
+
+variable "create_apex_records" {
+  description = "Create apex, www, and api records for the primary domain."
+  type        = bool
+  default     = false
+}

@@ -39,6 +39,11 @@ spec:
                 secretKeyRef:
                   name: sendr-secrets
                   key: secret-key
+            - name: SENDR_ALTCHA_HMAC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sendr-secrets
+                  key: altcha-hmac-key
             - name: SENDR_SMTP_HOST
               valueFrom:
                 secretKeyRef:

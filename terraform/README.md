@@ -19,7 +19,7 @@ Do not remove `resource_suffix = "dev"` unless you intentionally plan and execut
 - `kubernetes_doks` creates the DOKS cluster.
 - `database_postgres` creates PostgreSQL and allows the cluster as a trusted source.
 - `storage_spaces` creates the Spaces bucket for uploaded files.
-- `dns_domain` points live DNS records at the Traefik load balancer.
+- `dns_domain` points live DNS records and the primary `sendr.email`, `www.sendr.email`, and `api.sendr.email` records at the Traefik load balancer.
 
 ## Validation
 
