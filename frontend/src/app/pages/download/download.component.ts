@@ -284,6 +284,23 @@ export class DownloadComponent {
       this.stopScanStatusPolling();
     });
 
+    effect(() => {
+      const fileErr = this.fileInfoResource?.error();
+      const groupErr = this.groupInfoResource?.error();
+      const err = fileErr ?? groupErr;
+      if (err && this.passwordToken()) {
+        const status =
+          typeof err === 'object' && err !== null && 'status' in err
+            ? (err as { status: number }).status
+            : undefined;
+        if (status === 403) {
+          this.passwordError.set('Invalid password. Please try again.');
+          this.enteredPassword.set('');
+          this.passwordToken.set('');
+        }
+      }
+    });
+
     this.destroyRef.onDestroy(() => {
       this.stopScanStatusPolling();
     });
@@ -377,7 +394,7 @@ export class DownloadComponent {
     let completed = false;
 
     if (!options.accessToken) {
-      this.startBrowserDownload(options.url);
+      this.startBrowserDownload(options.url, options.fallbackFilename);
       this.downloading.set(false);
       return;
     }
@@ -478,7 +495,13 @@ export class DownloadComponent {
 
     return pickerWindow
       .showSaveFilePicker({ suggestedName })
-      .then((handle) => handle.createWritable());
+      .then((handle) => handle.createWritable())
+      .catch((error: unknown) => {
+        if (this.isUserCancelledDownload(error)) {
+          return null;
+        }
+        throw error;
+      });
   }
 
   private writeResponseToStream(
@@ -531,11 +554,14 @@ export class DownloadComponent {
     return error instanceof DOMException && error.name === 'AbortError';
   }
 
-  private startBrowserDownload(url: string): void {
+  private startBrowserDownload(url: string, filename?: string): void {
     const anchor = document.createElement('a');
     anchor.href = url;
     anchor.rel = 'noopener';
     anchor.style.display = 'none';
+    if (filename) {
+      anchor.download = filename;
+    }
     document.body.append(anchor);
     anchor.click();
     anchor.remove();
@@ -566,11 +592,16 @@ export class DownloadComponent {
   }
 
   private triggerDownload(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    a.href = url;
     a.download = filename;
+    document.body.append(a);
     a.click();
-    URL.revokeObjectURL(a.href);
+    a.remove();
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 5000);
   }
 
   private getPasswordFromFragment(fragment: string | null): string {

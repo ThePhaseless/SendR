@@ -58,10 +58,24 @@ class StorageManager:
                 logger.exception("Failed to upload file to S3")
                 raise
 
-    async def get_download_url(self, filename: str) -> str | None:
+    async def get_download_url(
+        self, filename: str, original_filename: str | None = None
+    ) -> str | None:
         """Returns a pre-signed URL for S3 or None if local."""
         if not settings.is_s3_configured:
             return None
+
+        params: dict[str, str] = {
+            "Bucket": settings.SPACES_BUCKET_NAME,
+            "Key": filename,
+        }
+        if original_filename:
+            from urllib.parse import quote
+
+            params["ResponseContentDisposition"] = (
+                f'attachment; filename="{original_filename.replace(chr(34), chr(39))}"'
+                f"; filename*=UTF-8''{quote(original_filename)}"
+            )
 
         async with self.session.client(
             "s3",
@@ -74,7 +88,7 @@ class StorageManager:
             try:
                 return await s3.generate_presigned_url(
                     "get_object",
-                    Params={"Bucket": settings.SPACES_BUCKET_NAME, "Key": filename},
+                    Params=params,
                     ExpiresIn=3600,
                 )
             except Exception:

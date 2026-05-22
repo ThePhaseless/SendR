@@ -1333,7 +1333,9 @@ async def download_group(
         )
         await session.commit()
 
-        s3_url = await storage.get_download_url(files[0].stored_filename)
+        s3_url = await storage.get_download_url(
+            files[0].stored_filename, files[0].original_filename
+        )
         if s3_url:
             return RedirectResponse(url=s3_url)
 
@@ -1556,7 +1558,9 @@ async def download_file(
     )
     await session.commit()
 
-    s3_url = await storage.get_download_url(file_upload.stored_filename)
+    s3_url = await storage.get_download_url(
+        file_upload.stored_filename, file_upload.original_filename
+    )
     if s3_url:
         return RedirectResponse(url=s3_url)
 
