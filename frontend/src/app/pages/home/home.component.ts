@@ -1,4 +1,4 @@
-import { HttpEventType, httpResource } from '@angular/common/http';
+import { type HttpEvent, HttpEventType, httpResource } from '@angular/common/http';
 import {
   CUSTOM_ELEMENTS_SCHEMA,
   ChangeDetectionStrategy,
@@ -10,6 +10,8 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import type { Observable } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import type {
   GetChallengeApiAltchaChallengeGet200,
   LimitsResponse,
@@ -424,7 +426,7 @@ export class HomeComponent {
       this.showAuthPopup.set(true);
       return;
     }
-    this.uploadFiles(this.pendingFiles());
+    void this.uploadFiles(this.pendingFiles());
   }
 
   openAuthPopup(): void {
@@ -448,7 +450,7 @@ export class HomeComponent {
     });
   }
 
-  requestPopupCode(): void {
+  async requestPopupCode(): Promise<void> {
     const email = this.popupEmail().trim();
     if (!email) {
       this.popupAuthError.set('Please enter your email address.');
@@ -456,19 +458,17 @@ export class HomeComponent {
     }
     this.popupCodeRequesting.set(true);
     this.popupAuthError.set(null);
-    this.authService.requestCode(email).subscribe({
-      error: (err) => {
-        this.popupAuthError.set(this.getErrorDetail(err, 'Failed to send verification code.'));
-        this.popupCodeRequesting.set(false);
-      },
-      next: () => {
-        this.popupCodeSent.set(true);
-        this.popupCodeRequesting.set(false);
-      },
-    });
+    try {
+      await firstValueFrom(this.authService.requestCode(email));
+      this.popupCodeSent.set(true);
+    } catch (error) {
+      this.popupAuthError.set(this.getErrorDetail(error, 'Failed to send verification code.'));
+    } finally {
+      this.popupCodeRequesting.set(false);
+    }
   }
 
-  verifyPopupCode(): void {
+  async verifyPopupCode(): Promise<void> {
     const email = this.popupEmail().trim();
     const code = this.popupCode().trim();
     if (!code) {
@@ -477,16 +477,14 @@ export class HomeComponent {
     }
     this.popupCodeVerifying.set(true);
     this.popupAuthError.set(null);
-    this.authService.verifyCode(email, code).subscribe({
-      error: (err) => {
-        this.popupAuthError.set(this.getErrorDetail(err, 'Verification failed. Please try again.'));
-        this.popupCodeVerifying.set(false);
-      },
-      next: () => {
-        this.popupCodeVerifying.set(false);
-        this.showAuthPopup.set(false);
-      },
-    });
+    try {
+      await firstValueFrom(this.authService.verifyCode(email, code));
+      this.popupCodeVerifying.set(false);
+      this.showAuthPopup.set(false);
+    } catch (error) {
+      this.popupAuthError.set(this.getErrorDetail(error, 'Verification failed. Please try again.'));
+      this.popupCodeVerifying.set(false);
+    }
   }
 
   navigateToDownload(): void {
@@ -498,7 +496,7 @@ export class HomeComponent {
     void this.router.navigateByUrl(url.pathname);
   }
 
-  private uploadFiles(entries: UploadFileEntry[]): void {
+  private async uploadFiles(entries: UploadFileEntry[]): Promise<void> {
     if (!this.altchaPayload) {
       this.error.set('Please complete the CAPTCHA verification first.');
       return;
@@ -517,63 +515,56 @@ export class HomeComponent {
     this.lastProgressBytes = 0;
 
     const totalSize = entries.reduce((sum, entry) => sum + entry.size, 0);
+    const options = {
+      description: this.description(),
+      emails: this.emails().filter((e) => e.trim()),
+      expiryHours: this.expiryHours(),
+      isPublic: this.isPublic(),
+      maxDownloads: this.maxDownloads(),
+      passwords: this.getSubmittedPasswords(),
+      separateDownloadCounts: this.separateDownloadCounts(),
+      showEmailStats: this.showEmailStats(),
+      title: this.title(),
+    };
 
-    if (entries.length === 1) {
-      this.fileService
-        .upload(entries[0].file, this.altchaPayload, {
-          description: this.description(),
-          emails: this.emails().filter((e) => e.trim()),
-          expiryHours: this.expiryHours(),
-          isPublic: this.isPublic(),
-          maxDownloads: this.maxDownloads(),
-          passwords: this.getSubmittedPasswords(),
-          separateDownloadCounts: this.separateDownloadCounts(),
-          showEmailStats: this.showEmailStats(),
-          title: this.title(),
-        })
-        .subscribe({
-          error: (err) => {
-            this.error.set(this.getErrorDetail(err, 'Upload failed. Please try again.'));
-            this.isUploading.set(false);
-            this.uploadProgress.set(0);
-            this.resetAltcha();
-          },
-          next: (event) => {
-            if (event.type === HttpEventType.UploadProgress && event.total !== undefined) {
-              const progress =
-                event.total === 0 ? 100 : Math.round((100 * event.loaded) / event.total);
-              this.uploadProgress.set(progress);
-              this.updateSpeedAndEta(event.loaded, totalSize);
-            } else if (event.type === HttpEventType.Response && event.body) {
-              this.singleUploadResult.set(event.body);
-              this.isUploading.set(false);
-              this.uploadProgress.set(0);
-              this.reloadLimits();
-              this.resetAltcha();
-            }
-          },
-        });
-      return;
+    try {
+      if (entries.length === 1) {
+        const result = await this.trackUploadProgress(
+          this.fileService.upload(entries[0].file, this.altchaPayload, options),
+          totalSize,
+        );
+        this.singleUploadResult.set(result);
+      } else {
+        const result = await this.trackUploadProgress(
+          this.fileService.uploadMultiple(entries, this.altchaPayload, options),
+          totalSize,
+        );
+        this.uploadResult.set(result);
+      }
+      this.reloadLimits();
+      this.resetAltcha();
+    } catch (error) {
+      this.error.set(this.getErrorDetail(error, 'Upload failed. Please try again.'));
+      this.resetAltcha();
+    } finally {
+      this.isUploading.set(false);
+      this.uploadProgress.set(0);
+      this.uploadSpeed.set(0);
+      this.estimatedTimeRemaining.set(0);
     }
+  }
 
-    this.fileService
-      .uploadMultiple(entries, this.altchaPayload, {
-        description: this.description(),
-        emails: this.emails().filter((e) => e.trim()),
-        expiryHours: this.expiryHours(),
-        isPublic: this.isPublic(),
-        maxDownloads: this.maxDownloads(),
-        passwords: this.getSubmittedPasswords(),
-        separateDownloadCounts: this.separateDownloadCounts(),
-        showEmailStats: this.showEmailStats(),
-        title: this.title(),
-      })
-      .subscribe({
+  private trackUploadProgress<T>(
+    observable: Observable<HttpEvent<T>>,
+    totalSize: number,
+  ): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const subscription = observable.subscribe({
+        complete: () => {
+          subscription.unsubscribe();
+        },
         error: (err) => {
-          this.error.set(this.getErrorDetail(err, 'Upload failed. Please try again.'));
-          this.isUploading.set(false);
-          this.uploadProgress.set(0);
-          this.resetAltcha();
+          reject(new Error(String(err)));
         },
         next: (event) => {
           if (event.type === HttpEventType.UploadProgress && event.total !== undefined) {
@@ -582,14 +573,11 @@ export class HomeComponent {
             this.uploadProgress.set(progress);
             this.updateSpeedAndEta(event.loaded, totalSize);
           } else if (event.type === HttpEventType.Response && event.body) {
-            this.uploadResult.set(event.body);
-            this.isUploading.set(false);
-            this.uploadProgress.set(0);
-            this.reloadLimits();
-            this.resetAltcha();
+            resolve(event.body);
           }
         },
       });
+    });
   }
 
   private updateSpeedAndEta(loaded: number, total: number): void {

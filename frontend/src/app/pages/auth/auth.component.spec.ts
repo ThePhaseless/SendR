@@ -115,13 +115,13 @@ describe('AuthComponent registration password flow', () => {
     const component = fixture.componentInstance;
 
     component.email = 'user@example.com';
-    component.requestCode();
+    void component.requestCode();
 
     expect(authService.requestCode).not.toHaveBeenCalled();
     expect(component.error()).toBe('Enter a password.');
   });
 
-  it('sets the password after code verification when the account does not have one yet', () => {
+  it('sets the password after code verification when the account does not have one yet', async () => {
     const fixture = TestBed.createComponent(AuthComponent);
     const component = fixture.componentInstance;
 
@@ -130,15 +130,16 @@ describe('AuthComponent registration password flow', () => {
     component.confirmPassword = 'password123';
     component.code = '123456';
 
-    component.verifyCode();
+    await component.verifyCode();
+    await fixture.whenStable();
 
     expect(authService.verifyCode).toHaveBeenCalledWith('user@example.com', '123456', true);
     expect(authService.getMe).toHaveBeenCalledTimes(1);
     expect(authService.setPassword).toHaveBeenCalledWith('password123');
-    expect(router.navigate.calls.mostRecent().args).toEqual([['/']]);
+    expect(router['navigate']).toHaveBeenCalledWith(['/']);
   });
 
-  it('skips password creation when the account already has one', () => {
+  it('skips password creation when the account already has one', async () => {
     const fixture = TestBed.createComponent(AuthComponent);
     const component = fixture.componentInstance;
 
@@ -148,10 +149,11 @@ describe('AuthComponent registration password flow', () => {
     component.confirmPassword = 'password123';
     component.code = '123456';
 
-    component.verifyCode();
+    await component.verifyCode();
+    await fixture.whenStable();
 
     expect(authService.setPassword).not.toHaveBeenCalled();
-    expect(router.navigate.calls.mostRecent().args).toEqual([['/']]);
+    expect(router['navigate']).toHaveBeenCalledWith(['/']);
   });
 });
 

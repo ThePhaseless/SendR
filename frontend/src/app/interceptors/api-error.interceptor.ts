@@ -20,7 +20,7 @@ export const apiErrorInterceptor: HttpInterceptorFn = (req, next) => {
         const hasSession = authService.authenticated();
 
         if (error.status === 403 && code === 'ACCOUNT_BANNED' && hasSession) {
-          authService.logout();
+          void authService.logout();
           notifications.error('Account unavailable', detail, {
             dedupeKey: 'account-banned',
             sticky: true,
@@ -35,7 +35,7 @@ export const apiErrorInterceptor: HttpInterceptorFn = (req, next) => {
           (code === 'SESSION_EXPIRED' || code === 'NOT_AUTHENTICATED') &&
           hasSession
         ) {
-          authService.logout();
+          void authService.logout();
           notifications.warning('Session expired', detail, {
             dedupeKey: 'session-expired',
           });

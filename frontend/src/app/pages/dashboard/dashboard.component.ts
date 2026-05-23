@@ -9,6 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { firstValueFrom } from 'rxjs';
 import type { FileListResponse, QuotaResponse, ScanStatus } from '../../api/model';
 import {
   FilePickerComponent,
@@ -231,7 +232,7 @@ export class DashboardComponent {
     });
   }
 
-  saveAccountPassword(): void {
+  async saveAccountPassword(): Promise<void> {
     const newPassword = this.accountNewPassword();
     const confirmPassword = this.accountConfirmPassword();
     const currentPassword = this.accountCurrentPassword();
@@ -262,28 +263,24 @@ export class DashboardComponent {
       ? this.authService.changePassword(currentPassword, newPassword)
       : this.authService.setPassword(newPassword);
 
-    request$.subscribe({
-      error: (err: unknown) => {
-        this.accountError.set(
-          getErrorDetail(
-            err,
-            changingExistingPassword ? 'Failed to update password.' : 'Failed to set password.',
-          ),
-        );
-        this.accountSaving.set(false);
-      },
-      next: (me) => {
-        this.authService.currentUser.set(me);
-        this.authService.authenticated.set(true);
-        this.accountMessage.set(
-          changingExistingPassword ? 'Password updated.' : 'Password created.',
-        );
-        this.accountCurrentPassword.set('');
-        this.accountNewPassword.set('');
-        this.accountConfirmPassword.set('');
-        this.accountSaving.set(false);
-      },
-    });
+    try {
+      const me = await firstValueFrom(request$);
+      this.authService.currentUser.set(me);
+      this.authService.authenticated.set(true);
+      this.accountMessage.set(changingExistingPassword ? 'Password updated.' : 'Password created.');
+      this.accountCurrentPassword.set('');
+      this.accountNewPassword.set('');
+      this.accountConfirmPassword.set('');
+    } catch (error: unknown) {
+      this.accountError.set(
+        getErrorDetail(
+          error,
+          changingExistingPassword ? 'Failed to update password.' : 'Failed to set password.',
+        ),
+      );
+    } finally {
+      this.accountSaving.set(false);
+    }
   }
 
   isGroupExpired(group: UploadGroup): boolean {
@@ -407,7 +404,7 @@ export class DashboardComponent {
   }
 
   /** Save group settings in-place (premium only, keeps download tokens). */
-  saveGroup(group: UploadGroup): void {
+  async saveGroup(group: UploadGroup): Promise<void> {
     if (!this.canEditUploads()) {
       this.error.set('Upgrade to Premium to edit uploads without changing the link.');
       return;
@@ -415,70 +412,48 @@ export class DashboardComponent {
 
     this.isSaving.set(true);
 
-    // First: if there are staged new files, add them to the group
-    const addFilesObs =
-      group.uploadGroup && this.newFiles().length > 0
-        ? this.fileService.addFilesToGroup(group.uploadGroup, this.newFiles())
-        : null;
-
-    const finishSave = () => {
-      // Then: edit group settings
-      if (group.isGroup && group.uploadGroup) {
-        this.fileService
-          .editGroup(group.uploadGroup, {
-            description: this.panelDescription() || null,
-            expiry_hours: this.panelExpiryHours(),
-            max_downloads: this.panelMaxDownloads() || undefined,
-            title: this.panelTitle() || null,
-          })
-          .subscribe({
-            error: (err: unknown) => {
-              this.error.set(getErrorDetail(err, 'Failed to save changes.'));
-              this.isSaving.set(false);
-            },
-            next: (res) => {
-              this.files.update((files) => {
-                const updatedIds = new Set(res.files.map((f) => f.id));
-                return [...files.filter((f) => !updatedIds.has(f.id)), ...res.files];
-              });
-              this.newFiles.set([]);
-              this.isSaving.set(false);
-            },
-          });
-      } else {
-        // Single file: use per-file edit
-        const file = this.getPrimaryGroupFile(group);
-        this.fileService
-          .editFile(file.id, {
-            expires_in_hours: this.panelExpiryHours(),
-            max_downloads: this.panelMaxDownloads() || undefined,
-          })
-          .subscribe({
-            error: (err: unknown) => {
-              this.error.set(getErrorDetail(err, 'Failed to save changes.'));
-              this.isSaving.set(false);
-            },
-            next: (updated) => {
-              this.files.update((files) => files.map((f) => (f.id === updated.id ? updated : f)));
-              this.isSaving.set(false);
-            },
-          });
+    try {
+      // First: if there are staged new files, add them to the group
+      if (group.uploadGroup && this.newFiles().length > 0) {
+        const res = await firstValueFrom(
+          this.fileService.addFilesToGroup(group.uploadGroup, this.newFiles()),
+        );
+        this.files.update((existing) => [...existing, ...res.files]);
       }
-    };
 
-    if (addFilesObs) {
-      addFilesObs.subscribe({
-        error: (err: unknown) => {
-          this.error.set(getErrorDetail(err, 'Failed to add new files.'));
-          this.isSaving.set(false);
-        },
-        next: (res) => {
-          this.files.update((existing) => [...existing, ...res.files]);
-          finishSave();
-        },
-      });
-    } else {
-      finishSave();
+      // Then: edit group settings
+      try {
+        if (group.isGroup && group.uploadGroup) {
+          const res = await firstValueFrom(
+            this.fileService.editGroup(group.uploadGroup, {
+              description: this.panelDescription() || null,
+              expiry_hours: this.panelExpiryHours(),
+              max_downloads: this.panelMaxDownloads() || undefined,
+              title: this.panelTitle() || null,
+            }),
+          );
+          this.files.update((files) => {
+            const updatedIds = new Set(res.files.map((f) => f.id));
+            return [...files.filter((f) => !updatedIds.has(f.id)), ...res.files];
+          });
+          this.newFiles.set([]);
+        } else {
+          const file = this.getPrimaryGroupFile(group);
+          const updated = await firstValueFrom(
+            this.fileService.editFile(file.id, {
+              expires_in_hours: this.panelExpiryHours(),
+              max_downloads: this.panelMaxDownloads() || undefined,
+            }),
+          );
+          this.files.update((files) => files.map((f) => (f.id === updated.id ? updated : f)));
+        }
+      } catch (error: unknown) {
+        this.error.set(getErrorDetail(error, 'Failed to save changes.'));
+      }
+    } catch (error: unknown) {
+      this.error.set(getErrorDetail(error, 'Failed to add new files.'));
+    } finally {
+      this.isSaving.set(false);
     }
   }
 
@@ -491,13 +466,13 @@ export class DashboardComponent {
         title: 'Refresh this upload?',
       },
       () => {
-        this.executeRefresh(group);
+        void this.executeRefresh(group);
       },
     );
   }
 
   /** Execute refresh after confirmation. */
-  executeRefresh(group: UploadGroup): void {
+  async executeRefresh(group: UploadGroup): Promise<void> {
     if (group.uploadGroup && this.newFiles().length > 0 && !this.canEditUploads()) {
       this.error.set('Upgrade to Premium to add files to an existing upload.');
       return;
@@ -505,81 +480,60 @@ export class DashboardComponent {
 
     this.isSaving.set(true);
 
-    // First: if there are staged new files, add them to the group
-    const addFilesObs =
-      group.uploadGroup && this.canEditUploads() && this.newFiles().length > 0
-        ? this.fileService.addFilesToGroup(group.uploadGroup, this.newFiles())
-        : null;
-
-    const doRefresh = () => {
-      if (group.isGroup && group.uploadGroup) {
-        this.fileService
-          .refreshGroup(group.uploadGroup, {
-            description: this.panelDescription() || null,
-            expiry_hours: this.panelExpiryHours(),
-            max_downloads: this.panelMaxDownloads() || undefined,
-            title: this.panelTitle() || null,
-          })
-          .subscribe({
-            error: (err: unknown) => {
-              this.error.set(getErrorDetail(err, 'Failed to refresh upload.'));
-              this.isSaving.set(false);
-            },
-            next: (res) => {
-              this.files.update((files) => {
-                const updatedIds = new Set(res.files.map((f) => f.id));
-                return [...files.filter((f) => !updatedIds.has(f.id)), ...res.files];
-              });
-              this.newFiles.set([]);
-              this.isSaving.set(false);
-            },
-          });
-      } else {
-        // Single file refresh
-        const file = this.getPrimaryGroupFile(group);
-        this.fileService.refreshFile(file.id, this.panelExpiryHours()).subscribe({
-          error: (err: unknown) => {
-            this.error.set(getErrorDetail(err, 'Failed to refresh upload.'));
-            this.isSaving.set(false);
-          },
-          next: (updated) => {
-            this.files.update((files) => files.map((f) => (f.id === updated.id ? updated : f)));
-            this.newFiles.set([]);
-            this.isSaving.set(false);
-          },
-        });
+    try {
+      // First: if there are staged new files, add them to the group
+      if (group.uploadGroup && this.canEditUploads() && this.newFiles().length > 0) {
+        const res = await firstValueFrom(
+          this.fileService.addFilesToGroup(group.uploadGroup, this.newFiles()),
+        );
+        this.files.update((existing) => [...existing, ...res.files]);
       }
-    };
 
-    if (addFilesObs) {
-      addFilesObs.subscribe({
-        error: (err: unknown) => {
-          this.error.set(getErrorDetail(err, 'Failed to add new files.'));
-          this.isSaving.set(false);
-        },
-        next: (res) => {
-          this.files.update((existing) => [...existing, ...res.files]);
-          doRefresh();
-        },
-      });
-    } else {
-      doRefresh();
+      // Then: refresh
+      try {
+        if (group.isGroup && group.uploadGroup) {
+          const res = await firstValueFrom(
+            this.fileService.refreshGroup(group.uploadGroup, {
+              description: this.panelDescription() || null,
+              expiry_hours: this.panelExpiryHours(),
+              max_downloads: this.panelMaxDownloads() || undefined,
+              title: this.panelTitle() || null,
+            }),
+          );
+          this.files.update((files) => {
+            const updatedIds = new Set(res.files.map((f) => f.id));
+            return [...files.filter((f) => !updatedIds.has(f.id)), ...res.files];
+          });
+          this.newFiles.set([]);
+        } else {
+          const file = this.getPrimaryGroupFile(group);
+          const updated = await firstValueFrom(
+            this.fileService.refreshFile(file.id, this.panelExpiryHours()),
+          );
+          this.files.update((files) => files.map((f) => (f.id === updated.id ? updated : f)));
+          this.newFiles.set([]);
+        }
+      } catch (error: unknown) {
+        this.error.set(getErrorDetail(error, 'Failed to refresh upload.'));
+      }
+    } catch (error: unknown) {
+      this.error.set(getErrorDetail(error, 'Failed to add new files.'));
+    } finally {
+      this.isSaving.set(false);
     }
   }
 
   /** Remove a single file (delete from server). */
-  removeFile(file: FileUploadResponse, group: UploadGroup): void {
-    this.fileService.deleteFile(file.id).subscribe({
-      error: (err: unknown) => {
-        this.error.set(getErrorDetail(err, 'Failed to delete file.'));
-      },
-      next: () => {
-        this.files.update((files) => files.filter((f) => f.id !== file.id));
-        if (group.files.length <= 1) {
-          this.expandedGroupKey.set(null);
-        }
-      },
-    });
+  async removeFile(file: FileUploadResponse, group: UploadGroup): Promise<void> {
+    try {
+      await firstValueFrom(this.fileService.deleteFile(file.id));
+      this.files.update((files) => files.filter((f) => f.id !== file.id));
+      if (group.files.length <= 1) {
+        this.expandedGroupKey.set(null);
+      }
+    } catch (error: unknown) {
+      this.error.set(getErrorDetail(error, 'Failed to delete file.'));
+    }
   }
 
   /** Delete all files in a group. */
@@ -593,16 +547,16 @@ export class DashboardComponent {
       },
       () => {
         this.expandedGroupKey.set(null);
-        for (const file of group.files) {
-          this.fileService.deleteFile(file.id).subscribe({
-            error: (err: unknown) => {
-              this.error.set(getErrorDetail(err, 'Failed to delete upload.'));
-            },
-            next: () => {
+        void Promise.all(
+          group.files.map(async (file) => {
+            try {
+              await firstValueFrom(this.fileService.deleteFile(file.id));
               this.files.update((files) => files.filter((f) => f.id !== file.id));
-            },
-          });
-        }
+            } catch (error: unknown) {
+              this.error.set(getErrorDetail(error, 'Failed to delete upload.'));
+            }
+          }),
+        );
       },
     );
   }
@@ -611,32 +565,30 @@ export class DashboardComponent {
     this.statsExpanded.update((v) => !v);
   }
 
-  editAccess(uploadGroup: string, body: AccessEditRequest): void {
+  async editAccess(uploadGroup: string, body: AccessEditRequest): Promise<void> {
     this.accessSaving.set(true);
-    this.fileService.editAccess(uploadGroup, body).subscribe({
-      error: (err: unknown) => {
-        this.error.set(getErrorDetail(err, 'Failed to update access control.'));
-        this.accessSaving.set(false);
-      },
-      next: (info) => {
-        this.accessInfoResource.set(info);
-        this.accessSaving.set(false);
-        // Update file list badges
-        this.files.update((files) =>
-          files.map((f) => {
-            if (f.upload_group === uploadGroup) {
-              return {
-                ...f,
-                has_email_recipients: info.emails.length > 0,
-                has_passwords: info.passwords.length > 0,
-                is_public: info.is_public,
-              };
-            }
-            return f;
-          }),
-        );
-      },
-    });
+    try {
+      const info = await firstValueFrom(this.fileService.editAccess(uploadGroup, body));
+      this.accessInfoResource.set(info);
+      // Update file list badges
+      this.files.update((files) =>
+        files.map((f) => {
+          if (f.upload_group === uploadGroup) {
+            return {
+              ...f,
+              has_email_recipients: info.emails.length > 0,
+              has_passwords: info.passwords.length > 0,
+              is_public: info.is_public,
+            };
+          }
+          return f;
+        }),
+      );
+    } catch (error: unknown) {
+      this.error.set(getErrorDetail(error, 'Failed to update access control.'));
+    } finally {
+      this.accessSaving.set(false);
+    }
   }
 
   addPassword(uploadGroup: string): void {
@@ -649,7 +601,7 @@ export class DashboardComponent {
     if (!password) {
       return;
     }
-    this.editAccess(uploadGroup, {
+    void this.editAccess(uploadGroup, {
       passwords_to_add: [{ label: label || 'Password', password }],
     });
     this.newPasswordLabel.set('');
@@ -657,7 +609,7 @@ export class DashboardComponent {
   }
 
   removePassword(uploadGroup: string, passwordId: number): void {
-    this.editAccess(uploadGroup, { password_ids_to_remove: [passwordId] });
+    void this.editAccess(uploadGroup, { password_ids_to_remove: [passwordId] });
   }
 
   addEmail(uploadGroup: string): void {
@@ -665,20 +617,20 @@ export class DashboardComponent {
     if (!email) {
       return;
     }
-    this.editAccess(uploadGroup, { emails_to_add: [email] });
+    void this.editAccess(uploadGroup, { emails_to_add: [email] });
     this.newEmail.set('');
   }
 
   removeEmail(uploadGroup: string, emailId: number): void {
-    this.editAccess(uploadGroup, { email_ids_to_remove: [emailId] });
+    void this.editAccess(uploadGroup, { email_ids_to_remove: [emailId] });
   }
 
   togglePublic(uploadGroup: string, isPublic: boolean): void {
-    this.editAccess(uploadGroup, { is_public: isPublic });
+    void this.editAccess(uploadGroup, { is_public: isPublic });
   }
 
   toggleShowEmailStats(uploadGroup: string, show: boolean): void {
-    this.editAccess(uploadGroup, { show_email_stats: show });
+    void this.editAccess(uploadGroup, { show_email_stats: show });
   }
 
   formatSize(bytes: number): string {

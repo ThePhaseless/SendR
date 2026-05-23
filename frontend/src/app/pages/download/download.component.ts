@@ -393,18 +393,16 @@ export class DownloadComponent {
     let writableStream: FileSystemWritableFileStreamLike | null = null;
     let completed = false;
 
-    if (!options.accessToken) {
-      this.startBrowserDownload(options.url, options.fallbackFilename);
-      this.downloading.set(false);
-      return;
-    }
-
     void this.openWritableDownloadStream(options.fallbackFilename)
       .then((stream) => {
         writableStream = stream;
+        const headers: Record<string, string> = {};
+        if (options.accessToken) {
+          headers['X-Access-Token'] = options.accessToken;
+        }
         return fetch(options.url, {
           credentials: 'include',
-          headers: { 'X-Access-Token': options.accessToken ?? '' },
+          headers,
         });
       })
       .then((response) => {

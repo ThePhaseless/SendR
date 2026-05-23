@@ -1,7 +1,7 @@
 import { HttpClient, httpResource } from '@angular/common/http';
 import { Injectable, effect, inject, signal } from '@angular/core';
 import type { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { firstValueFrom, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService as ApiAuthService } from '../api/endpoints/auth/auth.service';
 import { SubscriptionService as ApiSubscriptionService } from '../api/endpoints/subscription/subscription.service';
@@ -108,12 +108,13 @@ export class AuthService {
     this.sessionResource.reload();
   }
 
-  logout(): void {
+  async logout(): Promise<void> {
     this.currentUser.set(null);
     this.authenticated.set(false);
-    this.http.post(`${this.apiUrl}/api/auth/logout`, {}).subscribe({
-      error() {},
-      next() {},
-    });
+    try {
+      await firstValueFrom(this.http.post<never>(`${this.apiUrl}/api/auth/logout`, {}));
+    } catch {
+      // Ignore logout errors
+    }
   }
 }

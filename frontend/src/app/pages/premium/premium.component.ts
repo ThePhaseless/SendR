@@ -2,6 +2,7 @@ import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import type { SubscriptionResponse, UserResponse } from '../../api/model';
 import { AuthService } from '../../services/auth.service';
 
@@ -53,37 +54,35 @@ export class PremiumComponent {
     return tier ?? 'Unknown';
   }
 
-  upgrade(): void {
+  async upgrade(): Promise<void> {
     this.processing.set(true);
     this.mutationError.set(null);
-    this.authService.upgradeToPremium().subscribe({
-      error: () => {
-        this.mutationError.set('Failed to upgrade. Please try again.');
-        this.processing.set(false);
-      },
-      next: (sub) => {
-        this.subscriptionResource.set(sub);
-        this.userResource.update((user) => (user ? { ...user, tier: 'premium' } : user));
-        this.authService.currentUser.update((user) => (user ? { ...user, tier: 'premium' } : user));
-        this.processing.set(false);
-      },
-    });
+
+    try {
+      const sub = await firstValueFrom(this.authService.upgradeToPremium());
+      this.subscriptionResource.set(sub);
+      this.userResource.update((user) => (user ? { ...user, tier: 'premium' } : user));
+      this.authService.currentUser.update((user) => (user ? { ...user, tier: 'premium' } : user));
+    } catch {
+      this.mutationError.set('Failed to upgrade. Please try again.');
+    } finally {
+      this.processing.set(false);
+    }
   }
 
-  cancel(): void {
+  async cancel(): Promise<void> {
     this.processing.set(true);
     this.mutationError.set(null);
-    this.authService.cancelSubscription().subscribe({
-      error: () => {
-        this.mutationError.set('Failed to cancel. Please try again.');
-        this.processing.set(false);
-      },
-      next: (sub) => {
-        this.subscriptionResource.set(sub);
-        this.userResource.update((user) => (user ? { ...user, tier: 'free' } : user));
-        this.authService.currentUser.update((user) => (user ? { ...user, tier: 'free' } : user));
-        this.processing.set(false);
-      },
-    });
+
+    try {
+      const sub = await firstValueFrom(this.authService.cancelSubscription());
+      this.subscriptionResource.set(sub);
+      this.userResource.update((user) => (user ? { ...user, tier: 'free' } : user));
+      this.authService.currentUser.update((user) => (user ? { ...user, tier: 'free' } : user));
+    } catch {
+      this.mutationError.set('Failed to cancel. Please try again.');
+    } finally {
+      this.processing.set(false);
+    }
   }
 }

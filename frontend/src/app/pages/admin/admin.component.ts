@@ -1,4 +1,5 @@
 import { DatePipe } from '@angular/common';
+import { firstValueFrom } from 'rxjs';
 import { httpResource } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -147,39 +148,39 @@ export class AdminComponent {
     this.editingUser.set(null);
   }
 
-  saveEdit(): void {
+  async saveEdit(): Promise<void> {
     const user = this.editingUser();
     if (!user) {
       return;
     }
 
-    this.adminService
-      .updateUser(user.id, {
-        is_admin: this.editIsAdmin,
-        is_banned: this.editIsBanned,
-        tier: this.editTier,
-      })
-      .subscribe({
-        error: (err) => {
-          this.mutationError.set(getErrorDetail(err, 'Failed to update user.'));
-        },
-        next: (updated) => {
-          this.userListResource.update((response) =>
-            response
-              ? {
-                  ...response,
-                  users: response.users.map((listedUser) =>
-                    listedUser.id === updated.id ? updated : listedUser,
-                  ),
-                }
-              : response,
-          );
-          this.selectedDetailsUser.update((current) =>
-            current && current.id === updated.id ? updated : current,
-          );
-          this.editingUser.set(null);
-        },
-      });
+    try {
+      const updated = await firstValueFrom(
+        this.adminService.updateUser(user.id, {
+          is_admin: this.editIsAdmin,
+          is_banned: this.editIsBanned,
+          tier: this.editTier,
+        }),
+      );
+      this.userListResource.update((response) =>
+        response
+          ? {
+              ...response,
+              users: response.users.map((listedUser) =>
+                listedUser.id === updated.id ? updated : listedUser,
+              ),
+            }
+          : response,
+      );
+      this.selectedDetailsUser.update((current) =>
+        current && current.id === updated.id ? updated : current,
+      );
+      this.editingUser.set(null);
+    } catch (error) {
+      this.mutationError.set(getErrorDetail(error, 'Failed to update user.'));
+    } finally {
+      // No-op
+    }
   }
 
   deleteUser(user: AdminUser): void {
@@ -191,11 +192,9 @@ export class AdminComponent {
         tone: 'danger',
       },
       () => {
-        this.adminService.deleteUser(user.id).subscribe({
-          error: (err) => {
-            this.mutationError.set(getErrorDetail(err, 'Failed to delete user.'));
-          },
-          next: () => {
+        void (async () => {
+          try {
+            await firstValueFrom(this.adminService.deleteUser(user.id));
             if (this.selectedDetailsUser()?.id === user.id) {
               this.clearDetails();
             }
@@ -208,8 +207,12 @@ export class AdminComponent {
                   }
                 : response,
             );
-          },
-        });
+          } catch (error) {
+            this.mutationError.set(getErrorDetail(error, 'Failed to delete user.'));
+          } finally {
+            // No-op
+          }
+        })();
       },
     );
   }
@@ -290,11 +293,9 @@ export class AdminComponent {
         tone: 'danger',
       },
       () => {
-        this.adminService.deleteUserTransfer(user.id, group.uploadGroup).subscribe({
-          error: (err) => {
-            this.mutationError.set(getErrorDetail(err, 'Failed to delete transfer.'));
-          },
-          next: () => {
+        void (async () => {
+          try {
+            await firstValueFrom(this.adminService.deleteUserTransfer(user.id, group.uploadGroup));
             this.selectedUploadsResource.update((response) =>
               response
                 ? {
@@ -304,8 +305,12 @@ export class AdminComponent {
                 : response,
             );
             this.selectedStatsResource.reload();
-          },
-        });
+          } catch (error) {
+            this.mutationError.set(getErrorDetail(error, 'Failed to delete transfer.'));
+          } finally {
+            // No-op
+          }
+        })();
       },
     );
   }

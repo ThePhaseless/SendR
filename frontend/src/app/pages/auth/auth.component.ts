@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@ang
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { of, switchMap } from 'rxjs';
+import { firstValueFrom, of, switchMap } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { getErrorDetail } from '../../utils/error.utils';
 
@@ -55,7 +55,7 @@ export class AuthComponent {
     });
   }
 
-  requestCode(): void {
+  async requestCode(): Promise<void> {
     if (!this.email) {
       return;
     }
@@ -74,20 +74,18 @@ export class AuthComponent {
     this.error.set(null);
     this.message.set(null);
 
-    this.authService.requestCode(this.email).subscribe({
-      error: (err) => {
-        this.error.set(getErrorDetail(err, 'Failed to send code.'));
-        this.loading.set(false);
-      },
-      next: (res) => {
-        this.message.set(res['message'] ?? 'Verification code sent');
-        this.step.set('code');
-        this.loading.set(false);
-      },
-    });
+    try {
+      const res = await firstValueFrom(this.authService.requestCode(this.email));
+      this.message.set(res['message'] ?? 'Verification code sent');
+      this.step.set('code');
+    } catch (error) {
+      this.error.set(getErrorDetail(error, 'Failed to send code.'));
+    } finally {
+      this.loading.set(false);
+    }
   }
 
-  loginWithPassword(): void {
+  async loginWithPassword(): Promise<void> {
     if (!this.email || !this.password) {
       return;
     }
@@ -100,18 +98,16 @@ export class AuthComponent {
     this.error.set(null);
     this.message.set(null);
 
-    this.authService.loginWithPassword(this.email, this.password).subscribe({
-      error: (err) => {
-        this.error.set(getErrorDetail(err, 'Invalid email or password.'));
-        this.loading.set(false);
-      },
-      next: () => {
-        void this.router.navigate(['/']);
-      },
-    });
+    try {
+      await firstValueFrom(this.authService.loginWithPassword(this.email, this.password));
+      await this.router.navigate(['/']);
+    } catch (error) {
+      this.error.set(getErrorDetail(error, 'Invalid email or password.'));
+      this.loading.set(false);
+    }
   }
 
-  verifyCode(): void {
+  async verifyCode(): Promise<void> {
     if (!this.code) {
       return;
     }
@@ -126,19 +122,15 @@ export class AuthComponent {
     this.error.set(null);
     this.message.set(null);
 
-    this.authService
-      .verifyCode(this.email, this.code, this.isRegister())
-      .pipe(switchMap(() => this.completeRegistrationWithPassword()))
-      .subscribe({
-        error: (err) => {
-          this.error.set(getErrorDetail(err, 'Invalid code.'));
-          this.loading.set(false);
-        },
-        next: () => {
-          this.loading.set(false);
-          void this.router.navigate(['/']);
-        },
-      });
+    try {
+      await firstValueFrom(this.authService.verifyCode(this.email, this.code, this.isRegister()));
+      await firstValueFrom(this.completeRegistrationWithPassword());
+      this.loading.set(false);
+      await this.router.navigate(['/']);
+    } catch (error) {
+      this.error.set(getErrorDetail(error, 'Invalid code.'));
+      this.loading.set(false);
+    }
   }
 
   backToEmail(): void {

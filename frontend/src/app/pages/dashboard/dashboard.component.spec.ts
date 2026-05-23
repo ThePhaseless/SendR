@@ -283,7 +283,7 @@ describe('DashboardComponent', () => {
       },
     ]);
 
-    component.executeRefresh(component.uploadGroups()[0]);
+    void component.executeRefresh(component.uploadGroups()[0]);
 
     expect(component.error()).toBe('Upgrade to Premium to add files to an existing upload.');
     expect(component.isSaving()).toBeFalse();
