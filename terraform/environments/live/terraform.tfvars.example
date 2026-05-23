@@ -10,3 +10,4 @@ domain_name     = "sendr.email"
 create_apex_records = true
 k8s_node_count  = 2
 k8s_auto_scale  = false
+kubernetes_version = "1.35.1-do.6"
