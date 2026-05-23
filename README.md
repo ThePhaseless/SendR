@@ -156,14 +156,14 @@ When the backend is running locally, visit:
 
 ## Tier Limits
 
-| Feature | Temporary | Free | Premium |
-| --- | --- | --- | --- |
-| Email required | Yes | Yes | Yes |
-| Files per week | 3 | 5 | Unlimited |
-| Max file size | 100 MB | 1 GB | 10 GB |
-| Browse history | No | Yes | Yes |
-| Edit files | No | No | Yes |
-| Retrieve expired files | No | No | Yes |
+| Feature                | Temporary | Free | Premium   |
+| ---------------------- | --------- | ---- | --------- |
+| Email required         | Yes       | Yes  | Yes       |
+| Files per week         | 3         | 5    | Unlimited |
+| Max file size          | 100 MB    | 1 GB | 10 GB     |
+| Browse history         | No        | Yes  | Yes       |
+| Edit files             | No        | No   | Yes       |
+| Retrieve expired files | No        | No   | Yes       |
 
 ## Documentation
 
