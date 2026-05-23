@@ -1,5 +1,6 @@
 [tools]
 age = "latest"
+bun = "latest"
 doctl = "latest"
 gemini-cli = "latest"
 k9s = "latest"

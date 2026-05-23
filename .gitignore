@@ -20,7 +20,6 @@ SECRETS.local
 .sops/
 
 # Local MCP server tools
-.tools/
 
 terraform/state.json
 secrets.txt
