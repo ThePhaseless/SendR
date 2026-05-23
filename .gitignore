@@ -16,4 +16,7 @@ package-lock.json
 .env
 SECRETS.local
 
+# SOPS Age private keys (repo-local; never commit)
+.sops/
+
 terraform/state.json

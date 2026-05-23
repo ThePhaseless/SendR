@@ -20,6 +20,8 @@ env:
   TF_IN_AUTOMATION: true
   TF_INPUT: false
   REGISTRY: ghcr.io/thephaseless/sendr
+  SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+  DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DO_TOKEN }}
 
 jobs:
   deploy:
@@ -36,12 +38,6 @@ jobs:
     environment: live
     env:
       DEPLOY_ENVIRONMENT: live
-      DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DO_TOKEN }}
-      TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
-      TF_VAR_spaces_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      TF_VAR_spaces_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -51,6 +47,9 @@ jobs:
         with:
           terraform_version: 1.15.3
 
+      - name: Install SOPS
+        uses: mdgreenwald/mozilla-sops-action@v2.0.0
+
       - name: Install doctl
         uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f
         with:
@@ -59,13 +58,18 @@ jobs:
       - name: Install kubectl
         uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415
 
+      - name: Decrypt secrets
+        run: |
+          sops -d terraform/environments/live/terraform.tfvars.enc.json > terraform/environments/live/terraform.tfvars.json
+          sops -d terraform/environments/live/backend.enc.env | tee -a "$GITHUB_ENV" >/dev/null
+
       - name: Set deployment context
         run: |
           ENV_NAME="$DEPLOY_ENVIRONMENT"
 
           echo "ENV_NAME=$ENV_NAME" >> "$GITHUB_ENV"
           echo "KUSTOMIZE_PATH=k8s/overlays/$ENV_NAME" >> "$GITHUB_ENV"
-          echo "TF_VAR_FILE=environments/$ENV_NAME/terraform.tfvars.example" >> "$GITHUB_ENV"
+          echo "TF_VAR_FILE=environments/$ENV_NAME/terraform.tfvars.json" >> "$GITHUB_ENV"
           echo "TF_BACKEND=environments/$ENV_NAME/backend.conf" >> "$GITHUB_ENV"
 
       - name: Terraform apply infrastructure
@@ -97,20 +101,8 @@ jobs:
         run: doctl kubernetes cluster kubeconfig save "$CLUSTER_NAME"
 
       - name: Create application secrets
-        env:
-          SENDR_SECRET_KEY: ${{ secrets.SENDR_SECRET_KEY }}
-          SENDR_ALTCHA_HMAC_KEY: ${{ secrets.SENDR_ALTCHA_HMAC_KEY }}
-          SENDR_SMTP_HOST: ${{ secrets.SENDR_SMTP_HOST }}
-          SENDR_SMTP_PORT: ${{ secrets.SENDR_SMTP_PORT }}
-          SENDR_SMTP_USER: ${{ secrets.SENDR_SMTP_USER }}
-          SENDR_SMTP_PASSWORD: ${{ secrets.SENDR_SMTP_PASSWORD }}
-          SENDR_RESEND_API_KEY: ${{ secrets.SENDR_RESEND_API_KEY }}
-          SENDR_SPACES_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          SENDR_SPACES_SECRET_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          SENDR_SPACES_REGION: fra1
         run: |
           kubectl apply -f k8s/base/namespace.yaml
-          export SENDR_ENVIRONMENT="production"
           bash ./scripts/create-secrets.sh "$ENV_NAME"
 
       - name: Deploy manifests

@@ -24,16 +24,31 @@ Terraform uses a remote S3-compatible backend, so the state bucket must exist be
 
 ## Required GitHub Secrets
 
-Add these repository secrets in Settings -> Secrets and variables -> Actions:
+Only **two** repository secrets are required. All other secrets live in encrypted files inside the repository.
 
-- `DO_TOKEN`: DigitalOcean API token with write access.
-- `AWS_ACCESS_KEY_ID`: DigitalOcean Spaces access key.
-- `AWS_SECRET_ACCESS_KEY`: DigitalOcean Spaces secret key.
-- `SENDR_SECRET_KEY`: application secret, for example from `openssl rand -base64 32`.
-- `SENDR_ALTCHA_HMAC_KEY`: shared ALTCHA signing key for all backend replicas, for example from `openssl rand -hex 32`.
-- `SENDR_RESEND_API_KEY`, or the SMTP fallback secrets: `SENDR_SMTP_HOST`, `SENDR_SMTP_PORT`, `SENDR_SMTP_USER`, `SENDR_SMTP_PASSWORD`.
+Add these in Settings -> Secrets and variables -> Actions:
 
-The workflow also supports the existing shared app secrets used by the backend. Do not commit real `terraform.tfvars`, tokens, kubeconfigs, or generated state files.
+- `SOPS_AGE_KEY`: the CI Age private key. SOPS uses it to decrypt every other secret.
+- `DO_TOKEN`: DigitalOcean API token with write access (used by `doctl` and the Terraform DO provider).
+
+## Encrypted Files
+
+| File | Purpose |
+|------|---------|
+| `k8s/overlays/live/secrets.enc.yaml` | Kubernetes Secret for the backend app |
+| `terraform/environments/live/terraform.tfvars.enc.json` | Terraform variables (sensitive + non-sensitive) |
+| `terraform/environments/live/backend.enc.env` | S3 backend credentials for Terraform state |
+
+Edit an encrypted file locally:
+
+```bash
+sops k8s/overlays/live/secrets.enc.yaml
+```
+
+Ensure `SOPS_AGE_KEY_FILE` points to your Age private key, e.g.:
+```bash
+export SOPS_AGE_KEY_FILE="$(pwd)/.sops/keys.txt"
+```
 
 ## Deployment
 

@@ -1,6 +1,8 @@
 [tools]
+age = "latest"
 doctl = "latest"
 gemini-cli = "latest"
 k9s = "latest"
 kubectl = "latest"
+sops = "latest"
 terraform = "latest"

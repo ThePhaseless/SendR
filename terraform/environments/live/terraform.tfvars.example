@@ -1,3 +1,8 @@
+# Non-sensitive Terraform variables for the live environment.
+# Sensitive values (do_token, spaces_access_key, spaces_secret_key) are stored
+# in the encrypted file: terraform.tfvars.enc.json
+# Edit with: sops terraform.tfvars.enc.json
+
 environment     = "live"
 resource_suffix = "dev"
 region          = "fra1"

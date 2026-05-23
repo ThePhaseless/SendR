@@ -1,0 +1,24 @@
+# SOPS configuration for SendR
+# Documentation: https://getsops.io/docs/
+#
+# Recipients:
+#   - CI runner: age10fpy52s5999vgpv3xz69gnhghealyjss95hduasy3er36wl09e8qy8t5gn
+#   - Owner:    age1ru3d425t9sxv6mexp2d60kpd3qryv3gt0y224srq9dfv4rcu6awsgyyta8
+#
+# To add a new team member:
+#   1. Ask them to run: age-keygen -o ~/.config/sops/age/keys.txt
+#   2. Have them send you their public key (the comment line)
+#   3. Add it below, then run: find . -name "*.enc.*" -exec sops rotate -i {} \;
+#   4. Commit and push
+#
+# To remove a team member:
+#   1. Remove their public key from the list below
+#   2. Run: find . -name "*.enc.*" -exec sops rotate -i {} \;
+#   3. Commit and push
+#   Old commits remain decryptable by them, but future secrets are safe.
+
+creation_rules:
+  - path_regex: \.enc\.(yaml|yml|json|env|tfvars)$
+    age: >-
+      age10fpy52s5999vgpv3xz69gnhghealyjss95hduasy3er36wl09e8qy8t5gn,
+      age1ru3d425t9sxv6mexp2d60kpd3qryv3gt0y224srq9dfv4rcu6awsgyyta8

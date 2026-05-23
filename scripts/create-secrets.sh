@@ -1,41 +1,44 @@
 #!/usr/bin/env bash
 # Usage: ./scripts/create-secrets.sh <deployment-name>
+#
+# Applies the encrypted SOPS manifest for the given deployment and patches
+# dynamic values (database-url, spaces-bucket-name) from Terraform outputs.
+#
+# Requires:
+#   - sops (with SOPS_AGE_KEY or SOPS_AGE_KEY_FILE configured)
+#   - kubectl (configured with cluster access)
 
 set -euo pipefail
 
 DEPLOYMENT=${1:-live}
 NAMESPACE=sendr
-RUNTIME_ENVIRONMENT=${SENDR_ENVIRONMENT:-production}
 
-: "${SENDR_DATABASE_URL:?Set SENDR_DATABASE_URL}"
-: "${SENDR_SECRET_KEY:?Set SENDR_SECRET_KEY}"
-: "${SENDR_ALTCHA_HMAC_KEY:?Set SENDR_ALTCHA_HMAC_KEY}"
-: "${SENDR_SPACES_ACCESS_KEY:?Set SENDR_SPACES_ACCESS_KEY}"
-: "${SENDR_SPACES_SECRET_KEY:?Set SENDR_SPACES_SECRET_KEY}"
-: "${SENDR_SPACES_BUCKET_NAME:?Set SENDR_SPACES_BUCKET_NAME}"
+MANIFEST="k8s/overlays/${DEPLOYMENT}/secrets.enc.yaml"
 
-if [ -z "${SENDR_SMTP_HOST:-}" ] && [ -z "${SENDR_RESEND_API_KEY:-}" ]; then
-  echo "Set either SENDR_SMTP_HOST or SENDR_RESEND_API_KEY" >&2
+if [ ! -f "$MANIFEST" ]; then
+  echo "Encrypted manifest not found: $MANIFEST" >&2
   exit 1
 fi
 
-echo "Creating secrets for deployment: $DEPLOYMENT"
+echo "Applying static secrets from $MANIFEST"
+sops -d "$MANIFEST" | kubectl apply -f -
 
-kubectl create secret generic sendr-secrets \
-  --namespace="$NAMESPACE" \
-  --from-literal=environment="${RUNTIME_ENVIRONMENT}" \
-  --from-literal=database-url="${SENDR_DATABASE_URL}" \
-  --from-literal=secret-key="${SENDR_SECRET_KEY}" \
-  --from-literal=altcha-hmac-key="${SENDR_ALTCHA_HMAC_KEY}" \
-  --from-literal=smtp-host="${SENDR_SMTP_HOST:-}" \
-  --from-literal=smtp-port="${SENDR_SMTP_PORT:-587}" \
-  --from-literal=smtp-user="${SENDR_SMTP_USER:-}" \
-  --from-literal=smtp-password="${SENDR_SMTP_PASSWORD:-}" \
-  --from-literal=resend-api-key="${SENDR_RESEND_API_KEY:-}" \
-  --from-literal=spaces-access-key="${SENDR_SPACES_ACCESS_KEY}" \
-  --from-literal=spaces-secret-key="${SENDR_SPACES_SECRET_KEY}" \
-  --from-literal=spaces-bucket-name="${SENDR_SPACES_BUCKET_NAME}" \
-  --from-literal=spaces-region="${SENDR_SPACES_REGION:-fra1}" \
-  --dry-run=client -o yaml | kubectl apply -f -
+# Patch dynamic values that come from Terraform outputs.
+# These are not known at encryption time, so they are injected after apply.
+if [ -n "${SENDR_DATABASE_URL:-}" ]; then
+  echo "Patching database-url from Terraform output"
+  kubectl patch secret sendr-secrets \
+    -n "$NAMESPACE" \
+    --type=merge \
+    -p="{\"stringData\":{\"database-url\":\"${SENDR_DATABASE_URL}\"}}"
+fi
 
-echo "Secrets created successfully for $DEPLOYMENT"
+if [ -n "${SENDR_SPACES_BUCKET_NAME:-}" ]; then
+  echo "Patching spaces-bucket-name from Terraform output"
+  kubectl patch secret sendr-secrets \
+    -n "$NAMESPACE" \
+    --type=merge \
+    -p="{\"stringData\":{\"spaces-bucket-name\":\"${SENDR_SPACES_BUCKET_NAME}\"}}"
+fi
+
+echo "Secrets applied successfully for $DEPLOYMENT"
