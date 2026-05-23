@@ -19,4 +19,8 @@ SECRETS.local
 # SOPS Age private keys (repo-local; never commit)
 .sops/
 
+# Local MCP server tools
+.tools/
+
 terraform/state.json
+secrets.txt

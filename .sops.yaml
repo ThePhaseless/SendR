@@ -2,7 +2,7 @@
 # Documentation: https://getsops.io/docs/
 #
 # Recipients:
-#   - CI runner: age10fpy52s5999vgpv3xz69gnhghealyjss95hduasy3er36wl09e8qy8t5gn
+#   - CI runner: age158h7nj4qws73majldt3kptxrfy908wn3fezv4v2uuc9zmqudgapsmlq408
 #   - Owner:    age1ru3d425t9sxv6mexp2d60kpd3qryv3gt0y224srq9dfv4rcu6awsgyyta8
 #
 # To add a new team member:
@@ -20,5 +20,5 @@
 creation_rules:
   - path_regex: \.enc\.(yaml|yml|json|env|tfvars)$
     age: >-
-      age10fpy52s5999vgpv3xz69gnhghealyjss95hduasy3er36wl09e8qy8t5gn,
+      age158h7nj4qws73majldt3kptxrfy908wn3fezv4v2uuc9zmqudgapsmlq408,
       age1ru3d425t9sxv6mexp2d60kpd3qryv3gt0y224srq9dfv4rcu6awsgyyta8
