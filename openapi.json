@@ -965,6 +965,22 @@
             }
           },
           {
+            "name": "password",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Password"
+            }
+          },
+          {
             "name": "X-Access-Token",
             "in": "header",
             "required": false,
@@ -1049,6 +1065,22 @@
             "schema": {
               "type": "string",
               "title": "Download Token"
+            }
+          },
+          {
+            "name": "password",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Password"
             }
           },
           {

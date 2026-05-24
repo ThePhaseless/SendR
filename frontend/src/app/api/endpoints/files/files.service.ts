@@ -32,6 +32,8 @@ import type {
   BodyUploadFileApiFilesUploadPost,
   BodyUploadMultipleFilesApiFilesUploadMultiplePost,
   DeactivateFileApiFilesFileIdDelete200,
+  DownloadFileApiFilesDownloadTokenGetParams,
+  DownloadGroupApiFilesGroupUploadGroupDownloadGetParams,
   DownloadStatsResponse,
   FileEditRequest,
   FileListResponse,
@@ -352,34 +354,40 @@ if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha !== undefined) {
 /**
  * @summary Download Group
  */
- downloadGroupApiFilesGroupUploadGroupDownloadGet<TData = unknown>(uploadGroup: string, options?: HttpClientBodyOptions): Observable<TData>;
- downloadGroupApiFilesGroupUploadGroupDownloadGet<TData = unknown>(uploadGroup: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- downloadGroupApiFilesGroupUploadGroupDownloadGet<TData = unknown>(uploadGroup: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+ downloadGroupApiFilesGroupUploadGroupDownloadGet<TData = unknown>(uploadGroup: string,
+    params?: DownloadGroupApiFilesGroupUploadGroupDownloadGetParams, options?: HttpClientBodyOptions): Observable<TData>;
+ downloadGroupApiFilesGroupUploadGroupDownloadGet<TData = unknown>(uploadGroup: string,
+    params?: DownloadGroupApiFilesGroupUploadGroupDownloadGetParams, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ downloadGroupApiFilesGroupUploadGroupDownloadGet<TData = unknown>(uploadGroup: string,
+    params?: DownloadGroupApiFilesGroupUploadGroupDownloadGetParams, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
   downloadGroupApiFilesGroupUploadGroupDownloadGet<TData = unknown>(
-    uploadGroup: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    uploadGroup: string,
+    params?: DownloadGroupApiFilesGroupUploadGroupDownloadGetParams, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    const filteredParams = filterParams({...params, ...options?.params}, new Set<string>([]));
+
     if (options?.observe === 'events') {
       return this.http.get<TData>(
       `/api/files/group/${uploadGroup}/download`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
-      }
+        params: filteredParams,}
     );
     }
 
     if (options?.observe === 'response') {
       return this.http.get<TData>(
       `/api/files/group/${uploadGroup}/download`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
-      }
+        params: filteredParams,}
     );
     }
 
     return this.http.get<TData>(
       `/api/files/group/${uploadGroup}/download`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
-      }
+        params: filteredParams,}
     );
   }
 /**
@@ -418,34 +426,40 @@ if(bodyUploadMultipleFilesApiFilesUploadMultiplePost.altcha !== undefined) {
 /**
  * @summary Download File
  */
- downloadFileApiFilesDownloadTokenGet<TData = unknown>(downloadToken: string, options?: HttpClientBodyOptions): Observable<TData>;
- downloadFileApiFilesDownloadTokenGet<TData = unknown>(downloadToken: string, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
- downloadFileApiFilesDownloadTokenGet<TData = unknown>(downloadToken: string, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+ downloadFileApiFilesDownloadTokenGet<TData = unknown>(downloadToken: string,
+    params?: DownloadFileApiFilesDownloadTokenGetParams, options?: HttpClientBodyOptions): Observable<TData>;
+ downloadFileApiFilesDownloadTokenGet<TData = unknown>(downloadToken: string,
+    params?: DownloadFileApiFilesDownloadTokenGetParams, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ downloadFileApiFilesDownloadTokenGet<TData = unknown>(downloadToken: string,
+    params?: DownloadFileApiFilesDownloadTokenGetParams, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
   downloadFileApiFilesDownloadTokenGet<TData = unknown>(
-    downloadToken: string, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    downloadToken: string,
+    params?: DownloadFileApiFilesDownloadTokenGetParams, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    const filteredParams = filterParams({...params, ...options?.params}, new Set<string>([]));
+
     if (options?.observe === 'events') {
       return this.http.get<TData>(
       `/api/files/${downloadToken}`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'events',
-      }
+        params: filteredParams,}
     );
     }
 
     if (options?.observe === 'response') {
       return this.http.get<TData>(
       `/api/files/${downloadToken}`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'response',
-      }
+        params: filteredParams,}
     );
     }
 
     return this.http.get<TData>(
       `/api/files/${downloadToken}`,{
-        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+    ...(options as Omit<NonNullable<typeof options>, 'observe'>),
         observe: 'body',
-      }
+        params: filteredParams,}
     );
   }
 /**

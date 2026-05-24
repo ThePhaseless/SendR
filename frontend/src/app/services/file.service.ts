@@ -148,12 +148,14 @@ export class FileService {
     return this.api.editAccessApiFilesGroupUploadGroupAccessPatch(uploadGroup, body);
   }
 
-  getDownloadUrlWithPassword(downloadToken: string, _password?: string): string {
-    return `${this.apiUrl}/api/files/${downloadToken}`;
+  getDownloadUrlWithPassword(downloadToken: string, password?: string): string {
+    const base = `${this.apiUrl}/api/files/${downloadToken}`;
+    return password ? `${base}?password=${encodeURIComponent(password)}` : base;
   }
 
-  getGroupDownloadUrlWithPassword(uploadGroup: string, _password?: string): string {
-    return `${this.apiUrl}/api/files/group/${uploadGroup}/download`;
+  getGroupDownloadUrlWithPassword(uploadGroup: string, password?: string): string {
+    const base = `${this.apiUrl}/api/files/group/${uploadGroup}/download`;
+    return password ? `${base}?password=${encodeURIComponent(password)}` : base;
   }
 
   private buildUploadAccessFormData(

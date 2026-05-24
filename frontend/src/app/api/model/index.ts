@@ -21,6 +21,8 @@ export * from './codeVerificationRequest';
 export * from './deactivateFileApiFilesFileIdDelete200';
 export * from './deleteUserApiAdminUsersUserIdDelete200';
 export * from './deleteUserTransferApiAdminUsersUserIdTransfersUploadGroupDelete200';
+export * from './downloadFileApiFilesDownloadTokenGetParams';
+export * from './downloadGroupApiFilesGroupUploadGroupDownloadGetParams';
 export * from './downloadStatEntry';
 export * from './downloadStatsResponse';
 export * from './emailRecipientInfo';

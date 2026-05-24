@@ -235,8 +235,12 @@ async def test_password_protected_download(free_headers: dict[str, str]):
         )
         assert dl_resp.status_code == 403
 
-        # Query-string passwords are ignored on purpose
+        # Query-string passwords are also accepted
         dl_resp = await client.get(f"/api/files/{token}?password=mypass")
+        assert dl_resp.status_code == 200
+
+        # Download with wrong query-string password should fail
+        dl_resp = await client.get(f"/api/files/{token}?password=wrong")
         assert dl_resp.status_code == 403
 
         # Download with correct password should succeed

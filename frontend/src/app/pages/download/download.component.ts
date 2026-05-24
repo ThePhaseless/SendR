@@ -11,7 +11,6 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
 import type {
   FileUploadResponse,
   RecipientStatsResponse,
@@ -29,7 +28,6 @@ import {
   isExpired,
   isPendingScanStatus,
   resolveAppUrl,
-  toUserFacingErrorMessage,
 } from '../../utils/index';
 
 @Component({
@@ -44,7 +42,6 @@ export class DownloadComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fileService = inject(FileService);
-  private readonly http = inject(HttpClient);
   private scanStatusPollTimer?: ReturnType<typeof setInterval>;
 
   private readonly token = this.route.snapshot.paramMap.get('token') ?? '';
@@ -288,55 +285,34 @@ export class DownloadComponent {
     this.passwordError.set('');
   }
 
-  private getDownloadErrorDetail(response: Response): Promise<string> {
-    return response
-      .json()
-      .catch(() => null)
-      .then((body: unknown) => {
-        if (typeof body === 'object' && body !== null) {
-          const detail: unknown = Reflect.get(body, 'detail');
-          if (typeof detail === 'object' && detail !== null) {
-            const message: unknown = Reflect.get(detail, 'message');
-            if (typeof message === 'string') {
-              return toUserFacingErrorMessage(message);
-            }
-          }
-          if (typeof detail === 'string') {
-            return toUserFacingErrorMessage(detail);
-          }
-        }
-        return 'Download failed.';
-      });
-  }
+  download(): void {
+    if (this.downloading()) {
+      return;
+    }
+    this.downloading.set(true);
+    this.downloadError.set('');
 
-  async download(): Promise<void> {
     const url = this.fileService.getDownloadUrlWithPassword(
       this.token,
       this.passwordToken() || undefined,
     );
-    await this.downloadFromUrl({
-      accessToken: this.passwordToken() || null,
-      fallbackFilename: this.fileInfo()?.original_filename ?? 'download',
-      reload: () => {
-        this.fileInfoResource?.reload();
-      },
-      url,
-    });
+
+    window.open(url, '_self');
   }
 
-  async downloadGroup(): Promise<void> {
+  downloadGroup(): void {
+    if (this.downloading()) {
+      return;
+    }
+    this.downloading.set(true);
+    this.downloadError.set('');
+
     const url = this.fileService.getGroupDownloadUrlWithPassword(
       this.group,
       this.passwordToken() || undefined,
     );
-    await this.downloadFromUrl({
-      accessToken: this.passwordToken() || null,
-      fallbackFilename: this.groupDownloadFallbackFilename(),
-      reload: () => {
-        this.groupInfoResource?.reload();
-      },
-      url,
-    });
+
+    window.open(url, '_self');
   }
 
   private startScanStatusPolling(): void {
@@ -359,70 +335,6 @@ export class DownloadComponent {
     this.scanStatusPollTimer = undefined;
   }
 
-  private async downloadFromUrl(options: {
-    accessToken: string | null;
-    fallbackFilename: string;
-    reload: () => void;
-    url: string;
-  }): Promise<void> {
-    this.downloadError.set('');
-    this.downloading.set(true);
-
-    try {
-      const headers: Record<string, string> = {};
-      if (options.accessToken) {
-        headers['X-Access-Token'] = options.accessToken;
-      }
-
-      const response = await firstValueFrom(
-        this.http.get(options.url, {
-          headers,
-          observe: 'response',
-          responseType: 'blob',
-        }),
-      );
-
-      const filename = this.getFilenameFromContentDisposition(response) ?? options.fallbackFilename;
-      const blob = response.body;
-
-      if (!blob) {
-        throw new Error('Empty response body');
-      }
-
-      this.triggerDownload(blob, filename);
-      options.reload();
-    } catch (error: unknown) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        return;
-      }
-
-      let message = 'Download failed. Please try again.';
-      if (error instanceof Response) {
-        message = await this.getDownloadErrorDetail(error);
-        options.reload();
-      }
-      this.downloadError.set(message);
-    } finally {
-      this.downloading.set(false);
-    }
-  }
-
-  private getFilenameFromContentDisposition(response: {
-    headers: import('@angular/common/http').HttpHeaders;
-  }): string | null {
-    const disposition = response.headers.get('content-disposition');
-    if (!disposition) {
-      return null;
-    }
-
-    const encodedMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-    if (encodedMatch) {
-      return decodeURIComponent(encodedMatch[1]);
-    }
-
-    return disposition.match(/filename="?([^";]+)"?/i)?.[1] ?? null;
-  }
-
   private groupDownloadFallbackFilename(): string {
     const group = this.groupInfo();
     const trimmedTitle = group?.title?.trim();
@@ -431,19 +343,6 @@ export class DownloadComponent {
         ? `sendr-${this.group.slice(0, 8)}`
         : trimmedTitle;
     return group?.will_zip ? `${baseName.replace(/\.zip$/i, '')}.zip` : baseName;
-  }
-
-  private triggerDownload(blob: Blob, filename: string): void {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.append(a);
-    a.click();
-    a.remove();
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 5000);
   }
 
   private getPasswordFromFragment(fragment: string | null): string {

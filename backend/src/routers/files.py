@@ -23,6 +23,7 @@ from fastapi import (
     Form,
     Header,
     HTTPException,
+    Query,
     Request,
     UploadFile,
     status,
@@ -1250,6 +1251,7 @@ async def download_group(
     request: Request,
     session: AsyncSession = Depends(get_session),
     access_token: Annotated[str | None, Header(alias="X-Access-Token")] = None,
+    password: str | None = Query(None),
     current_user: User | None = Depends(get_optional_user),
 ):
     stmt = select(FileUpload).where(
@@ -1271,7 +1273,7 @@ async def download_group(
     access_type, pw_id, er_id = await _verify_access(
         session,
         upload_group,
-        _resolve_access_credential(access_token),
+        _resolve_access_credential(access_token or password),
         owner_user_id,
         current_user,
     )
@@ -1453,6 +1455,7 @@ async def download_file(
     request: Request,
     session: AsyncSession = Depends(get_session),
     access_token: Annotated[str | None, Header(alias="X-Access-Token")] = None,
+    password: str | None = Query(None),
     current_user: User | None = Depends(get_optional_user),
 ):
     stmt = select(FileUpload).where(
@@ -1472,7 +1475,7 @@ async def download_file(
     access_type, pw_id, er_id = await _verify_access(
         session,
         file_upload.upload_group,
-        _resolve_access_credential(access_token),
+        _resolve_access_credential(access_token or password),
         file_upload.user_id,
         current_user,
     )
