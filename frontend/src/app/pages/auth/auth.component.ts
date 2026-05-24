@@ -126,10 +126,7 @@ export class AuthComponent {
       await firstValueFrom(this.authService.verifyCode(this.email, this.code, this.isRegister()));
 
       if (this.isRegister() && this.password) {
-        this.authService.syncSession();
-        await new Promise((resolve) => {
-          setTimeout(resolve, 500);
-        });
+        await this.authService.syncSession();
         const me = this.authService.currentUser();
         if (me && !me.has_password) {
           await firstValueFrom(this.authService.setPassword(this.password));

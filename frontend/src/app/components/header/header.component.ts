@@ -32,7 +32,7 @@ export class HeaderComponent {
   isAdmin = computed(() => this.currentUser()?.is_admin ?? false);
 
   constructor() {
-    this.auth.syncSession();
+    void this.auth.syncSession();
 
     effect(() => {
       if (!this.auth.authenticated()) {

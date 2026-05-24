@@ -1,5 +1,5 @@
 import { HttpClient, httpResource } from '@angular/common/http';
-import { Injectable, effect, inject, signal } from '@angular/core';
+import { Injectable, effect, inject, signal, untracked } from '@angular/core';
 import type { Observable } from 'rxjs';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -83,12 +83,22 @@ export class AuthService {
       this.http.post<VerifyCodeResponse>(`${this.apiUrl}/api/dev/login/${role}`, {}),
     );
     this.authenticated.set(true);
-    this.syncSession();
+    await this.syncSession();
     return data;
   }
 
-  syncSession(): void {
+  async syncSession(): Promise<void> {
     this.sessionResource.reload();
+    return new Promise((resolve) => {
+      const check = () => {
+        if (!untracked(() => this.sessionResource.isLoading())) {
+          resolve();
+          return;
+        }
+        requestAnimationFrame(check);
+      };
+      check();
+    });
   }
 
   async logout(): Promise<void> {

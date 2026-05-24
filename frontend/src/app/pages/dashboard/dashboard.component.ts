@@ -209,7 +209,7 @@ export class DashboardComponent {
   );
 
   constructor() {
-    this.authService.syncSession();
+    void this.authService.syncSession();
 
     effect(() => {
       if (this.filesResource.hasValue()) {
