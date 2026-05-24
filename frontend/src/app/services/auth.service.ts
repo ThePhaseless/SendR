@@ -1,7 +1,6 @@
-import { HttpClient, httpResource } from '@angular/common/http';
+import { httpResource } from '@angular/common/http';
 import { Injectable, effect, inject, signal } from '@angular/core';
 import type { Observable } from 'rxjs';
-import { firstValueFrom, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService as ApiAuthService } from '../api/endpoints/auth/auth.service';
 import { SubscriptionService as ApiSubscriptionService } from '../api/endpoints/subscription/subscription.service';
@@ -14,7 +13,6 @@ export type MeResponse = UserResponse;
   providedIn: 'root',
 })
 export class AuthService {
-  private readonly http = inject(HttpClient);
   private readonly api = inject(ApiAuthService);
   private readonly subscriptionApi = inject(ApiSubscriptionService);
   private readonly apiUrl = environment.apiUrl;
@@ -44,32 +42,15 @@ export class AuthService {
   }
 
   loginWithPassword(email: string, password: string): Observable<VerifyCodeResponse> {
-    return this.api.loginPasswordApiAuthLoginPasswordPost({ email, password }).pipe(
-      tap(() => {
-        this.authenticated.set(true);
-        this.syncSession();
-      }),
-    );
+    return this.api.loginPasswordApiAuthLoginPasswordPost({ email, password });
   }
 
   verifyCode(email: string, code: string, createAccount = false): Observable<VerifyCodeResponse> {
-    return this.api
-      .verifyCodeApiAuthVerifyCodePost({ code, create_account: createAccount, email })
-      .pipe(
-        tap(() => {
-          this.authenticated.set(true);
-          this.syncSession();
-        }),
-      );
-  }
-
-  getMe(): Observable<MeResponse> {
-    return this.api.getMeApiAuthMeGet().pipe(
-      tap((user) => {
-        this.currentUser.set(user);
-        this.authenticated.set(true);
-      }),
-    );
+    return this.api.verifyCodeApiAuthVerifyCodePost({
+      code,
+      create_account: createAccount,
+      email,
+    });
   }
 
   setPassword(password: string): Observable<MeResponse> {
@@ -95,13 +76,18 @@ export class AuthService {
     return this.authenticated();
   }
 
-  devLogin(role: 'admin' | 'user' | 'premium'): Observable<VerifyCodeResponse> {
-    return this.http.post<VerifyCodeResponse>(`${this.apiUrl}/api/dev/login/${role}`, {}).pipe(
-      tap(() => {
-        this.authenticated.set(true);
-        this.syncSession();
-      }),
-    );
+  async devLogin(role: 'admin' | 'user' | 'premium'): Promise<VerifyCodeResponse> {
+    const response = await fetch(`${this.apiUrl}/api/dev/login/${role}`, {
+      credentials: 'include',
+      method: 'POST',
+    });
+    if (!response.ok) {
+      throw new Error('Dev login failed');
+    }
+    const data = (await response.json()) as VerifyCodeResponse;
+    this.authenticated.set(true);
+    this.syncSession();
+    return data;
   }
 
   syncSession(): void {
@@ -112,7 +98,10 @@ export class AuthService {
     this.currentUser.set(null);
     this.authenticated.set(false);
     try {
-      await firstValueFrom(this.http.post<never>(`${this.apiUrl}/api/auth/logout`, {}));
+      await fetch(`${this.apiUrl}/api/auth/logout`, {
+        credentials: 'include',
+        method: 'POST',
+      });
     } catch {
       // Ignore logout errors
     }

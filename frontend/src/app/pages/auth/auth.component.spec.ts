@@ -1,15 +1,12 @@
 /// <reference types="jasmine" />
 
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { ActivatedRoute, type ParamMap, Router, convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { AuthComponent } from './auth.component';
-
-type AuthServiceSpy = jasmine.SpyObj<
-  Pick<AuthService, 'getMe' | 'loginWithPassword' | 'requestCode' | 'setPassword' | 'verifyCode'>
->;
 
 function createUserResponse(hasPassword: boolean) {
   return {
@@ -20,16 +17,6 @@ function createUserResponse(hasPassword: boolean) {
     is_banned: false,
     tier: 'free',
   };
-}
-
-function createAuthServiceSpy(): AuthServiceSpy {
-  return jasmine.createSpyObj<
-    Pick<AuthService, 'getMe' | 'loginWithPassword' | 'requestCode' | 'setPassword' | 'verifyCode'>
-  >('AuthService', ['getMe', 'loginWithPassword', 'requestCode', 'setPassword', 'verifyCode']);
-}
-
-function createRouterSpy(): jasmine.SpyObj<Router> {
-  return jasmine.createSpyObj<Router>('Router', ['navigate']);
 }
 
 class ParamMapStream {
@@ -62,19 +49,25 @@ class ParamMapStream {
 }
 
 describe('AuthComponent registration password flow', () => {
-  let authService: AuthServiceSpy = createAuthServiceSpy();
-  let router: jasmine.SpyObj<Router> = createRouterSpy();
+  let authService: jasmine.SpyObj<AuthService>;
+  let router: jasmine.SpyObj<Router>;
 
   beforeEach(async () => {
-    authService = createAuthServiceSpy();
-    router = createRouterSpy();
+    authService = jasmine.createSpyObj<AuthService>(
+      'AuthService',
+      ['requestCode', 'loginWithPassword', 'setPassword', 'syncSession', 'verifyCode'],
+      {
+        authenticated: signal(false),
+        currentUser: signal(null),
+      },
+    );
+    router = jasmine.createSpyObj<Router>('Router', ['navigate']);
     router.navigate.and.resolveTo(true);
 
     authService.requestCode.and.returnValue(of({ message: 'Verification code sent' }));
     authService.verifyCode.and.returnValue(
       of({ expires_at: '2026-05-03T00:00:00Z', token: 'token' }),
     );
-    authService.getMe.and.returnValue(of(createUserResponse(false)));
     authService.setPassword.and.returnValue(of(createUserResponse(true)));
 
     await TestBed.configureTestingModule({
@@ -117,7 +110,7 @@ describe('AuthComponent registration password flow', () => {
     component.email = 'user@example.com';
     void component.requestCode();
 
-    expect(authService.requestCode).not.toHaveBeenCalled();
+    expect(authService['requestCode']).not.toHaveBeenCalled();
     expect(component.error()).toBe('Enter a password.');
   });
 
@@ -125,6 +118,7 @@ describe('AuthComponent registration password flow', () => {
     const fixture = TestBed.createComponent(AuthComponent);
     const component = fixture.componentInstance;
 
+    authService.currentUser.set(createUserResponse(false));
     component.email = 'user@example.com';
     component.password = 'password123';
     component.confirmPassword = 'password123';
@@ -133,9 +127,9 @@ describe('AuthComponent registration password flow', () => {
     await component.verifyCode();
     await fixture.whenStable();
 
-    expect(authService.verifyCode).toHaveBeenCalledWith('user@example.com', '123456', true);
-    expect(authService.getMe).toHaveBeenCalledTimes(1);
-    expect(authService.setPassword).toHaveBeenCalledWith('password123');
+    expect(authService['verifyCode']).toHaveBeenCalledWith('user@example.com', '123456', true);
+    expect(authService['syncSession']).toHaveBeenCalledTimes(1);
+    expect(authService['setPassword']).toHaveBeenCalledWith('password123');
     expect(router['navigate']).toHaveBeenCalledWith(['/']);
   });
 
@@ -143,7 +137,7 @@ describe('AuthComponent registration password flow', () => {
     const fixture = TestBed.createComponent(AuthComponent);
     const component = fixture.componentInstance;
 
-    authService.getMe.and.returnValue(of(createUserResponse(true)));
+    authService.currentUser.set(createUserResponse(true));
     component.email = 'user@example.com';
     component.password = 'password123';
     component.confirmPassword = 'password123';
@@ -152,7 +146,7 @@ describe('AuthComponent registration password flow', () => {
     await component.verifyCode();
     await fixture.whenStable();
 
-    expect(authService.setPassword).not.toHaveBeenCalled();
+    expect(authService['setPassword']).not.toHaveBeenCalled();
     expect(router['navigate']).toHaveBeenCalledWith(['/']);
   });
 });
@@ -178,7 +172,8 @@ describe('AuthComponent route changes', () => {
         {
           provide: AuthService,
           useValue: {
-            getMe: jasmine.createSpy('getMe').and.returnValue(of(createUserResponse(false))),
+            authenticated: signal(false),
+            currentUser: signal(null),
             loginWithPassword: jasmine.createSpy('loginWithPassword').and.returnValue(of({})),
             requestCode: jasmine
               .createSpy('requestCode')
@@ -186,6 +181,7 @@ describe('AuthComponent route changes', () => {
             setPassword: jasmine
               .createSpy('setPassword')
               .and.returnValue(of(createUserResponse(true))),
+            syncSession: jasmine.createSpy('syncSession'),
             verifyCode: jasmine.createSpy('verifyCode').and.returnValue(of({})),
           },
         },

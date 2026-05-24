@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@ang
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { firstValueFrom, of, switchMap } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 import { getErrorDetail } from '../../utils/error.utils';
 
@@ -124,7 +124,18 @@ export class AuthComponent {
 
     try {
       await firstValueFrom(this.authService.verifyCode(this.email, this.code, this.isRegister()));
-      await firstValueFrom(this.completeRegistrationWithPassword());
+
+      if (this.isRegister() && this.password) {
+        this.authService.syncSession();
+        await new Promise((resolve) => {
+          setTimeout(resolve, 500);
+        });
+        const me = this.authService.currentUser();
+        if (me && !me.has_password) {
+          await firstValueFrom(this.authService.setPassword(this.password));
+        }
+      }
+
       this.loading.set(false);
       await this.router.navigate(['/']);
     } catch (error) {
@@ -147,18 +158,6 @@ export class AuthComponent {
     this.code = '';
     this.error.set(null);
     this.message.set(null);
-  }
-
-  private completeRegistrationWithPassword() {
-    if (!this.isRegister() || !this.password) {
-      return of(null);
-    }
-
-    return this.authService
-      .getMe()
-      .pipe(
-        switchMap((me) => (me.has_password ? of(me) : this.authService.setPassword(this.password))),
-      );
   }
 
   private getRegistrationPasswordError(): string | null {

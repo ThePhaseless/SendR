@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { httpResource } from '@angular/common/http';
+import { HttpClient, httpResource } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import type {
   FileUploadResponse,
   RecipientStatsResponse,
@@ -31,36 +32,6 @@ import {
   toUserFacingErrorMessage,
 } from '../../utils/index';
 
-interface DownloadRequestOptions {
-  accessToken: string | null;
-  fallbackFilename: string;
-  reload: () => void;
-  url: string;
-}
-
-interface SuccessfulDownloadOptions {
-  filename: string;
-  onComplete: () => void;
-  reload: () => void;
-  response: Response;
-  writableStream: FileSystemWritableFileStreamLike | null;
-}
-
-type ResponseChunk = Uint8Array<ArrayBuffer>;
-
-interface FileSystemWritableFileStreamLike extends WritableStream<ResponseChunk> {
-  close: () => Promise<void>;
-  write: (data: BufferSource | Blob | string) => Promise<void>;
-}
-
-interface FileSystemFileHandleLike {
-  createWritable: () => Promise<FileSystemWritableFileStreamLike>;
-}
-
-interface SaveFilePickerWindow extends Window {
-  showSaveFilePicker?: (options?: { suggestedName?: string }) => Promise<FileSystemFileHandleLike>;
-}
-
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [DatePipe, FormsModule],
@@ -73,6 +44,7 @@ export class DownloadComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly fileService = inject(FileService);
+  private readonly http = inject(HttpClient);
   private scanStatusPollTimer?: ReturnType<typeof setInterval>;
 
   private readonly token = this.route.snapshot.paramMap.get('token') ?? '';
@@ -337,12 +309,12 @@ export class DownloadComponent {
       });
   }
 
-  download(): void {
+  async download(): Promise<void> {
     const url = this.fileService.getDownloadUrlWithPassword(
       this.token,
       this.passwordToken() || undefined,
     );
-    this.downloadFromUrl({
+    await this.downloadFromUrl({
       accessToken: this.passwordToken() || null,
       fallbackFilename: this.fileInfo()?.original_filename ?? 'download',
       reload: () => {
@@ -352,12 +324,12 @@ export class DownloadComponent {
     });
   }
 
-  downloadGroup(): void {
+  async downloadGroup(): Promise<void> {
     const url = this.fileService.getGroupDownloadUrlWithPassword(
       this.group,
       this.passwordToken() || undefined,
     );
-    this.downloadFromUrl({
+    await this.downloadFromUrl({
       accessToken: this.passwordToken() || null,
       fallbackFilename: this.groupDownloadFallbackFilename(),
       reload: () => {
@@ -387,186 +359,58 @@ export class DownloadComponent {
     this.scanStatusPollTimer = undefined;
   }
 
-  private downloadFromUrl(options: DownloadRequestOptions): void {
+  private async downloadFromUrl(options: {
+    accessToken: string | null;
+    fallbackFilename: string;
+    reload: () => void;
+    url: string;
+  }): Promise<void> {
     this.downloadError.set('');
     this.downloading.set(true);
-    let writableStream: FileSystemWritableFileStreamLike | null = null;
-    let completed = false;
 
-    void this.openWritableDownloadStream(options.fallbackFilename)
-      .then((stream) => {
-        writableStream = stream;
-        const headers: Record<string, string> = {};
-        if (options.accessToken) {
-          headers['X-Access-Token'] = options.accessToken;
-        }
-        return fetch(options.url, {
-          credentials: 'include',
+    try {
+      const headers: Record<string, string> = {};
+      if (options.accessToken) {
+        headers['X-Access-Token'] = options.accessToken;
+      }
+
+      const response = await firstValueFrom(
+        this.http.get(options.url, {
           headers,
-        });
-      })
-      .then((response) => {
-        if (!response.ok) {
-          return this.handleDownloadErrorResponse(response, writableStream, options);
-        }
+          observe: 'response',
+          responseType: 'blob',
+        }),
+      );
 
-        const filename =
-          this.getFilenameFromContentDisposition(response) ?? options.fallbackFilename;
+      const filename = this.getFilenameFromContentDisposition(response) ?? options.fallbackFilename;
+      const blob = response.body;
 
-        return this.writeSuccessfulDownload({
-          filename,
-          onComplete: () => {
-            completed = true;
-          },
-          reload: options.reload,
-          response,
-          writableStream,
-        });
-      })
-      .then(undefined, (error: unknown) =>
-        this.handleDownloadFailure(error, completed, writableStream),
-      )
-      .finally(() => {
-        this.downloading.set(false);
-      });
-  }
+      if (!blob) {
+        throw new Error('Empty response body');
+      }
 
-  private handleDownloadErrorResponse(
-    response: Response,
-    writableStream: FileSystemWritableFileStreamLike | null,
-    options: DownloadRequestOptions,
-  ): Promise<void> {
-    return this.abortWritableStream(writableStream)
-      .then(() => this.getDownloadErrorDetail(response))
-      .then((detail) => {
-        this.downloadError.set(detail);
-        options.reload();
-      });
-  }
-
-  private writeSuccessfulDownload(options: SuccessfulDownloadOptions): Promise<void> {
-    return this.writeResponseToDestination(
-      options.response,
-      options.writableStream,
-      options.filename,
-    ).then(() => {
-      options.onComplete();
-      options.reload();
-    });
-  }
-
-  private handleDownloadFailure(
-    error: unknown,
-    completed: boolean,
-    writableStream: FileSystemWritableFileStreamLike | null,
-  ): Promise<void> {
-    if (completed || this.isUserCancelledDownload(error)) {
-      return Promise.resolve();
-    }
-
-    return this.abortWritableStream(writableStream).then(() => {
-      this.downloadError.set('Download failed. Please try again.');
-    });
-  }
-
-  private writeResponseToDestination(
-    response: Response,
-    writableStream: FileSystemWritableFileStreamLike | null,
-    filename: string,
-  ): Promise<void> {
-    if (writableStream && response.body) {
-      return this.writeResponseToStream(response, writableStream);
-    }
-
-    return response.blob().then((blob) => {
       this.triggerDownload(blob, filename);
-    });
-  }
+      options.reload();
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
 
-  private openWritableDownloadStream(
-    suggestedName: string,
-  ): Promise<FileSystemWritableFileStreamLike | null> {
-    const pickerWindow = window as SaveFilePickerWindow;
-    if (!window.isSecureContext || typeof pickerWindow.showSaveFilePicker !== 'function') {
-      return Promise.resolve(null);
+      let message = 'Download failed. Please try again.';
+      if (error instanceof Response) {
+        message = await this.getDownloadErrorDetail(error);
+        options.reload();
+      }
+      this.downloadError.set(message);
+    } finally {
+      this.downloading.set(false);
     }
-
-    return pickerWindow
-      .showSaveFilePicker({ suggestedName })
-      .then((handle) => handle.createWritable())
-      .catch((error: unknown) => {
-        if (this.isUserCancelledDownload(error)) {
-          return null;
-        }
-        throw error;
-      });
   }
 
-  private writeResponseToStream(
-    response: Response,
-    writableStream: FileSystemWritableFileStreamLike,
-  ): Promise<void> {
-    if (!response.body) {
-      return response
-        .blob()
-        .then((blob) => writableStream.write(blob))
-        .then(() => writableStream.close());
-    }
-
-    return response.body
-      .pipeTo(writableStream)
-      .then(undefined, (error: unknown) => this.abortFailedPipe(writableStream, error));
-  }
-
-  private abortFailedPipe(
-    writableStream: FileSystemWritableFileStreamLike,
-    error: unknown,
-  ): Promise<never> {
-    return writableStream.abort(error).then(
-      () => {
-        throw error;
-      },
-      () => {
-        throw error;
-      },
-    );
-  }
-
-  private abortWritableStream(
-    writableStream: FileSystemWritableFileStreamLike | null,
-  ): Promise<void> {
-    if (!writableStream) {
-      return Promise.resolve();
-    }
-
-    if (typeof writableStream.abort === 'function') {
-      return writableStream.abort().then(undefined, DownloadComponent.ignoreWritableStreamError);
-    }
-
-    return writableStream.close().then(undefined, DownloadComponent.ignoreWritableStreamError);
-  }
-
-  private static ignoreWritableStreamError(this: void): void {}
-
-  private isUserCancelledDownload(error: unknown): boolean {
-    return error instanceof DOMException && error.name === 'AbortError';
-  }
-
-  private startBrowserDownload(url: string, filename?: string): void {
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.rel = 'noopener';
-    anchor.style.display = 'none';
-    if (filename) {
-      anchor.download = filename;
-    }
-    document.body.append(anchor);
-    anchor.click();
-    anchor.remove();
-  }
-
-  private getFilenameFromContentDisposition(response: Response): string | null {
-    const disposition = response.headers.get('Content-Disposition');
+  private getFilenameFromContentDisposition(response: {
+    headers: import('@angular/common/http').HttpHeaders;
+  }): string | null {
+    const disposition = response.headers.get('content-disposition');
     if (!disposition) {
       return null;
     }

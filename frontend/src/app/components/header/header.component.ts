@@ -58,7 +58,7 @@ export class HeaderComponent {
 
   async devLogin(role: 'admin' | 'user' | 'premium'): Promise<void> {
     try {
-      await firstValueFrom(this.auth.devLogin(role));
+      await this.auth.devLogin(role);
       this.closeMenu();
       await this.router.navigate(['/']);
     } catch (error) {
