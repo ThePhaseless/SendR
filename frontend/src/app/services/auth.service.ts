@@ -1,6 +1,7 @@
-import { httpResource } from '@angular/common/http';
+import { HttpClient, httpResource } from '@angular/common/http';
 import { Injectable, effect, inject, signal } from '@angular/core';
 import type { Observable } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService as ApiAuthService } from '../api/endpoints/auth/auth.service';
 import { SubscriptionService as ApiSubscriptionService } from '../api/endpoints/subscription/subscription.service';
@@ -13,6 +14,7 @@ export type MeResponse = UserResponse;
   providedIn: 'root',
 })
 export class AuthService {
+  private readonly http = inject(HttpClient);
   private readonly api = inject(ApiAuthService);
   private readonly subscriptionApi = inject(ApiSubscriptionService);
   private readonly apiUrl = environment.apiUrl;
@@ -77,14 +79,9 @@ export class AuthService {
   }
 
   async devLogin(role: 'admin' | 'user' | 'premium'): Promise<VerifyCodeResponse> {
-    const response = await fetch(`${this.apiUrl}/api/dev/login/${role}`, {
-      credentials: 'include',
-      method: 'POST',
-    });
-    if (!response.ok) {
-      throw new Error('Dev login failed');
-    }
-    const data = (await response.json()) as VerifyCodeResponse;
+    const data = await firstValueFrom(
+      this.http.post<VerifyCodeResponse>(`${this.apiUrl}/api/dev/login/${role}`, {}),
+    );
     this.authenticated.set(true);
     this.syncSession();
     return data;
@@ -98,10 +95,7 @@ export class AuthService {
     this.currentUser.set(null);
     this.authenticated.set(false);
     try {
-      await fetch(`${this.apiUrl}/api/auth/logout`, {
-        credentials: 'include',
-        method: 'POST',
-      });
+      await firstValueFrom(this.http.post<never>(`${this.apiUrl}/api/auth/logout`, {}));
     } catch {
       // Ignore logout errors
     }
