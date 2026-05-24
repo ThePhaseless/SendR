@@ -161,3 +161,91 @@ async def test_cleanup_expired_files_keeps_owned_uploads_for_premium_recovery_wi
     assert owned_upload.is_active is True
     assert anonymous_upload is not None
     assert anonymous_upload.is_active is False
+
+
+@pytest.mark.asyncio
+async def test_get_subscription_returns_free_for_user_without_subscription():
+    _, headers = await _create_user(UserTier.free)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.get("/api/subscription", headers=headers)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["plan"] == "free"
+    assert data["is_active"] is False
+    assert data["started_at"] is None
+    assert data["expires_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_get_subscription_returns_premium_after_upgrade():
+    _, headers = await _create_user(UserTier.free)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        upgrade_resp = await client.post("/api/subscription/upgrade", headers=headers)
+        assert upgrade_resp.status_code == 200
+
+        get_resp = await client.get("/api/subscription", headers=headers)
+        assert get_resp.status_code == 200
+        data = get_resp.json()
+        assert data["plan"] == "premium"
+        assert data["is_active"] is True
+        assert data["started_at"] is not None
+        assert data["expires_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_cancel_subscription_downgrades_to_free():
+    _, headers = await _create_user(UserTier.premium)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        cancel_resp = await client.post("/api/subscription/cancel", headers=headers)
+        assert cancel_resp.status_code == 200
+        assert cancel_resp.json()["plan"] == "free"
+        assert cancel_resp.json()["is_active"] is False
+
+        me_resp = await client.get("/api/auth/me", headers=headers)
+        assert me_resp.status_code == 200
+        assert me_resp.json()["tier"] == "free"
+
+
+@pytest.mark.asyncio
+async def test_cancel_subscription_for_free_user_returns_free():
+    _, headers = await _create_user(UserTier.free)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.post("/api/subscription/cancel", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["plan"] == "free"
+    assert response.json()["is_active"] is False
+
+
+@pytest.mark.asyncio
+async def test_upgrade_then_cancel_then_get_subscription():
+    _, headers = await _create_user(UserTier.free)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        upgrade_resp = await client.post("/api/subscription/upgrade", headers=headers)
+        assert upgrade_resp.status_code == 200
+        assert upgrade_resp.json()["plan"] == "premium"
+
+        cancel_resp = await client.post("/api/subscription/cancel", headers=headers)
+        assert cancel_resp.status_code == 200
+        assert cancel_resp.json()["plan"] == "free"
+
+        get_resp = await client.get("/api/subscription", headers=headers)
+        assert get_resp.status_code == 200
+        assert get_resp.json()["plan"] == "free"
+        assert get_resp.json()["is_active"] is False

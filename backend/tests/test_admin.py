@@ -338,3 +338,127 @@ async def test_admin_can_list_user_logins_and_stats():
     assert stats["total_downloads"] == 7
     assert stats["login_count"] == 2
     assert stats["last_login_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_admin_can_list_users_with_pagination():
+    _, admin_headers = await _create_user(
+        email="list-admin@sendr.local",
+        tier=UserTier.premium,
+        is_admin=True,
+    )
+    await _create_user(email="user-a@sendr.local")
+    await _create_user(email="user-b@sendr.local")
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.get("/api/admin/users", headers=admin_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] >= 3
+        assert len(data["users"]) >= 3
+        emails = {u["email"] for u in data["users"]}
+        assert "list-admin@sendr.local" in emails
+        assert "user-a@sendr.local" in emails
+        assert "user-b@sendr.local" in emails
+
+
+@pytest.mark.asyncio
+async def test_admin_list_users_supports_search():
+    _, admin_headers = await _create_user(
+        email="search-admin@sendr.local",
+        tier=UserTier.premium,
+        is_admin=True,
+    )
+    await _create_user(email="searchable-user@sendr.local")
+    await _create_user(email="other-user@sendr.local")
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.get(
+            "/api/admin/users?search=searchable", headers=admin_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        emails = {u["email"] for u in data["users"]}
+        assert "searchable-user@sendr.local" in emails
+        assert "other-user@sendr.local" not in emails
+
+
+@pytest.mark.asyncio
+async def test_admin_can_delete_user():
+    _, admin_headers = await _create_user(
+        email="delete-admin@sendr.local",
+        tier=UserTier.premium,
+        is_admin=True,
+    )
+    user_id, _ = await _create_user(email="delete-target@sendr.local")
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        delete_resp = await client.delete(
+            f"/api/admin/users/{user_id}", headers=admin_headers
+        )
+        assert delete_resp.status_code == 200
+        assert delete_resp.json()["message"] == "User deleted"
+
+        # User should no longer exist
+        list_resp = await client.get("/api/admin/users", headers=admin_headers)
+        emails = {u["email"] for u in list_resp.json()["users"]}
+        assert "delete-target@sendr.local" not in emails
+
+
+@pytest.mark.asyncio
+async def test_admin_cannot_delete_own_account():
+    admin_id, admin_headers = await _create_user(
+        email="self-delete-admin@sendr.local",
+        tier=UserTier.premium,
+        is_admin=True,
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.delete(
+            f"/api/admin/users/{admin_id}", headers=admin_headers
+        )
+
+    assert response.status_code == 400
+    assert get_error_message(response) == "Cannot delete your own account"
+
+
+@pytest.mark.asyncio
+async def test_admin_cannot_remove_own_admin_privileges():
+    admin_id, admin_headers = await _create_user(
+        email="self-demote-admin@sendr.local",
+        tier=UserTier.premium,
+        is_admin=True,
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.patch(
+            f"/api/admin/users/{admin_id}",
+            json={"is_admin": False},
+            headers=admin_headers,
+        )
+
+    assert response.status_code == 400
+    assert get_error_message(response) == "Cannot remove your own admin privileges"
+
+
+@pytest.mark.asyncio
+async def test_non_admin_cannot_access_admin_routes():
+    _, user_headers = await _create_user(email="regular-user@sendr.local")
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.get("/api/admin/users", headers=user_headers)
+
+    assert response.status_code == 403
+    assert get_error_message(response) == "Admin access required"

@@ -91,3 +91,19 @@ async def test_upload_rejects_altcha_past_upload_grace(auth_headers: dict[str, s
         get_error_message(response)
         == "Altcha verification failed: Altcha payload expired"
     )
+
+
+@pytest.mark.asyncio
+async def test_get_challenge_returns_valid_challenge():
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.get("/api/altcha/challenge")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "challenge" in data
+    assert "salt" in data
+    assert "algorithm" in data
+    assert "signature" in data
+    assert data["algorithm"] == "SHA-256"
