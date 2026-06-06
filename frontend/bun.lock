@@ -25,7 +25,7 @@
         "@angular/cli": "^21.2.2",
         "@angular/compiler-cli": "^21.2.4",
         "@types/jasmine": "~6.0.0",
-        "jasmine-core": "~6.2.0",
+        "jasmine-core": "~6.3.0",
         "karma": "~6.4.4",
         "karma-chrome-launcher": "~3.2.0",
         "karma-coverage": "~2.2.1",
@@ -1484,7 +1484,7 @@
 
     "istanbul-reports": ["istanbul-reports@3.2.0", "", { "dependencies": { "html-escaper": "^2.0.0", "istanbul-lib-report": "^3.0.0" } }, "sha512-HGYWWS/ehqTV3xN10i23tkPkpH46MLCIMFNCaaKNavAXTF1RkqxawEPtnjnGZ6XKSInBKkiOA5BKS+aZiY3AvA=="],
 
-    "jasmine-core": ["jasmine-core@6.2.0", "", {}, "sha512-b16WZG/pFEFj8qRW1ss7nDuNGYz9ji8BDGj7fJNrROauk5rj/diO3KPOuyIpcgUChdC+c0PfQ8iUk4nHE+EN4w=="],
+    "jasmine-core": ["jasmine-core@6.3.0", "", {}, "sha512-eMm5qBovNjNoGOcgE/W207+wrcK5zrQv0Rg/rWGboUJUmZp0dFCpHTyjpuDAfCwRCqg7f9U2q2jtv/aUuzdCQg=="],
 
     "jest-worker": ["jest-worker@27.5.1", "", { "dependencies": { "@types/node": "*", "merge-stream": "^2.0.0", "supports-color": "^8.0.0" } }, "sha512-7vuh85V5cdDofPyxn58nrPjBktZo0u9x1g8WtjQol+jZDaE+fhN+cIvTj11GndBnMnyfrUOG1sZQxCdjKh+DKg=="],
 
