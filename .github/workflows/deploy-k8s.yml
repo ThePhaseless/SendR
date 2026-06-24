@@ -48,7 +48,7 @@ jobs:
           terraform_version: 1.15.3
 
       - name: Install SOPS
-        uses: mdgreenwald/mozilla-sops-action@v2.0.0
+        uses: mdgreenwald/mozilla-sops-action@v2.1.0
 
       - name: Install doctl
         uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f
