@@ -8,7 +8,7 @@ RUN bun install --frozen-lockfile
 COPY . ./
 RUN bunx ng build --configuration production
 
-FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:054e14f543eb688809d59ec2ad1644d1a61678e247c87a318ad605977eb37eaf
+FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:a8d5564c3354241473c1e152d5dd3281ab4224edb61b23c291e0bfd9854687a1
 
 USER root
 COPY nginx.conf /etc/nginx/templates/default.conf.template
